@@ -12,7 +12,11 @@
 //
 // Makes a small number of real API calls. Writes nothing.
 
+import { z } from 'genkit';
+
+import { ai } from '../src/ai/genkit';
 import { analyzeAndAdjust } from '../src/ai/flows/analyze-and-adjust';
+import { runCoachTurn } from '../src/ai/flows/coach-chat';
 
 async function check(name: string, run: () => Promise<unknown>) {
   process.stdout.write(`  ${name} ... `);
@@ -84,6 +88,51 @@ async function main() {
         ],
       }),
     ),
+  );
+
+  // The Edge Coach answers over a tool loop, which is the part most exposed to
+  // a model or SDK change: if tool calling silently stops working, the coach
+  // still replies — it just replies without ever looking at the athlete's data,
+  // which no error would reveal. This asks a question that can only be answered
+  // from a tool and fails if the tool was never called.
+  results.push(
+    await check('coach chat (tool calling)', async () => {
+      let toolCalled = false;
+
+      const lastSledSession = ai.dynamicTool(
+        {
+          name: 'findMovementHistory',
+          description:
+            'Find every time the athlete has trained a specific movement, with dates and what was prescribed.',
+          inputSchema: z.object({ movement: z.string() }),
+          outputSchema: z.string(),
+        },
+        async () => {
+          toolCalled = true;
+          return '12 Aug 2026 | Engine Builder | completed | Sled Push — 4x20m @ 100kg | notes: "felt heavy"';
+        },
+      );
+
+      const answer = await runCoachTurn({
+        briefing: [
+          '## Athlete',
+          '- Name: Sam',
+          '- Experience: intermediate | Goal: hybrid | Target frequency: 4 days/week',
+          '',
+          '## Program',
+          '- Hyrox Fusion Balance (hyrox), currently day 17 of 28',
+          '',
+          '## Today and the week ahead',
+          '- Today: Engine Builder [planned] — Sled Push — 4x20m @ 100kg',
+        ].join('\n'),
+        tools: [lastSledSession],
+        message: 'When did I last do sled pushes and what did I do?',
+      });
+
+      if (!toolCalled) throw new Error('The model never called the tool it needed.');
+      if (!answer.trim()) throw new Error('The model returned no reply.');
+      return answer;
+    }),
   );
 
   const failed = results.filter((r) => !r.ok);

@@ -1,0 +1,156 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { subDays, addDays } from 'date-fns';
+
+import type { Program, User, WorkoutDay } from '@/models/types';
+
+const TODAY = new Date(2026, 8, 3, 9, 0, 0);
+
+const sessionDocs: Array<Record<string, any>> = [];
+const journalDocs: Array<Record<string, any>> = [];
+
+function asSnapshot(rows: Array<Record<string, any>>) {
+  return {
+    docs: rows.map((row, index) => ({ id: `doc-${index}`, data: () => row })),
+    empty: rows.length === 0,
+  };
+}
+
+// A Firestore stand-in: every query builder method returns itself, and `get`
+// resolves whichever collection was asked for.
+function fakeQuery(rows: Array<Record<string, any>>) {
+  const query: any = {
+    where: () => query,
+    orderBy: () => query,
+    limit: () => query,
+    get: async () => asSnapshot(rows),
+  };
+  return query;
+}
+
+vi.mock('@/lib/firebase-admin', () => ({
+  getAdminDb: () => ({
+    collection: (name: string) =>
+      fakeQuery(name === 'workoutSessions' ? sessionDocs : journalDocs),
+  }),
+}));
+
+const user: User = {
+  id: 'athlete-1',
+  email: 'a@example.com',
+  firstName: 'Sam',
+  lastName: 'Doe',
+  experience: 'intermediate',
+  frequency: '4',
+  goal: 'hybrid',
+  programId: 'p1',
+  startDate: subDays(TODAY, 16), // program day 17
+  personalRecords: { backSquat: '140kg' },
+  raceName: 'HYROX London',
+  raceDate: addDays(TODAY, 40),
+  completedWorkouts: 52,
+};
+
+function workout(day: number, title: string): WorkoutDay {
+  return {
+    day,
+    title,
+    programType: 'hyrox',
+    exercises: [{ name: 'Sled Push', details: '4x20m @ 100kg' }],
+  } as unknown as WorkoutDay;
+}
+
+const program: Program = {
+  id: 'p1',
+  name: 'Hyrox Fusion Balance',
+  description: 'Balanced run and strength build.',
+  programType: 'hyrox',
+  workouts: Array.from({ length: 28 }, (_, index) => workout(index + 1, `Session ${index + 1}`)),
+};
+
+vi.mock('@/services/user-service', () => ({
+  getUser: async () => user,
+}));
+
+vi.mock('@/services/program-service', () => ({
+  getProgram: async () => program,
+}));
+
+function toTimestamp(date: Date) {
+  return { toDate: () => date };
+}
+
+describe('buildCoachContext', () => {
+  beforeEach(() => {
+    sessionDocs.length = 0;
+    journalDocs.length = 0;
+  });
+
+  it('briefs the coach on what was done, missed and said', async () => {
+    sessionDocs.push(
+      {
+        userId: 'athlete-1',
+        programId: 'p1',
+        workoutDate: toTimestamp(subDays(TODAY, 2)),
+        startedAt: toTimestamp(subDays(TODAY, 2)),
+        finishedAt: toTimestamp(subDays(TODAY, 2)),
+        workoutTitle: 'Engine Builder',
+        programType: 'hyrox',
+        notes: 'sled felt slow, calf tight',
+        workoutDetails: workout(15, 'Engine Builder'),
+      },
+      {
+        userId: 'athlete-1',
+        programId: 'p1',
+        workoutDate: toTimestamp(subDays(TODAY, 1)),
+        startedAt: toTimestamp(subDays(TODAY, 1)),
+        workoutTitle: 'Threshold Run',
+        programType: 'running',
+        workoutDetails: workout(16, 'Threshold Run'),
+      },
+    );
+
+    journalDocs.push({
+      userId: 'athlete-1',
+      date: toTimestamp(subDays(TODAY, 1)),
+      content: 'Calf still grumbling after Tuesday.',
+      mood: 'tired',
+      tags: ['injury'],
+      createdAt: toTimestamp(subDays(TODAY, 1)),
+      updatedAt: toTimestamp(subDays(TODAY, 1)),
+    });
+
+    const { buildCoachContext } = await import('@/services/coach-context');
+    const context = await buildCoachContext('athlete-1', TODAY);
+
+    expect(context.briefing).toContain('Sam');
+    expect(context.briefing).toContain('Hyrox Fusion Balance');
+    expect(context.briefing).toContain('day 17 of 28');
+    expect(context.briefing).toContain('HYROX London');
+    expect(context.briefing).toContain('backSquat 140kg');
+    // What actually happened, including the missed run and the athlete's words.
+    expect(context.briefing).toContain('Engine Builder [completed]');
+    expect(context.briefing).toContain('Threshold Run [missed]');
+    expect(context.briefing).toContain('sled felt slow, calf tight');
+    expect(context.briefing).toContain('Calf still grumbling after Tuesday.');
+    // Today and the days ahead come from the program when nothing is saved.
+    expect(context.briefing).toContain('Today and the week ahead');
+    expect(context.briefing).toContain('Session 17');
+    expect(context.briefing).toContain('52 sessions completed all-time');
+    expect(context.briefing).toContain('Strava is not connected');
+  });
+
+  it('summarises where the athlete is for the UI, with prompts that fit', async () => {
+    const { buildCoachContext } = await import('@/services/coach-context');
+    const { snapshot } = await buildCoachContext('athlete-1', TODAY);
+
+    expect(snapshot.athleteFirstName).toBe('Sam');
+    expect(snapshot.programName).toBe('Hyrox Fusion Balance');
+    expect(snapshot.programDay).toBe(17);
+    expect(snapshot.programWeek).toBe(3);
+    expect(snapshot.todaysSessions).toEqual(['Session 17']);
+    expect(snapshot.daysToRace).toBe(40);
+    expect(snapshot.hasStrava).toBe(false);
+    expect(snapshot.suggestedPrompts.length).toBeGreaterThan(0);
+    expect(snapshot.suggestedPrompts.some(p => p.includes('HYROX London'))).toBe(true);
+  });
+});

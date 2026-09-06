@@ -125,6 +125,16 @@ service cloud.firestore {
       allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
     }
 
+    // Edge Coach conversations. Every read and write goes through
+    // /api/ai/coach-chat with the Admin SDK (which bypasses these rules), so
+    // the client is given read access to its own threads only as a safety net
+    // and is never allowed to write: a thread the athlete could edit would let
+    // them put words in the coach's mouth and feed them back as history.
+    match /coachConversations/{conversationId} {
+      allow get, list: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow write: if false;
+    }
+
     match /analyticsEvents/{eventId} {
       // Authenticated users can write events tagged with their own UID
       allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
