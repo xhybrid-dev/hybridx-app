@@ -9,7 +9,6 @@
 // change the coach has drafted.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import ReactMarkdown from 'react-markdown';
 import {
   CalendarDays,
   CheckCircle2,
@@ -34,6 +33,7 @@ import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
+import { CoachMarkdown } from './coach-markdown';
 import { Logo } from './icons';
 
 interface PlanAdjustment {
@@ -80,28 +80,6 @@ const FALLBACK_PROMPTS = [
   'What should I focus on this week?',
   'How do I get faster at the sled push?',
 ];
-
-function CoachMarkdown({ content }: { content: string }) {
-  return (
-    <div className="text-sm leading-relaxed [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
-      <ReactMarkdown
-        components={{
-          p: props => <p className="mb-3" {...props} />,
-          ul: props => <ul className="mb-3 list-disc space-y-1 pl-5" {...props} />,
-          ol: props => <ol className="mb-3 list-decimal space-y-1 pl-5" {...props} />,
-          li: props => <li className="leading-relaxed" {...props} />,
-          strong: props => <strong className="font-semibold" {...props} />,
-          a: props => <a className="underline underline-offset-2" {...props} />,
-          code: props => (
-            <code className="rounded bg-background/60 px-1 py-0.5 text-xs" {...props} />
-          ),
-        }}
-      >
-        {content}
-      </ReactMarkdown>
-    </div>
-  );
-}
 
 /** The strip above the thread: where this athlete actually is, right now. */
 function SnapshotBar({ snapshot }: { snapshot: CoachSnapshot }) {

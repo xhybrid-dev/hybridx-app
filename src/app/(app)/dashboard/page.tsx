@@ -7,6 +7,7 @@ import { BarChart, Target, Loader2, Route, Zap, PlusSquare, Link as LinkIcon, Ch
 import { subWeeks, startOfWeek, isWithinInterval, isFuture } from 'date-fns';
 
 import { CoachPanel, useCoachNotes } from '@/components/coach-panel';
+import { CoachMarkdown } from '@/components/coach-markdown';
 import { dashboardSummary } from '@/ai/flows/dashboard-summary';
 import { workoutSummary } from '@/ai/flows/workout-summary';
 import { generateWorkout } from '@/ai/flows/generate-workout';
@@ -609,9 +610,11 @@ export default function DashboardPage() {
                       "animate-pulse": workoutSummaryLoading,
                       "hidden": !todaysWorkout?.workout || programStartsInFuture
                   })}>
-                      <p className="rotate-1 text-foreground/90 italic">
-                          {workoutSummaryLoading ? "Generating your daily tip..." : workoutSummaryText}
-                      </p>
+                      <div className="rotate-1 text-foreground/90 italic">
+                          {workoutSummaryLoading
+                            ? 'Generating your daily tip...'
+                            : <CoachMarkdown content={workoutSummaryText} variant="inline" />}
+                      </div>
                   </div>
               </CardDescription>
             </CardHeader>

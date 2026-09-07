@@ -161,6 +161,40 @@ client as `planProposal` and rendered as a card with an *Apply to my plan*
 button that posts to `/api/ai/apply-adjustments`. **Nothing is written until the
 athlete accepts** — the system prompt tells the coach to say so.
 
+### Rendering what the coach says
+
+Everything the coach writes goes through one component,
+`src/components/coach-markdown.tsx`, in three variants: `block` (the chat
+thread), `compact` (the dashboard panel), `inline` (one-line summaries, where
+blocks are flattened so a stray list can't blow out the layout).
+
+It had been three partial component maps, which is how a reply ends up with
+literal asterisks in it. The trap is that Tailwind's preflight strips headings
+and list markers back to plain text, so any element the map doesn't name renders
+*invisibly* rather than merely unstyled — an unmapped `<h3>` is indistinguishable
+from body text, and an unmapped `<ul>` has no bullets. Every element the model
+can emit is therefore named explicitly.
+
+Two remark plugins matter:
+
+- **`remark-gfm`** — tables, strikethrough, task lists, autolinks. Without it a
+  week laid out as a table arrives as a block of pipe characters.
+- **`remark-breaks`** — a single newline becomes a line break, because that is
+  what someone typing a message means by it. Verified not to interfere with list
+  or paragraph parsing.
+
+`rehype-raw` is deliberately **not** enabled. Model output is untrusted text and
+react-markdown escapes HTML by default; that is the behaviour we want. Links
+render with `target="_blank"` and `rel="noopener noreferrer nofollow"`.
+
+The system prompt names exactly this set, so the coach doesn't reach for
+formatting the app won't draw.
+
+`src/components/markdown-renderer.tsx` (AI-generated articles) had the same
+gaps and got the same treatment. Note its `prose prose-lg dark:prose-invert`
+classes are inert — `@tailwindcss/typography` is not installed — which is why
+that component maps every element by hand too.
+
 ### Reaching the coach
 
 The chat page is where a conversation happens; it is not the only place the

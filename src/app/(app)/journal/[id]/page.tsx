@@ -27,6 +27,7 @@ import { getProgramClient } from '@/services/program-service-client';
 import { getAllUserSessions } from '@/services/session-service-client';
 import { journalInsight } from '@/ai/flows/journal-insight';
 import { JournalEntryForm } from '@/components/journal-entry-form';
+import { CoachMarkdown } from '@/components/coach-markdown';
 import type { JournalEntry, MoodLevel } from '@/models/types';
 
 const MOOD_COLOURS: Record<MoodLevel, string> = {
@@ -271,9 +272,10 @@ export default function JournalEntryDetailPage() {
         {generatingAnalysis ? (
           <AISectionSkeleton />
         ) : hasNewAnalysis ? (
-          <p className="text-base leading-relaxed whitespace-pre-wrap text-foreground/90">
-            {entry.aiInterpretation}
-          </p>
+          <CoachMarkdown
+            content={entry.aiInterpretation ?? ''}
+            className="text-base text-foreground/90"
+          />
         ) : hasLegacyInsight ? (
           <p className="text-sm text-muted-foreground italic">
             Generate a new analysis to see this section.
@@ -294,13 +296,12 @@ export default function JournalEntryDetailPage() {
         {generatingAnalysis ? (
           <AISectionSkeleton />
         ) : hasNewAnalysis ? (
-          <p className="text-base leading-relaxed whitespace-pre-wrap text-foreground/90">
-            {entry.aiCoachResponse}
-          </p>
+          <CoachMarkdown
+            content={entry.aiCoachResponse ?? ''}
+            className="text-base text-foreground/90"
+          />
         ) : hasLegacyInsight ? (
-          <p className="text-base leading-relaxed whitespace-pre-wrap text-foreground/90">
-            {entry.aiInsight}
-          </p>
+          <CoachMarkdown content={entry.aiInsight ?? ''} className="text-base text-foreground/90" />
         ) : (
           <p className="text-sm text-muted-foreground italic">
             Your coach hasn't responded to this entry yet.

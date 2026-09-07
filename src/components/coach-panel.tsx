@@ -9,7 +9,6 @@
 // two.
 
 import { useCallback, useEffect, useState } from 'react';
-import ReactMarkdown from 'react-markdown';
 import Link from 'next/link';
 import { ArrowRight, CornerDownLeft, Loader2, MessageCircle, X } from 'lucide-react';
 
@@ -19,6 +18,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
+import { CoachMarkdown } from './coach-markdown';
 import { Logo } from './icons';
 
 export interface CoachNote {
@@ -154,7 +154,9 @@ export function CoachPanel({
           {summaryLoading ? (
             <Skeleton className="h-5 w-2/3" />
           ) : (
-            <p className="text-sm text-foreground/90">{summary}</p>
+            <div className="text-sm text-foreground/90">
+              <CoachMarkdown content={summary} variant="inline" />
+            </div>
           )}
 
           {notes.length > 0 && (
@@ -193,17 +195,8 @@ export function CoachPanel({
           )}
 
           {reply && (
-            <div className="mt-3 rounded-md bg-muted p-3 text-sm [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
-              <ReactMarkdown
-                components={{
-                  p: props => <p className="mb-2" {...props} />,
-                  ul: props => <ul className="mb-2 list-disc space-y-1 pl-4" {...props} />,
-                  ol: props => <ol className="mb-2 list-decimal space-y-1 pl-4" {...props} />,
-                  strong: props => <strong className="font-semibold" {...props} />,
-                }}
-              >
-                {reply}
-              </ReactMarkdown>
+            <div className="mt-3 rounded-md bg-muted p-3 text-sm">
+              <CoachMarkdown content={reply} variant="compact" />
               <Link
                 href="/assistant"
                 className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
