@@ -7,6 +7,7 @@ const TODAY = new Date(2026, 8, 3, 9, 0, 0);
 
 const sessionDocs: Array<Record<string, any>> = [];
 const journalDocs: Array<Record<string, any>> = [];
+const noteDocs: Array<Record<string, any>> = [];
 
 function asSnapshot(rows: Array<Record<string, any>>) {
   return {
@@ -27,10 +28,15 @@ function fakeQuery(rows: Array<Record<string, any>>) {
   return query;
 }
 
+const COLLECTIONS: Record<string, Array<Record<string, any>>> = {
+  workoutSessions: sessionDocs,
+  journalEntries: journalDocs,
+  coachNotes: noteDocs,
+};
+
 vi.mock('@/lib/firebase-admin', () => ({
   getAdminDb: () => ({
-    collection: (name: string) =>
-      fakeQuery(name === 'workoutSessions' ? sessionDocs : journalDocs),
+    collection: (name: string) => fakeQuery(COLLECTIONS[name] ?? []),
   }),
 }));
 
@@ -83,6 +89,7 @@ describe('buildCoachContext', () => {
   beforeEach(() => {
     sessionDocs.length = 0;
     journalDocs.length = 0;
+    noteDocs.length = 0;
   });
 
   it('briefs the coach on what was done, missed and said', async () => {
@@ -137,6 +144,51 @@ describe('buildCoachContext', () => {
     expect(context.briefing).toContain('Session 17');
     expect(context.briefing).toContain('52 sessions completed all-time');
     expect(context.briefing).toContain('Strava is not connected');
+  });
+
+  it('opens with what the athlete has already told the coach', async () => {
+    noteDocs.push(
+      {
+        userId: 'athlete-1',
+        category: 'availability',
+        content: 'Away in Spain 12–19 September.',
+        status: 'active',
+        source: 'chat',
+        createdAt: toTimestamp(subDays(TODAY, 2)),
+        updatedAt: toTimestamp(subDays(TODAY, 2)),
+        expiresAt: toTimestamp(addDays(TODAY, 12)),
+      },
+      {
+        // Expired: it was true in July and must not be quoted back in September.
+        userId: 'athlete-1',
+        category: 'constraint',
+        content: 'Left hamstring tight after the June race.',
+        status: 'active',
+        source: 'chat',
+        createdAt: toTimestamp(subDays(TODAY, 80)),
+        updatedAt: toTimestamp(subDays(TODAY, 80)),
+        expiresAt: toTimestamp(subDays(TODAY, 10)),
+      },
+    );
+
+    const { buildCoachContext } = await import('@/services/coach-context');
+    const context = await buildCoachContext('athlete-1', TODAY);
+
+    expect(context.briefing).toContain('What you already know about them');
+    expect(context.briefing).toContain('Away in Spain 12–19 September.');
+    expect(context.briefing).not.toContain('Left hamstring tight');
+    // And the athlete can see what's being held about them.
+    expect(context.snapshot.notes.map(note => note.content)).toEqual([
+      'Away in Spain 12–19 September.',
+    ]);
+  });
+
+  it('leaves the section out entirely when nothing has been said yet', async () => {
+    const { buildCoachContext } = await import('@/services/coach-context');
+    const context = await buildCoachContext('athlete-1', TODAY);
+
+    expect(context.briefing).not.toContain('What you already know about them');
+    expect(context.snapshot.notes).toEqual([]);
   });
 
   it('summarises where the athlete is for the UI, with prompts that fit', async () => {

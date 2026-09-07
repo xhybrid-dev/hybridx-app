@@ -14,6 +14,7 @@ import { getAdminDb } from '@/lib/firebase-admin';
 import { analyzeAndAdjust } from '@/ai/flows/analyze-and-adjust';
 import { mapWithLimit } from '@/lib/concurrency';
 import { logger } from '@/lib/logger';
+import { formatNotesForPrompt, getActiveNotes } from '@/services/coach-notes';
 
 import { FieldValue } from 'firebase-admin/firestore';
 import type { User, Workout, RunningWorkout } from '@/models/types';
@@ -151,6 +152,14 @@ export async function GET(request: Request) {
       const todaysWorkout = workouts.find((w) => w.day === todayDiffDays);
       if (!todaysWorkout) return; // Rest day or end of program
 
+      // What the athlete has told their coach. Without this the job reads every
+      // missed session as a lapse, so the athlete who said "I'm in Spain until
+      // the 19th" gets told off for being in Spain — the fastest way to teach
+      // someone that telling the coach things is pointless.
+      const notes = await getActiveNotes(userId, today);
+      const noteContext = formatNotesForPrompt(notes, today);
+      const onABreak = notes.some((note) => note.category === 'availability');
+
       const aiResponse = await analyzeAndAdjust({
         // The input schema requires both. An athlete who never set a name or a
         // goal would otherwise fail zod validation and be counted as an error
@@ -166,7 +175,9 @@ export async function GET(request: Request) {
           },
         ],
         upcomingWorkouts: [{ ...todaysWorkout, day: todayDiffDays } as any],
-        customRequest: 'I missed yesterday. Should I adjust today?',
+        customRequest: noteContext
+          ? `I missed yesterday. Should I adjust today? Here is what I have already told my coach — take it into account rather than treating the miss as a lapse:\n${noteContext}`
+          : 'I missed yesterday. Should I adjust today?',
       });
 
       if (aiResponse.needsAdjustment && aiResponse.adjustments?.length) {
@@ -185,7 +196,11 @@ export async function GET(request: Request) {
         await db.collection('notifications').add({
           userId,
           title: 'Plan Adjusted 🤖',
-          body: `Since you missed yesterday, I've modified today's ${todaysWorkout.title} to be more manageable.`,
+          // An athlete who told us they'd be away gets an acknowledgement, not
+          // an accusation. Same adjustment either way — different sentence.
+          body: onABreak
+            ? `I know you've got a lot on at the moment — I've reshaped today's ${todaysWorkout.title} so it still works if you get a window.`
+            : `Since you missed yesterday, I've modified today's ${todaysWorkout.title} to be more manageable.`,
           read: false,
           createdAt: FieldValue.serverTimestamp(),
           type: 'ai-adjustment',

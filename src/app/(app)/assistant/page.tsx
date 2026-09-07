@@ -5,7 +5,18 @@ export const metadata: Metadata = {
     title: 'Edge Coach | HYBRIDX.CLUB',
 };
 
-export default function AssistantPage() {
+/**
+ * `?q=` seeds the first message, so "talk to your coach about this session" from
+ * the dashboard or a workout arrives as a question already asked rather than an
+ * empty box the athlete has to fill in.
+ */
+export default async function AssistantPage({
+    searchParams,
+}: {
+    searchParams: Promise<{ q?: string }>;
+}) {
+    const { q } = await searchParams;
+
     return (
         <div className="h-full flex flex-col">
             <div className="mb-4">
@@ -15,7 +26,7 @@ export default function AssistantPage() {
                     it&apos;s been going. Talk it through.
                 </p>
             </div>
-            <AssistantChat />
+            <AssistantChat seedMessage={typeof q === 'string' ? q.slice(0, 500) : undefined} />
         </div>
     );
 }

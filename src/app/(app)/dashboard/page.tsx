@@ -3,9 +3,10 @@
 
 import { useEffect, useState, useRef, useCallback, lazy, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
-import { BarChart, Target, Loader2, Route, Zap, PlusSquare, Link as LinkIcon, CheckCircle, History, Calendar, Bell, CheckSquare, Sparkles, Trophy, ArrowRight } from 'lucide-react';
+import { BarChart, Target, Loader2, Route, Zap, PlusSquare, Link as LinkIcon, CheckCircle, History, Calendar, Bell, CheckSquare, Sparkles, Trophy, ArrowRight, MessageCircle } from 'lucide-react';
 import { subWeeks, startOfWeek, isWithinInterval, isFuture } from 'date-fns';
 
+import { CoachPanel, useCoachNotes } from '@/components/coach-panel';
 import { dashboardSummary } from '@/ai/flows/dashboard-summary';
 import { workoutSummary } from '@/ai/flows/workout-summary';
 import { generateWorkout } from '@/ai/flows/generate-workout';
@@ -67,6 +68,11 @@ export default function DashboardPage() {
   const [stravaLoadError, setStravaLoadError] = useState<StravaLoadError | null>(null);
   // Prevent the dashboard summary from firing more than once per mount
   const summaryFiredRef = useRef(false);
+
+  // What the coach remembers the athlete has told it. Both AI lines on this
+  // page are written with it, so a week off that the athlete already explained
+  // doesn't come back at them as a missed week.
+  const coachNotes = useCoachNotes(!!user);
   const [isGeneratingWorkout, setIsGeneratingWorkout] = useState(false);
   const [isMarkingDone, setIsMarkingDone] = useState(false);
   const [isCustomWorkoutDialogOpen, setIsCustomWorkoutDialogOpen] = useState(false);
@@ -137,6 +143,7 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!user || !program || !todaysWorkout || progressData.length === 0) return;
     if (!todayStravaLoaded) return; // Wait until we know whether there are Strava activities today
+    if (!coachNotes.loaded) return; // Speak with the athlete's context, or not at all
     if (summaryFiredRef.current) return; // Don't fire more than once per mount
 
     summaryFiredRef.current = true;
@@ -153,6 +160,7 @@ export default function DashboardPage() {
       ].join(', '),
       // Only pass Strava activity when it loaded successfully (not when errored)
       todayStravaActivity: stravaLoadError ? undefined : (todayStravaSummary ?? undefined),
+      coachNotes: coachNotes.promptText ?? undefined,
     }).then(result => {
       setSummary(result.summary);
     }).catch(aiError => {
@@ -161,7 +169,7 @@ export default function DashboardPage() {
     }).finally(() => {
       setSummaryLoading(false);
     });
-  }, [user, program, todaysWorkout, progressData, todayStravaLoaded, stravaLoadError]); // todayStravaSummary intentionally excluded — read via closure after todayStravaLoaded is true
+  }, [user, program, todaysWorkout, progressData, todayStravaLoaded, stravaLoadError, coachNotes.loaded]); // todayStravaSummary and coachNotes.promptText intentionally excluded — read via closure once loaded
 
   // Effect for AI Workout Summary — staggered 1s after mount to avoid concurrent Gemini calls
   useEffect(() => {
@@ -182,6 +190,7 @@ export default function DashboardPage() {
         workoutTitle: todaysWorkout.workout!.title,
         exercises: exercisesForSummary,
         userNotes: todaysSession.notes,
+        coachNotes: coachNotes.promptText ?? undefined,
       }).then(result => {
         setWorkoutSummaryText(result.summary);
       }).catch(aiError => {
@@ -543,17 +552,19 @@ export default function DashboardPage() {
           </Card>
         )}
 
-        <div className="space-y-1 flex items-center justify-between">
-            <div>
+        <div className="space-y-3">
+            <div className="flex items-center justify-between">
               <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
                 Welcome back, {user?.firstName || 'Athlete'}
               </h1>
-              {summaryLoading ? (
-                  <Skeleton className="h-5 w-2/3" />
-              ) : (
-                  <p className="text-muted-foreground">{summary}</p>
-              )}
             </div>
+            <CoachPanel
+              summary={summary}
+              summaryLoading={summaryLoading}
+              notes={coachNotes.notes}
+              onDismissNote={coachNotes.dismiss}
+              onNotesMayHaveChanged={coachNotes.refresh}
+            />
 
             {/* Hiding Weekly Analysis for now 
             {user && (
@@ -719,6 +730,20 @@ export default function DashboardPage() {
                    <PlusSquare className="mr-2 h-4 w-4" />
                    Log New Workout
               </Button>
+              {/* The coach reached from the session it's about, with the question
+                  already asked — not a chat tab you have to remember exists. */}
+              {todaysWorkout?.workout && !programStartsInFuture && !isWorkoutCompleted && (
+                <Button variant="ghost" className="w-full" asChild>
+                    <Link
+                        href={`/assistant?q=${encodeURIComponent(
+                            `Talk me through today's ${todaysWorkout.workout.title} — how should I approach it?`,
+                        )}`}
+                    >
+                        <MessageCircle className="mr-2 h-4 w-4" />
+                        Ask your coach about this
+                    </Link>
+                </Button>
+              )}
             </CardFooter>
           </Card>
 

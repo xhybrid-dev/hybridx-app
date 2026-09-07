@@ -17,6 +17,7 @@ const WorkoutSummaryInputSchema = z.object({
   workoutTitle: z.string().describe('The title of the workout.'),
   exercises: z.string().describe('A comma-separated list of exercises for the workout.'),
   userNotes: z.string().optional().describe("Optional notes from the user about how the workout felt."),
+  coachNotes: z.string().optional().describe("What the coach remembers the athlete has told them — time pressure, a niggle, travel, kit they don't have. One per line."),
 });
 export type WorkoutSummaryInput = z.infer<typeof WorkoutSummaryInputSchema>;
 
@@ -36,6 +37,13 @@ const prompt = ai.definePrompt({
   prompt: `You are an AI coach for an athlete named {{{userName}}}.
 
   Today's workout is "{{{workoutTitle}}}" and includes these exercises: {{{exercises}}}.
+
+  {{#if coachNotes}}
+  What {{{userName}}} has told you recently:
+  {{{coachNotes}}}
+
+  If any of it bears on today — short on time, a sore knee, no sled where they are, travelling — make your tip the one that helps them get this session done anyway. Don't recite what they told you; just coach as though you remembered.
+  {{/if}}
 
   {{#if userNotes}}
   The user's notes from the session: "{{{userNotes}}}"

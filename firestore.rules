@@ -125,6 +125,16 @@ service cloud.firestore {
       allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
     }
 
+    // What the coach remembers about an athlete between conversations — that
+    // they're away next week, that the knee is still sore. Written only by the
+    // server (Admin SDK) from what the athlete actually said; the client reads
+    // its own notes so the app can show them back and never writes, because a
+    // note the client could forge is a note the coach would then act on.
+    match /coachNotes/{noteId} {
+      allow get, list: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow write: if false;
+    }
+
     // Edge Coach conversations. Every read and write goes through
     // /api/ai/coach-chat with the Admin SDK (which bypasses these rules), so
     // the client is given read access to its own threads only as a safety net

@@ -211,7 +211,7 @@ function PlanProposalCard({
   );
 }
 
-export function AssistantChat() {
+export function AssistantChat({ seedMessage }: { seedMessage?: string } = {}) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isSending, setIsSending] = useState(false);
@@ -368,6 +368,15 @@ export function AssistantChat() {
       logger.error('Error refreshing coach snapshot:', error);
     }
   }, []);
+
+  // A question arriving from elsewhere in the app (?q=) is asked once, after the
+  // thread has loaded so it lands in the athlete's existing conversation.
+  const seedSentRef = useRef(false);
+  useEffect(() => {
+    if (!seedMessage || loadingThread || !currentUser || seedSentRef.current) return;
+    seedSentRef.current = true;
+    void send(seedMessage);
+  }, [seedMessage, loadingThread, currentUser, send]);
 
   const startNewThread = () => {
     setConversationId(null);

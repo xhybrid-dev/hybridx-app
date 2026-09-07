@@ -18,6 +18,7 @@ const JournalInsightInputSchema = z.object({
   tags: z.array(z.string()).optional().describe("Category tags the athlete attached to this entry."),
   entryDate: z.string().describe("The date of the journal entry in ISO format (YYYY-MM-DD)."),
   userData: z.string().describe("A JSON string containing the athlete's profile, recent workout sessions, and any Strava training summary."),
+  coachNotes: z.string().optional().describe("What the coach remembers the athlete has told them in earlier conversations. One per line."),
 });
 export type JournalInsightInput = z.infer<typeof JournalInsightInputSchema>;
 
@@ -59,6 +60,8 @@ ${input.journalContent}
 
 Athlete data (profile, recent sessions, Strava training summary if available):
 ${input.userData}
+
+${input.coachNotes ? `What this athlete has told you in earlier conversations — treat it as current and let it inform both sections, without reciting it back to them:\n${input.coachNotes}` : ''}
 
 ---
 
