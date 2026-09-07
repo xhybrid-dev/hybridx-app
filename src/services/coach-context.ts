@@ -378,13 +378,51 @@ const NO_ATHLETE_SNAPSHOT: CoachSnapshot = {
 };
 
 /**
+ * A back-and-forth exchange rebuilds the same briefing every time — the same
+ * sessions, journal and notes, seconds apart — and each rebuild is a handful of
+ * Firestore reads the athlete waits through before the coach starts typing.
+ * Sixty seconds is long enough to cover a rapid conversation and short enough
+ * that nothing the athlete does elsewhere in the app goes unnoticed: finishing a
+ * workout means leaving the coach, and coming back takes longer than a minute.
+ */
+const CONTEXT_CACHE_TTL_MS = 60_000;
+const contextCache = new Map<string, { context: CoachContext; expiresAt: number }>();
+
+/** Drops an athlete's cached briefing — call after writing something they'd expect the coach to see. */
+export function invalidateCoachContext(userId: string): void {
+  contextCache.delete(userId);
+}
+
+/**
  * Builds the full coaching briefing for an athlete.
  *
  * Everything here is bounded — 28 days back, 10 days forward, 8 journal entries
  * — so the prompt stays a readable page rather than a dump. Anything outside
  * that window is a tool call away.
  */
-export async function buildCoachContext(userId: string, now = new Date()): Promise<CoachContext> {
+export async function buildCoachContext(
+  userId: string,
+  now = new Date(),
+  options: { fresh?: boolean } = {},
+): Promise<CoachContext> {
+  const cacheKey = userId;
+  const cachedAt = Date.now();
+  if (!options.fresh) {
+    const cached = contextCache.get(cacheKey);
+    if (cached && cached.expiresAt > cachedAt) return cached.context;
+  }
+
+  const context = await buildCoachContextUncached(userId, now);
+
+  for (const [key, entry] of contextCache) {
+    if (entry.expiresAt <= cachedAt) contextCache.delete(key);
+  }
+  contextCache.set(cacheKey, { context, expiresAt: cachedAt + CONTEXT_CACHE_TTL_MS });
+
+  return context;
+}
+
+async function buildCoachContextUncached(userId: string, now: Date): Promise<CoachContext> {
   const today = startOfDay(now);
 
   const user = await getUser(userId);

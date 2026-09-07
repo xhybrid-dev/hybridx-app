@@ -16,6 +16,7 @@ import { requireUser } from '@/lib/api-auth';
 import { logger } from '@/lib/logger';
 import { extractCoachNotes } from '@/ai/flows/extract-coach-notes';
 import { applyNoteWrites, formatNotesForPrompt, getActiveNotes, resolveNote } from '@/services/coach-notes';
+import { invalidateCoachContext } from '@/services/coach-context';
 
 export async function GET(request: Request) {
   const auth = await requireUser(request, { bucket: 'ai:coach-notes', windowMs: 60_000, max: 60 });
@@ -72,6 +73,8 @@ export async function POST(request: Request) {
       ? await applyNoteWrites(auth.uid, writes, { source })
       : { added: 0, updated: 0, resolved: 0 };
 
+    invalidateCoachContext(auth.uid);
+
     const notes = await getActiveNotes(auth.uid);
     return NextResponse.json({
       ...counts,
@@ -105,6 +108,8 @@ export async function DELETE(request: Request) {
   try {
     const removed = await resolveNote(auth.uid, id);
     if (!removed) return NextResponse.json({ error: 'Note not found.' }, { status: 404 });
+    // Forgetting has to take effect at once, or the coach quotes it straight back.
+    invalidateCoachContext(auth.uid);
     return NextResponse.json({ success: true });
   } catch (error) {
     logger.error(

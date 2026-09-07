@@ -136,6 +136,41 @@ async function main() {
     }),
   );
 
+  // The coach is supposed to reply like a coach texting back, not file a
+  // report. A casual message that asks for nothing detailed should come back
+  // short — this is the check that catches the prompt drifting back into essays.
+  results.push(
+    await check('coach chat (talks like a conversation)', async () => {
+      const answer = await runCoachTurn({
+        briefing: [
+          '## Athlete',
+          '- Name: Sam',
+          '- Experience: intermediate | Goal: hybrid | Target frequency: 4 days/week',
+          '',
+          '## Program',
+          '- Hyrox Fusion Balance (hyrox), currently day 17 of 28',
+          '',
+          '## Today and the week ahead',
+          '- Today: Engine Builder [planned] — Sled Push — 4x20m @ 100kg; Wall Balls — 4x20',
+          '',
+          '## Consistency (last 4 weeks)',
+          '- This week: 2/2 planned sessions completed',
+          '- Completion rate: 92% | Average 3.8 sessions/week',
+        ].join('\n'),
+        tools: [],
+        message: "Morning — feeling decent today. What have I got on?",
+      });
+
+      if (!answer.trim()) throw new Error('The model returned no reply.');
+      if (answer.length > 600) {
+        throw new Error(
+          `Wrote ${answer.length} characters to answer a casual question. Expected a few sentences.`,
+        );
+      }
+      return `${answer.length} chars: ${answer}`;
+    }),
+  );
+
   // The coach's memory. Two failure modes matter and neither raises an error on
   // its own: remembering nothing (the athlete repeats themselves forever) and
   // remembering everything (the coach quotes last Tuesday's sore legs back at

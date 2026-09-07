@@ -16,7 +16,7 @@ import { requireUser } from '@/lib/api-auth';
 import { logger } from '@/lib/logger';
 import { coachChat, type CoachMessage } from '@/ai/flows/coach-chat';
 import { extractCoachNotes } from '@/ai/flows/extract-coach-notes';
-import { buildCoachContext } from '@/services/coach-context';
+import { buildCoachContext, invalidateCoachContext } from '@/services/coach-context';
 import { applyNoteWrites, getActiveNotes } from '@/services/coach-notes';
 import {
   appendExchange,
@@ -110,6 +110,8 @@ export async function POST(request: Request) {
         });
         if (writes.length === 0) return;
         const counts = await applyNoteWrites(auth.uid, writes, { source: 'chat' });
+        // The next turn must open with what was just remembered.
+        invalidateCoachContext(auth.uid);
         logger.info(
           `[coach-chat] notes updated for ${auth.uid}: +${counts.added} ~${counts.updated} -${counts.resolved}`,
         );

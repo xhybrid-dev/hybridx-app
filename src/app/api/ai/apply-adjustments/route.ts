@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { requireUser } from '@/lib/api-auth';
 import { getUser, updateUserAdmin } from '@/services/user-service';
 import { getProgram } from '@/services/program-service';
+import { invalidateCoachContext } from '@/services/coach-context';
 import type { Workout, RunningWorkout } from '@/models/types';
 
 interface Adjustment {
@@ -73,6 +74,10 @@ export async function POST(request: Request) {
     await updateUserAdmin(userId, {
       customProgram: customWorkouts,
     });
+
+    // The athlete's plan just changed; the coach must not keep briefing itself
+    // on the old one for the rest of the minute.
+    invalidateCoachContext(userId);
 
     console.log('[Apply Adjustments] Successfully saved', adjustments.length, 'adjustments');
 

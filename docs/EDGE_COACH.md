@@ -32,6 +32,34 @@ src/ai/flows/coach-chat.ts
   └── src/services/coach-conversation.ts → thread persistence
 ```
 
+### Models and pace
+
+Everything the athlete waits on runs on **`googleai/gemini-3.5-flash-lite`**
+(`MODELS.fast` in `src/ai/genkit.ts`, and the Genkit default) — the coach
+conversation, its tool calls, note extraction, the dashboard greeting, the daily
+tip, the journal response, the nightly adjustments. `MODELS.reasoning`
+(`gemini-3.7-flash`) is kept for the marketing flows, where nobody is watching a
+spinner.
+
+The coach used to run on the reasoning model. It didn't need to: the hard part
+of a coach reply is knowing the athlete, and that work happens in
+`coach-context.ts` before the model is called at all. A reply that arrives in a
+second is worth more in a conversation than a better-argued one that takes five.
+
+Three things keep a turn quick:
+
+1. **Short replies by design.** The system prompt's default is one to three
+   sentences; longer answers are an explicit exception for when the athlete asks
+   to be walked through something, asks for a plan or a session, asks "why", or
+   raises something serious. `scripts/check-ai-flows.ts` fails if a casual
+   question comes back over 600 characters.
+2. **Tools only when needed.** The briefing answers most questions outright, and
+   the prompt says so — every lookup is time the athlete spends waiting.
+3. **A cached briefing.** Rebuilding it per message meant re-reading sessions,
+   journal and notes seconds apart. It is now held for 60 seconds per athlete,
+   and dropped immediately by `invalidateCoachContext` when a plan adjustment is
+   applied, a note is written, or a note is dismissed.
+
 ### The briefing
 
 `buildCoachContext(userId)` assembles a page of prose, not a JSON dump:
