@@ -4,67 +4,50 @@
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
+import { cn } from '@/lib/utils';
+
 interface MarkdownRendererProps {
     content: string;
+    className?: string;
 }
 
-// Every element the model can produce needs naming here. Tailwind's preflight
-// strips headings and list markers back to plain text, so anything left out
-// doesn't render badly — it renders invisibly, as an unstyled run of text.
-export function MarkdownRenderer({ content }: MarkdownRendererProps) {
+/**
+ * Long-form markdown — generated articles.
+ *
+ * This used to hand-map every element, because the `prose` classes it carried
+ * were inert: `@tailwindcss/typography` was never installed. That map was
+ * always going to be incomplete, and an element it missed didn't render badly,
+ * it rendered invisibly — Tailwind's preflight strips headings and list markers
+ * back to plain text, so an unmapped heading is indistinguishable from body
+ * copy.
+ *
+ * The plugin is installed now and configured against the app's design tokens
+ * (see `typography` in tailwind.config.ts), so element styling belongs there,
+ * not here. What remains below is behaviour that typography cannot express.
+ *
+ * Note there is deliberately no `dark:prose-invert`: the tokens prose is wired
+ * to already flip with the theme, and prose-invert would swap in a separate,
+ * unconfigured palette on top of them.
+ *
+ * Short-form coach replies use `coach-markdown.tsx` instead. Chat bubbles need
+ * their own spacing and an inline variant, and tying them to article typography
+ * would mean restyling articles silently restyles the coach.
+ */
+export function MarkdownRenderer({ content, className }: MarkdownRendererProps) {
     return (
-        <div className="prose prose-lg dark:prose-invert max-w-none">
+        <div className={cn('prose prose-lg max-w-none', className)}>
             <ReactMarkdown
-                // Tables, strikethrough and autolinks. Without this a table in a
-                // generated article arrives as a block of pipe characters.
+                // Tables, strikethrough, task lists and autolinks. Without this a
+                // table in a generated article arrives as a block of pipes.
                 remarkPlugins={[remarkGfm]}
                 components={{
-                    h1: ({node, ...props}) => <h1 className="text-3xl font-bold mb-4" {...props} />,
-                    h2: ({node, ...props}) => <h2 className="text-2xl font-semibold mt-6 mb-3" {...props} />,
-                    h3: ({node, ...props}) => <h3 className="text-xl font-semibold mt-4 mb-2" {...props} />,
-                    p: ({node, ...props}) => <p className="leading-relaxed mb-4" {...props} />,
-                    ul: ({node, ...props}) => <ul className="list-disc pl-5 mb-4 space-y-2" {...props} />,
-                    ol: ({node, ...props}) => <ol className="list-decimal pl-5 mb-4 space-y-2" {...props} />,
-                    li: ({node, ...props}) => <li className="mb-1" {...props} />,
-                    strong: ({node, ...props}) => <strong className="font-bold" {...props} />,
-                    h4: ({node, ...props}) => <h4 className="text-lg font-semibold mt-4 mb-2" {...props} />,
-                    h5: ({node, ...props}) => <h5 className="text-base font-semibold mt-3 mb-2" {...props} />,
-                    h6: ({node, ...props}) => <h6 className="text-base font-semibold mt-3 mb-2" {...props} />,
-                    em: ({node, ...props}) => <em className="italic" {...props} />,
-                    del: ({node, ...props}) => <del className="line-through opacity-70" {...props} />,
-                    a: ({node, ...props}) => (
-                        <a
-                            className="font-medium underline underline-offset-2"
-                            target="_blank"
-                            rel="noopener noreferrer nofollow"
-                            {...props}
-                        />
+                    // Styling comes from prose; this is here for what an article
+                    // link does, not how it looks. Generated content can link
+                    // anywhere, so it opens away from the app and never hands the
+                    // opened page a usable window.opener.
+                    a: ({ node, ...props }) => (
+                        <a target="_blank" rel="noopener noreferrer nofollow" {...props} />
                     ),
-                    blockquote: ({node, ...props}) => (
-                        <blockquote className="border-l-4 border-border pl-4 italic my-4 opacity-90" {...props} />
-                    ),
-                    hr: ({node, ...props}) => <hr className="my-6 border-border" {...props} />,
-                    // `pre` owns the scroll container, `code` only styles the text —
-                    // otherwise a fenced block is painted as an inline pill and
-                    // pushes the article sideways.
-                    pre: ({node, ...props}) => (
-                        <pre className="overflow-x-auto rounded-md bg-muted p-4 text-sm mb-4" {...props} />
-                    ),
-                    code: ({node, className, ...props}) =>
-                        /language-/.test(className ?? '') ? (
-                            <code className="font-mono" {...props} />
-                        ) : (
-                            <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-[0.9em]" {...props} />
-                        ),
-                    table: ({node, ...props}) => (
-                        <div className="overflow-x-auto mb-4">
-                            <table className="w-full border-collapse text-left text-sm" {...props} />
-                        </div>
-                    ),
-                    thead: ({node, ...props}) => <thead className="border-b border-border" {...props} />,
-                    tr: ({node, ...props}) => <tr className="border-b border-border/50 last:border-0" {...props} />,
-                    th: ({node, ...props}) => <th className="px-3 py-2 font-semibold" {...props} />,
-                    td: ({node, ...props}) => <td className="px-3 py-2 align-top" {...props} />,
                 }}
             >
                 {content}

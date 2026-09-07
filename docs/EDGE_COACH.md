@@ -190,10 +190,18 @@ render with `target="_blank"` and `rel="noopener noreferrer nofollow"`.
 The system prompt names exactly this set, so the coach doesn't reach for
 formatting the app won't draw.
 
-`src/components/markdown-renderer.tsx` (AI-generated articles) had the same
-gaps and got the same treatment. Note its `prose prose-lg dark:prose-invert`
-classes are inert — `@tailwindcss/typography` is not installed — which is why
-that component maps every element by hand too.
+Long-form content — generated articles — uses
+`src/components/markdown-renderer.tsx` instead, which is now just `prose` plus a
+safe-link override. `@tailwindcss/typography` is installed and configured
+against the design tokens in `tailwind.config.ts`, so article element styling
+lives there rather than in a hand-written component map.
+
+There is deliberately no `dark:prose-invert`: those tokens already flip with the
+theme, and prose-invert would swap in a separate, unconfigured palette on top.
+
+The two renderers stay separate on purpose. Chat bubbles need their own spacing
+and an inline variant, and putting the coach on article typography would mean a
+restyle of articles silently restyles the coach.
 
 ### Reaching the coach
 
