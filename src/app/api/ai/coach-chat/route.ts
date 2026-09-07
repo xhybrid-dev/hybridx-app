@@ -10,12 +10,14 @@
 // The athlete's id always comes from the verified Firebase token, never the
 // request body: every read the coach makes is scoped to whoever is signed in.
 
-import { NextResponse } from 'next/server';
+import { NextResponse, after } from 'next/server';
 
 import { requireUser } from '@/lib/api-auth';
 import { logger } from '@/lib/logger';
 import { coachChat, type CoachMessage } from '@/ai/flows/coach-chat';
-import { buildCoachContext } from '@/services/coach-context';
+import { extractCoachNotes } from '@/ai/flows/extract-coach-notes';
+import { buildCoachContext, invalidateCoachContext } from '@/services/coach-context';
+import { applyNoteWrites, getActiveNotes } from '@/services/coach-notes';
 import {
   appendExchange,
   getConversation,
@@ -93,6 +95,32 @@ export async function POST(request: Request) {
       userMessage: message,
       assistantMessage: result.answer,
       consulted: result.consulted,
+    });
+
+    // Update what the coach remembers after the reply has gone out. This is a
+    // second model call, and making the athlete wait for it would add a second
+    // or two to every message for something they never see happen.
+    after(async () => {
+      try {
+        const existingNotes = await getActiveNotes(auth.uid);
+        const writes = await extractCoachNotes({
+          athleteMessage: message,
+          coachReply: result.answer,
+          existingNotes,
+        });
+        if (writes.length === 0) return;
+        const counts = await applyNoteWrites(auth.uid, writes, { source: 'chat' });
+        // The next turn must open with what was just remembered.
+        invalidateCoachContext(auth.uid);
+        logger.info(
+          `[coach-chat] notes updated for ${auth.uid}: +${counts.added} ~${counts.updated} -${counts.resolved}`,
+        );
+      } catch (error) {
+        logger.error(
+          '[coach-chat] Note extraction failed:',
+          error instanceof Error ? error.message : String(error),
+        );
+      }
     });
 
     return NextResponse.json({

@@ -18,9 +18,17 @@ if (!process.env.GEMINI_API_KEY) {
  * `-preview` ones for anything on a user-facing path.
  */
 export const MODELS = {
-  /** Cheap and quick: short summaries, one-line copy, classification. */
+  /**
+   * Cheap and quick: short summaries, one-line copy, classification, and
+   * anything a person is sitting and waiting for — the Edge Coach conversation
+   * and its tool calls included. This is also the default model above, so a
+   * flow that names no model gets it.
+   */
   fast: 'googleai/gemini-3.5-flash-lite',
-  /** Long-form reasoning and structured output — campaign planning, drafting. */
+  /**
+   * Long-form reasoning and structured output where nobody is watching a
+   * spinner — campaign planning, journey composition, email drafting.
+   */
   reasoning: 'googleai/gemini-3.7-flash',
 } as const;
 

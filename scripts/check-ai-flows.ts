@@ -17,6 +17,7 @@ import { z } from 'genkit';
 import { ai } from '../src/ai/genkit';
 import { analyzeAndAdjust } from '../src/ai/flows/analyze-and-adjust';
 import { runCoachTurn } from '../src/ai/flows/coach-chat';
+import { extractCoachNotes } from '../src/ai/flows/extract-coach-notes';
 
 async function check(name: string, run: () => Promise<unknown>) {
   process.stdout.write(`  ${name} ... `);
@@ -132,6 +133,83 @@ async function main() {
       if (!toolCalled) throw new Error('The model never called the tool it needed.');
       if (!answer.trim()) throw new Error('The model returned no reply.');
       return answer;
+    }),
+  );
+
+  // The coach is supposed to reply like a coach texting back, not file a
+  // report. A casual message that asks for nothing detailed should come back
+  // short — this is the check that catches the prompt drifting back into essays.
+  results.push(
+    await check('coach chat (talks like a conversation)', async () => {
+      const answer = await runCoachTurn({
+        briefing: [
+          '## Athlete',
+          '- Name: Sam',
+          '- Experience: intermediate | Goal: hybrid | Target frequency: 4 days/week',
+          '',
+          '## Program',
+          '- Hyrox Fusion Balance (hyrox), currently day 17 of 28',
+          '',
+          '## Today and the week ahead',
+          '- Today: Engine Builder [planned] — Sled Push — 4x20m @ 100kg; Wall Balls — 4x20',
+          '',
+          '## Consistency (last 4 weeks)',
+          '- This week: 2/2 planned sessions completed',
+          '- Completion rate: 92% | Average 3.8 sessions/week',
+        ].join('\n'),
+        tools: [],
+        message: "Morning — feeling decent today. What have I got on?",
+      });
+
+      if (!answer.trim()) throw new Error('The model returned no reply.');
+      if (answer.length > 600) {
+        throw new Error(
+          `Wrote ${answer.length} characters to answer a casual question. Expected a few sentences.`,
+        );
+      }
+      return `${answer.length} chars: ${answer}`;
+    }),
+  );
+
+  // The coach's memory. Two failure modes matter and neither raises an error on
+  // its own: remembering nothing (the athlete repeats themselves forever) and
+  // remembering everything (the coach quotes last Tuesday's sore legs back at
+  // them in November). Check both directions.
+  results.push(
+    await check('extractCoachNotes (remembers what matters)', async () => {
+      const writes = await extractCoachNotes({
+        athleteMessage:
+          "I'm in Spain from the 12th to the 19th so I'll only get one session in that week, and work is flat out until the end of the month.",
+        coachReply: "Understood — I'll keep that week light.",
+        existingNotes: [],
+        now: new Date('2026-09-07T09:00:00Z'),
+      });
+
+      if (writes.length === 0) throw new Error('Remembered nothing from an away week.');
+      const text = writes.map((w) => `${w.category}: ${w.content}`).join(' | ');
+      if (!/spain|away|travel/i.test(text)) throw new Error(`Missed the trip: ${text}`);
+      if (!writes.some((w) => w.expiresAt)) {
+        throw new Error(`No expiry on a dated absence: ${text}`);
+      }
+      return text;
+    }),
+  );
+
+  results.push(
+    await check('extractCoachNotes (ignores the everyday)', async () => {
+      const writes = await extractCoachNotes({
+        athleteMessage: 'Legs felt heavy on the intervals today but I got through them.',
+        coachReply: 'That is normal three days after a long run. Keep tomorrow easy.',
+        existingNotes: [],
+        now: new Date('2026-09-07T09:00:00Z'),
+      });
+
+      if (writes.length > 0) {
+        throw new Error(
+          `Stored a one-off feeling as a standing fact: ${writes.map((w) => w.content).join(' | ')}`,
+        );
+      }
+      return 'nothing remembered, as intended';
     }),
   );
 

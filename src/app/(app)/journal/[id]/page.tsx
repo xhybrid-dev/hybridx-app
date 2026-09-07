@@ -20,12 +20,14 @@ import {
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { getAuthInstance } from '@/lib/firebase';
+import { authedFetch } from '@/lib/client-auth';
 import { getJournalEntry, updateJournalEntry } from '@/services/journal-service-client';
 import { getUserClient } from '@/services/user-service-client';
 import { getProgramClient } from '@/services/program-service-client';
 import { getAllUserSessions } from '@/services/session-service-client';
 import { journalInsight } from '@/ai/flows/journal-insight';
 import { JournalEntryForm } from '@/components/journal-entry-form';
+import { CoachMarkdown } from '@/components/coach-markdown';
 import type { JournalEntry, MoodLevel } from '@/models/types';
 
 const MOOD_COLOURS: Record<MoodLevel, string> = {
@@ -121,12 +123,25 @@ export default function JournalEntryDetailPage() {
     if (!entry) return;
     setGeneratingAnalysis(true);
     try {
+      // The same memory the chat has, so the journal response doesn't ask about
+      // a quiet fortnight the athlete already explained to the coach.
+      let coachNotes: string | undefined;
+      try {
+        const notesResponse = await authedFetch('/api/ai/coach-notes');
+        if (notesResponse.ok) {
+          coachNotes = (await notesResponse.json()).promptText ?? undefined;
+        }
+      } catch {
+        // Memory is an enhancement here — never a reason to withhold the response.
+      }
+
       const result = await journalInsight({
         journalContent: entry.content,
         mood: entry.mood,
         tags: entry.tags,
         entryDate: format(entry.date, 'yyyy-MM-dd'),
         userData,
+        coachNotes,
       });
       const now = new Date();
       await updateJournalEntry(entry.id, {
@@ -145,6 +160,17 @@ export default function JournalEntryDetailPage() {
         updatedAt: now,
       } : prev);
       toast({ title: 'Analysis ready', description: 'Your coach has responded.' });
+
+      // Let the coach carry anything standing in this entry — a holiday, a
+      // niggle, a rough patch at work — into the rest of the app, so the
+      // athlete doesn't have to repeat it in the chat.
+      authedFetch('/api/ai/coach-notes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: entry.content, source: 'journal' }),
+      }).catch(() => {
+        // Best-effort: the analysis they asked for has already landed.
+      });
     } catch (err) {
       console.error('Error generating analysis:', err);
       toast({ title: 'Error', description: 'Failed to generate analysis. Please try again.', variant: 'destructive' });
@@ -246,9 +272,10 @@ export default function JournalEntryDetailPage() {
         {generatingAnalysis ? (
           <AISectionSkeleton />
         ) : hasNewAnalysis ? (
-          <p className="text-base leading-relaxed whitespace-pre-wrap text-foreground/90">
-            {entry.aiInterpretation}
-          </p>
+          <CoachMarkdown
+            content={entry.aiInterpretation ?? ''}
+            className="text-base text-foreground/90"
+          />
         ) : hasLegacyInsight ? (
           <p className="text-sm text-muted-foreground italic">
             Generate a new analysis to see this section.
@@ -269,13 +296,12 @@ export default function JournalEntryDetailPage() {
         {generatingAnalysis ? (
           <AISectionSkeleton />
         ) : hasNewAnalysis ? (
-          <p className="text-base leading-relaxed whitespace-pre-wrap text-foreground/90">
-            {entry.aiCoachResponse}
-          </p>
+          <CoachMarkdown
+            content={entry.aiCoachResponse ?? ''}
+            className="text-base text-foreground/90"
+          />
         ) : hasLegacyInsight ? (
-          <p className="text-base leading-relaxed whitespace-pre-wrap text-foreground/90">
-            {entry.aiInsight}
-          </p>
+          <CoachMarkdown content={entry.aiInsight ?? ''} className="text-base text-foreground/90" />
         ) : (
           <p className="text-sm text-muted-foreground italic">
             Your coach hasn't responded to this entry yet.

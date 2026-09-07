@@ -34,6 +34,7 @@ import type {
   WorkoutDay,
   WorkoutSession,
 } from '@/models/types';
+import { formatNotesForPrompt, getActiveNotes, type CoachNote } from '@/services/coach-notes';
 import {
   computeAdherence,
   computeStreak,
@@ -319,6 +320,13 @@ function renderSchedule(days: ScheduledDay[], today: Date): string {
 
 // ── The briefing ──────────────────────────────────────────────────────────────
 
+/** A remembered note, flattened for the client. */
+export interface CoachSnapshotNote {
+  id: string;
+  category: CoachNote['category'];
+  content: string;
+}
+
 export interface CoachSnapshot {
   athleteFirstName: string;
   programName: string | null;
@@ -335,6 +343,8 @@ export interface CoachSnapshot {
   daysToRace: number | null;
   hasStrava: boolean;
   hasProgram: boolean;
+  /** What the coach is currently remembering, shown back to the athlete. */
+  notes: CoachSnapshotNote[];
   /** Openers the UI offers, chosen from what's actually going on. */
   suggestedPrompts: string[];
 }
@@ -360,11 +370,28 @@ const NO_ATHLETE_SNAPSHOT: CoachSnapshot = {
   daysToRace: null,
   hasStrava: false,
   hasProgram: false,
+  notes: [],
   suggestedPrompts: [
     'How should I start training for HYROX?',
     'What should I focus on first?',
   ],
 };
+
+/**
+ * A back-and-forth exchange rebuilds the same briefing every time — the same
+ * sessions, journal and notes, seconds apart — and each rebuild is a handful of
+ * Firestore reads the athlete waits through before the coach starts typing.
+ * Sixty seconds is long enough to cover a rapid conversation and short enough
+ * that nothing the athlete does elsewhere in the app goes unnoticed: finishing a
+ * workout means leaving the coach, and coming back takes longer than a minute.
+ */
+const CONTEXT_CACHE_TTL_MS = 60_000;
+const contextCache = new Map<string, { context: CoachContext; expiresAt: number }>();
+
+/** Drops an athlete's cached briefing — call after writing something they'd expect the coach to see. */
+export function invalidateCoachContext(userId: string): void {
+  contextCache.delete(userId);
+}
 
 /**
  * Builds the full coaching briefing for an athlete.
@@ -373,7 +400,29 @@ const NO_ATHLETE_SNAPSHOT: CoachSnapshot = {
  * — so the prompt stays a readable page rather than a dump. Anything outside
  * that window is a tool call away.
  */
-export async function buildCoachContext(userId: string, now = new Date()): Promise<CoachContext> {
+export async function buildCoachContext(
+  userId: string,
+  now = new Date(),
+  options: { fresh?: boolean } = {},
+): Promise<CoachContext> {
+  const cacheKey = userId;
+  const cachedAt = Date.now();
+  if (!options.fresh) {
+    const cached = contextCache.get(cacheKey);
+    if (cached && cached.expiresAt > cachedAt) return cached.context;
+  }
+
+  const context = await buildCoachContextUncached(userId, now);
+
+  for (const [key, entry] of contextCache) {
+    if (entry.expiresAt <= cachedAt) contextCache.delete(key);
+  }
+  contextCache.set(cacheKey, { context, expiresAt: cachedAt + CONTEXT_CACHE_TTL_MS });
+
+  return context;
+}
+
+async function buildCoachContextUncached(userId: string, now: Date): Promise<CoachContext> {
   const today = startOfDay(now);
 
   const user = await getUser(userId);
@@ -388,11 +437,12 @@ export async function buildCoachContext(userId: string, now = new Date()): Promi
   const historyStart = subDays(today, 28);
   const scheduleEnd = addDays(today, 10);
 
-  const [program, sessions, journal, trainingLoad] = await Promise.all([
+  const [program, sessions, journal, trainingLoad, notes] = await Promise.all([
     getEffectiveProgram(user),
     getSessionsInRange(userId, historyStart, scheduleEnd),
     getRecentJournalEntries(userId, 8),
     getTrainingLoadText(userId).catch(() => null),
+    getActiveNotes(userId, now),
   ]);
 
   const schedule = buildSchedule(historyStart, scheduleEnd, sessions, program, user.startDate, today);
@@ -431,7 +481,19 @@ export async function buildCoachContext(userId: string, now = new Date()): Promi
   const daysToRace = user.raceDate ? differenceInCalendarDays(user.raceDate, today) : null;
   const fatigueLabel = trainingLoad?.match(/Fatigue Status: (.+)/)?.[1]?.trim() ?? null;
 
+  const rememberedNotes = formatNotesForPrompt(notes, now);
+
   const briefing = [
+    rememberedNotes
+      ? [
+          '## What you already know about them',
+          '(Told to you in earlier conversations. Treat these as current and let them colour your',
+          'reading of everything below — a missed week that you already know was a holiday is not a',
+          'missed week. If something here has clearly moved on, say so rather than repeating it.)',
+          rememberedNotes,
+          '',
+        ].join('\n')
+      : null,
     '## Athlete',
     [
       `- Name: ${user.firstName || 'Athlete'}`,
@@ -522,6 +584,11 @@ export async function buildCoachContext(userId: string, now = new Date()): Promi
       daysToRace,
       hasStrava: !!user.strava?.accessToken,
       hasProgram: !!program,
+      notes: notes.map(note => ({
+        id: note.id,
+        category: note.category,
+        content: note.content,
+      })),
       suggestedPrompts: buildSuggestedPrompts({
         todaysSessions,
         adherence,

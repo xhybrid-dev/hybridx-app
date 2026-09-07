@@ -7,6 +7,7 @@ const TODAY = new Date(2026, 8, 3, 9, 0, 0);
 
 const sessionDocs: Array<Record<string, any>> = [];
 const journalDocs: Array<Record<string, any>> = [];
+const noteDocs: Array<Record<string, any>> = [];
 
 function asSnapshot(rows: Array<Record<string, any>>) {
   return {
@@ -27,10 +28,15 @@ function fakeQuery(rows: Array<Record<string, any>>) {
   return query;
 }
 
+const COLLECTIONS: Record<string, Array<Record<string, any>>> = {
+  workoutSessions: sessionDocs,
+  journalEntries: journalDocs,
+  coachNotes: noteDocs,
+};
+
 vi.mock('@/lib/firebase-admin', () => ({
   getAdminDb: () => ({
-    collection: (name: string) =>
-      fakeQuery(name === 'workoutSessions' ? sessionDocs : journalDocs),
+    collection: (name: string) => fakeQuery(COLLECTIONS[name] ?? []),
   }),
 }));
 
@@ -83,6 +89,7 @@ describe('buildCoachContext', () => {
   beforeEach(() => {
     sessionDocs.length = 0;
     journalDocs.length = 0;
+    noteDocs.length = 0;
   });
 
   it('briefs the coach on what was done, missed and said', async () => {
@@ -120,7 +127,7 @@ describe('buildCoachContext', () => {
     });
 
     const { buildCoachContext } = await import('@/services/coach-context');
-    const context = await buildCoachContext('athlete-1', TODAY);
+    const context = await buildCoachContext('athlete-1', TODAY, { fresh: true });
 
     expect(context.briefing).toContain('Sam');
     expect(context.briefing).toContain('Hyrox Fusion Balance');
@@ -139,9 +146,83 @@ describe('buildCoachContext', () => {
     expect(context.briefing).toContain('Strava is not connected');
   });
 
+  it('opens with what the athlete has already told the coach', async () => {
+    noteDocs.push(
+      {
+        userId: 'athlete-1',
+        category: 'availability',
+        content: 'Away in Spain 12–19 September.',
+        status: 'active',
+        source: 'chat',
+        createdAt: toTimestamp(subDays(TODAY, 2)),
+        updatedAt: toTimestamp(subDays(TODAY, 2)),
+        expiresAt: toTimestamp(addDays(TODAY, 12)),
+      },
+      {
+        // Expired: it was true in July and must not be quoted back in September.
+        userId: 'athlete-1',
+        category: 'constraint',
+        content: 'Left hamstring tight after the June race.',
+        status: 'active',
+        source: 'chat',
+        createdAt: toTimestamp(subDays(TODAY, 80)),
+        updatedAt: toTimestamp(subDays(TODAY, 80)),
+        expiresAt: toTimestamp(subDays(TODAY, 10)),
+      },
+    );
+
+    const { buildCoachContext } = await import('@/services/coach-context');
+    const context = await buildCoachContext('athlete-1', TODAY, { fresh: true });
+
+    expect(context.briefing).toContain('What you already know about them');
+    expect(context.briefing).toContain('Away in Spain 12–19 September.');
+    expect(context.briefing).not.toContain('Left hamstring tight');
+    // And the athlete can see what's being held about them.
+    expect(context.snapshot.notes.map(note => note.content)).toEqual([
+      'Away in Spain 12–19 September.',
+    ]);
+  });
+
+  it('leaves the section out entirely when nothing has been said yet', async () => {
+    const { buildCoachContext } = await import('@/services/coach-context');
+    const context = await buildCoachContext('athlete-1', TODAY, { fresh: true });
+
+    expect(context.briefing).not.toContain('What you already know about them');
+    expect(context.snapshot.notes).toEqual([]);
+  });
+
+  it('reuses a briefing across a rapid exchange, and drops it when told to', async () => {
+    sessionDocs.push({
+      userId: 'athlete-1',
+      programId: 'p1',
+      workoutDate: toTimestamp(subDays(TODAY, 2)),
+      startedAt: toTimestamp(subDays(TODAY, 2)),
+      finishedAt: toTimestamp(subDays(TODAY, 2)),
+      workoutTitle: 'Engine Builder',
+      programType: 'hyrox',
+      notes: 'first version',
+      workoutDetails: workout(15, 'Engine Builder'),
+    });
+
+    const { buildCoachContext, invalidateCoachContext } = await import('@/services/coach-context');
+    const first = await buildCoachContext('athlete-1', TODAY, { fresh: true });
+    expect(first.briefing).toContain('first version');
+
+    // The underlying data changes, but a second message moments later should
+    // not pay to read it all again.
+    sessionDocs[0].notes = 'second version';
+    const cached = await buildCoachContext('athlete-1', TODAY);
+    expect(cached.briefing).toContain('first version');
+
+    // Until something the coach must notice is written.
+    invalidateCoachContext('athlete-1');
+    const rebuilt = await buildCoachContext('athlete-1', TODAY);
+    expect(rebuilt.briefing).toContain('second version');
+  });
+
   it('summarises where the athlete is for the UI, with prompts that fit', async () => {
     const { buildCoachContext } = await import('@/services/coach-context');
-    const { snapshot } = await buildCoachContext('athlete-1', TODAY);
+    const { snapshot } = await buildCoachContext('athlete-1', TODAY, { fresh: true });
 
     expect(snapshot.athleteFirstName).toBe('Sam');
     expect(snapshot.programName).toBe('Hyrox Fusion Balance');
