@@ -142,3 +142,115 @@ describe('coaching-prose rows are not sent as steps', () => {
     expect(steps).toEqual(['Warm up — press lap when ready', 'Cool down — press lap when done']);
   });
 });
+
+describe('max-effort sets without a fixed target', () => {
+  function repeatSteps(w: ReturnType<typeof mapWorkoutDay>) {
+    const seg = w!.segments[0];
+    const repeat = seg.steps.find((s) => s.type === 'WorkoutRepeatStep');
+    return repeat as Extract<typeof repeat, { type: 'WorkoutRepeatStep' }>;
+  }
+
+  it('reads the set count and labels an unbounded-reps set, even with no digit after "of"', () => {
+    // The real Dual Peak row this was written for: no rep count anywhere,
+    // so parseSetsReps() correctly returns null and the mapper needs
+    // another way to find "3".
+    const day: WorkoutDay = {
+      day: 12, title: 'Strength Maintenance B', sessionType: 'strength',
+      exercises: [{
+        name: 'Max Chin-ups (Strict)',
+        details: '3 sets of max unbroken reps. Dead hang start, chin over bar, full extension '
+          + 'at the bottom. Rest exactly 3 minutes between sets. Record total reps per set — '
+          + 'this is your pulling baseline for Phase 2 progression. Add weight if you can do 15+ unbroken.',
+      }],
+    };
+
+    const w = mapWorkoutDay(day);
+    const repeat = repeatSteps(w);
+    expect(repeat.repeatValue).toBe(3);
+    const work = repeat.steps.find((s) => s.intensity === 'ACTIVE')!;
+    expect(work.description).toContain('max reps');
+    expect(work.durationType).toBe('OPEN');
+  });
+
+  it('still recognises a held effort as before ("max hold" / "dead hang")', () => {
+    const day: WorkoutDay = {
+      day: 1, title: 'Grip', sessionType: 'strength',
+      exercises: [{ name: 'Dead Hang', details: '3 sets, max hold' }],
+    };
+    const work = repeatSteps(mapWorkoutDay(day)).steps.find((s) => s.intensity === 'ACTIVE')!;
+    expect(work.description).toContain('max hold');
+  });
+
+  it('does not touch a bare "AMRAP" row — that is parseSetsReps()\'s job', () => {
+    // "3xAMRAP" already parses as a real AMRAP set via parseSetsReps(); this
+    // must keep going through that path, not the new max-reps special case.
+    const day: WorkoutDay = {
+      day: 1, title: 'Finisher', sessionType: 'strength',
+      exercises: [{ name: 'Push-ups', details: '3xAMRAP' }],
+    };
+    const w = mapWorkoutDay(day);
+    const repeat = repeatSteps(w);
+    expect(repeat.repeatValue).toBe(3);
+    const work = repeat.steps.find((s) => s.intensity === 'ACTIVE')!;
+    // The isAmrap path's own label, not "max reps" / "max hold".
+    expect(work.description).not.toContain('max reps');
+    expect(work.description).not.toContain('max hold');
+  });
+
+  it('leaves a top-set-then-drop-set row on the numeric path, not the max-reps special case', () => {
+    // Real row from HybridX Master 12-Week Integrated Schedule: the leading
+    // "1x5" is the actual prescribed top set and must keep winning, even
+    // though "max reps" appears later in the same string.
+    const day: WorkoutDay = {
+      day: 5, title: 'Strength', sessionType: 'strength',
+      exercises: [{
+        name: 'Back Squat',
+        details: 'Top set: 1x5 @ 135kg. Immediately drop to 60kg, max reps to failure. 3 min rest.',
+      }],
+    };
+    const w = mapWorkoutDay(day);
+    const repeat = repeatSteps(w);
+    expect(repeat.repeatValue).toBe(1); // the "1x5" top set, not the hardcoded max-reps default of 3
+    const work = repeat.steps.find((s) => s.intensity === 'ACTIVE')!;
+    expect(work.durationType).toBe('REPS');
+    expect(work.durationValue).toBe(5);
+  });
+
+  it('does not mistake "dead hang start" — a rep cue — for a hold prescription', () => {
+    // Real second Dual Peak row (day 46) using this exact phrasing.
+    const day: WorkoutDay = {
+      day: 46, title: 'Strength Maintenance C', sessionType: 'strength',
+      exercises: [{
+        name: 'Max Unbroken Chin-ups (Strict)',
+        details: 'One all-out set of max unbroken strict chin-ups. Dead hang start, chin over '
+          + 'bar on every rep. Record total — this is your competition baseline.',
+      }],
+    };
+    const steps = flatten(mapWorkoutDay(day));
+    expect(steps.some((d) => d.includes('max hold'))).toBe(false);
+  });
+
+  it('still recognises a genuine dead-hang hold exercise by name', () => {
+    const day: WorkoutDay = {
+      day: 1, title: 'Grip', sessionType: 'strength',
+      exercises: [{
+        name: 'Grip Strength - Dead Hangs',
+        details: 'Pull-up Bar Dead Hangs: 3-4 Sets x 30-45 sec. Overhand grip, shoulders engaged.',
+      }],
+    };
+    const steps = flatten(mapWorkoutDay(day));
+    expect(steps.some((d) => d.includes('max hold'))).toBe(true);
+  });
+
+  it('reads the set count from "Nx Max Reps", not just "N sets of max reps"', () => {
+    // Real row: "Core: Strict Toes-to-Bar" | "4x Max Reps" — no digit after
+    // "x" since the target is "max", not a number, so parseSetsReps() can't
+    // read the 4 either; this must not fall back to the hardcoded default.
+    const day: WorkoutDay = {
+      day: 37, title: 'Strength', sessionType: 'strength',
+      exercises: [{ name: 'Core: Strict Toes-to-Bar', details: '4x Max Reps' }],
+    };
+    const repeat = repeatSteps(mapWorkoutDay(day));
+    expect(repeat.repeatValue).toBe(4);
+  });
+});

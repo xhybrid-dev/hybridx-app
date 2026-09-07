@@ -792,13 +792,45 @@ function mapStrength(day: WorkoutDay, sport: GarminSport = 'STRENGTH_TRAINING'):
       continue;
     }
 
-    if (/max hold|dead hang/i.test(ex.name + ex.details)) {
-      const setCount = ex.sets ?? parseSetsReps(ex.details)?.sets ?? 3;
+    // A held effort ("max hold", "dead hang") and an unbounded-reps effort
+    // ("max unbroken reps") are both "go until you can't" sets with no fixed
+    // target — same OPEN-step shape either way, just a different label.
+    // "3 sets of max unbroken reps" never states a rep count, so
+    // parseSetsReps() (which requires a number on both sides of "x"/"of")
+    // correctly returns null for it; the set count is read directly here
+    // instead of falling back to a guessed default.
+    // "dead hang start" describes how to begin a rep of some other exercise
+    // ("Dead hang start, chin over bar..."), not a prescription to hold one —
+    // pre-existing ambiguity this regex already had, excluded here so a
+    // max-reps pulling set doesn't get mislabelled as a static hold.
+    const isMaxHold = /max\s+hold|dead\s+hang(?!\s+start\b)/i.test(ex.name + ex.details);
+    // Two things this deliberately does NOT catch, both because an earlier
+    // check already handles them correctly:
+    //  - Bare "AMRAP" ("3xAMRAP", "AMRAP 10 mins" as a finisher) — parsed
+    //    below via parseSetsReps()'s own isAmrap detection, used by 70+
+    //    exercises across these programs today.
+    //  - A top-set-then-drop-set row ("Top set: 1x5 @ 135kg. Drop to 60kg,
+    //    max reps to failure.") — the leading "1x5" already parses as a
+    //    real set/rep pair via parseSetsReps() below; that's what should
+    //    win, not this. The gate on `!parseSetsReps(ex.details)` is what
+    //    keeps this special case from grabbing those ~40 rows and losing
+    //    the actual prescribed top set.
+    const isMaxReps =
+      /max(?:imum)?\s+(?:unbroken\s+)?reps?\b/i.test(ex.name + ex.details)
+      && !parseSetsReps(ex.details);
+    if (isMaxHold || isMaxReps) {
+      // "N sets of max reps" and "Nx Max Reps" both state the set count this
+      // way rather than through parseSetsReps()'s "N x M" shape, since there
+      // is no M — the second half is "max", not a number.
+      const looseSetCount =
+        Number((ex.details.match(/(\d+)\s*(?:sets?\b|[x×](?=\s*max))/i) ?? [])[1]) || undefined;
+      const setCount = ex.sets ?? parseSetsReps(ex.details)?.sets ?? looseSetCount ?? 3;
+      const label = isMaxHold ? 'max hold' : 'max reps';
       steps.push(
         buildRepeat(counter, setCount, () => [
           buildStep(counter, {
             intensity: 'ACTIVE',
-            description: `${ex.name} — max hold`,
+            description: `${ex.name} — ${label}`,
             durationType: 'OPEN',
             targetType: 'OPEN',
             ...garminMatch,
