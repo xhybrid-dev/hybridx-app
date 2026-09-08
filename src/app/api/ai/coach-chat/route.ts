@@ -17,6 +17,7 @@ import { logger } from '@/lib/logger';
 import { coachChat, type CoachMessage } from '@/ai/flows/coach-chat';
 import { extractCoachNotes } from '@/ai/flows/extract-coach-notes';
 import { buildCoachContext, invalidateCoachContext } from '@/services/coach-context';
+import { getUser, updateUserAdmin } from '@/services/user-service';
 import { applyNoteWrites, getActiveNotes } from '@/services/coach-notes';
 import {
   appendExchange,
@@ -38,7 +39,7 @@ export async function GET(request: Request) {
       conversationId
         ? getConversation(auth.uid, conversationId)
         : getLatestConversation(auth.uid),
-      buildCoachContext(auth.uid),
+      buildCoachContext(auth.uid, new Date(), { timeZone: auth.timeZone }),
     ]);
 
     return NextResponse.json({
@@ -87,7 +88,12 @@ export async function POST(request: Request) {
       content: stored.content,
     }));
 
-    const result = await coachChat({ userId: auth.uid, message, history });
+    const result = await coachChat({
+      userId: auth.uid,
+      message,
+      history,
+      timeZone: auth.timeZone,
+    });
 
     const savedConversationId = await appendExchange({
       userId: auth.uid,
@@ -96,6 +102,26 @@ export async function POST(request: Request) {
       assistantMessage: result.answer,
       consulted: result.consulted,
     });
+
+    // Remember where they are, so the jobs that run without a browser behind
+    // them — the nightly adjustment, notifications — get the same calendar the
+    // athlete sees. Fire and forget: it must never delay or fail a reply.
+    if (auth.timeZone) {
+      after(async () => {
+        try {
+          const current = await getUser(auth.uid);
+          if (current && current.timeZone !== auth.timeZone) {
+            await updateUserAdmin(auth.uid, { timeZone: auth.timeZone });
+            invalidateCoachContext(auth.uid);
+          }
+        } catch (error) {
+          logger.error(
+            '[coach-chat] Could not store timezone:',
+            error instanceof Error ? error.message : String(error),
+          );
+        }
+      });
+    }
 
     // Update what the coach remembers after the reply has gone out. This is a
     // second model call, and making the athlete wait for it would add a second

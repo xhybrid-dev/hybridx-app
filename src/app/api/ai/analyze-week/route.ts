@@ -6,6 +6,7 @@ import { getUser, updateUserAdmin } from '@/services/user-service';
 import { getAdminDb } from '@/lib/firebase-admin';
 import { getProgram } from '@/services/program-service';
 import { getWorkoutForDay } from '@/lib/workout-utils';
+import { toCalendarDay } from '@/lib/program-day';
 import { Timestamp } from 'firebase-admin/firestore';
 import axios from 'axios';
 import type { StravaTokens } from '@/models/types';
@@ -66,12 +67,18 @@ export async function POST(request: Request) {
         // If user has a custom program override, we should respect that, but for now let's analyze the base vs custom
         const sourceProgram = user.customProgram ? { ...program, workouts: user.customProgram } : program;
 
-        const today = new Date();
+        // The athlete's zone, so "the next 7 days" are their days. Without it
+        // this resolved a day ahead on the server and adjusted the wrong
+        // sessions.
+        const timeZone = auth.timeZone ?? user.timeZone;
+        // Resolved to the athlete's calendar day before any day arithmetic —
+        // getWorkoutForDay reads the target in runtime-local terms.
+        const today = timeZone ? toCalendarDay(new Date(), timeZone) : new Date();
         const upcomingWorkouts: any[] = [];
         for (let i = 1; i <= 7; i++) {
             const targetDate = new Date(today);
             targetDate.setDate(today.getDate() + i);
-            const w = getWorkoutForDay(sourceProgram, user.startDate, targetDate);
+            const w = getWorkoutForDay(sourceProgram, user.startDate, targetDate, timeZone);
             if (w.workout) {
                 const workout = w.workout;
 

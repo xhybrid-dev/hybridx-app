@@ -9,12 +9,20 @@
 
 import { NextResponse } from 'next/server';
 import { getAdminAuth } from '@/lib/firebase-admin';
+import { normaliseTimeZone } from '@/lib/program-day';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { logger } from '@/lib/logger';
 
 export interface AuthedRequest {
   uid: string;
   email?: string;
+  /**
+   * The athlete's IANA timezone, sent by `authedFetch` on every call. The
+   * server runs in UTC and cannot otherwise tell which calendar day they are
+   * on — see lib/program-day.ts. Undefined when the header is absent or is not
+   * a zone Intl recognises.
+   */
+  timeZone?: string;
 }
 
 /**
@@ -59,5 +67,5 @@ export async function requireUser(
     };
   }
 
-  return { uid, email };
+  return { uid, email, timeZone: normaliseTimeZone(request.headers.get('x-time-zone')) };
 }

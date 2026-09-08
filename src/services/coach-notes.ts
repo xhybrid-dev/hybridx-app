@@ -106,9 +106,11 @@ function fromFirestore(doc: FirebaseFirestore.DocumentSnapshot): CoachNote {
 export function defaultExpiry(category: CoachNoteCategory, from: Date): Date | null {
   const days = DEFAULT_TTL_DAYS[category];
   if (days === null) return null;
-  const expires = new Date(from);
-  expires.setDate(expires.getDate() + days);
-  return expires;
+  // Pinned to UTC midnight so the date read back — and shown to the model — is
+  // the same day whatever zone the code runs in. Expiry is day-granular; the
+  // time of day it was set carries no meaning.
+  const startOfDayUtc = Date.UTC(from.getUTCFullYear(), from.getUTCMonth(), from.getUTCDate());
+  return new Date(startOfDayUtc + days * 86_400_000);
 }
 
 /**

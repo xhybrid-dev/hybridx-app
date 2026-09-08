@@ -13,6 +13,7 @@ import { z } from 'genkit';
 import { addDays, format, startOfDay, subDays } from 'date-fns';
 
 import { ai } from '@/ai/genkit';
+import { toCalendarDay } from '@/lib/program-day';
 import { logger } from '@/lib/logger';
 import { getWorkoutForDay } from '@/lib/workout-utils';
 import {
@@ -83,8 +84,14 @@ function clampRange(from: Date, to: Date, today: Date): { from: Date; to: Date }
  * `trace` is mutated as tools run so the caller can tell the athlete what the
  * coach looked at, and can surface any drafted plan change for confirmation.
  */
-export function buildCoachTools(userId: string, trace: CoachToolTrace, now = new Date()) {
-  const today = startOfDay(now);
+export function buildCoachTools(
+  userId: string,
+  trace: CoachToolTrace,
+  now = new Date(),
+  timeZone?: string,
+) {
+  // The athlete's today, not the server's. Every lookup below is relative to it.
+  const today = timeZone ? toCalendarDay(now, timeZone) : startOfDay(now);
 
   const record = (name: string) => {
     if (!trace.used.includes(name)) trace.used.push(name);
@@ -112,7 +119,7 @@ export function buildCoachTools(userId: string, trace: CoachToolTrace, now = new
         parseDate(input.toDate, today),
         today,
       );
-      const sessions = await getSessionsInRange(userId, from, to);
+      const sessions = await getSessionsInRange(userId, from, to, timeZone);
       if (sessions.length === 0) {
         return `No sessions on record between ${format(from, 'd MMM yyyy')} and ${format(to, 'd MMM yyyy')}.`;
       }
@@ -150,8 +157,8 @@ export function buildCoachTools(userId: string, trace: CoachToolTrace, now = new
 
       const horizon = Math.min(Math.max(input.days ?? 7, 1), 42);
       const to = addDays(today, horizon);
-      const sessions = await getSessionsInRange(userId, today, to);
-      const schedule = buildSchedule(today, to, sessions, program, user.startDate, today);
+      const sessions = await getSessionsInRange(userId, today, to, timeZone);
+      const schedule = buildSchedule(today, to, sessions, program, user.startDate, today, timeZone);
 
       return schedule
         .map(day => {
@@ -179,7 +186,7 @@ export function buildCoachTools(userId: string, trace: CoachToolTrace, now = new
     async input => {
       record(`history of "${input.movement}"`);
       const days = Math.min(Math.max(input.days ?? 120, 7), MAX_DAYS_LOOKBACK);
-      const sessions = await getSessionsInRange(userId, subDays(today, days), today);
+      const sessions = await getSessionsInRange(userId, subDays(today, days), today, timeZone);
 
       const hits: string[] = [];
       for (const session of sessions.reverse()) {
@@ -329,6 +336,7 @@ export function buildCoachTools(userId: string, trace: CoachToolTrace, now = new
       const entries = await getRecentJournalEntries(
         userId,
         Math.min(Math.max(input.limit ?? 10, 1), 30),
+        timeZone,
       );
       if (entries.length === 0) return 'The athlete has not written any journal entries.';
       return entries.map(entry => summariseJournalEntry(entry, 600)).join('\n');
@@ -355,7 +363,7 @@ export function buildCoachTools(userId: string, trace: CoachToolTrace, now = new
 
       const cycleLength = Math.max(...program.workouts.map(w => w.day), 0);
       const currentDay = user.startDate
-        ? getWorkoutForDay(program, user.startDate, today).day
+        ? getWorkoutForDay(program, user.startDate, today, timeZone).day
         : null;
 
       const weeks = new Map<number, string[]>();
@@ -405,8 +413,8 @@ export function buildCoachTools(userId: string, trace: CoachToolTrace, now = new
       const user = await getUser(userId);
       if (!user) return 'No athlete profile found.';
       const program = await getEffectiveProgram(user);
-      const sessions = await getSessionsInRange(userId, date, date);
-      const schedule = buildSchedule(date, date, sessions, program, user.startDate, today);
+      const sessions = await getSessionsInRange(userId, date, date, timeZone);
+      const schedule = buildSchedule(date, date, sessions, program, user.startDate, today, timeZone);
       const day = schedule[0];
 
       if (!day || day.sessions.length === 0) {
@@ -449,7 +457,7 @@ export function buildCoachTools(userId: string, trace: CoachToolTrace, now = new
         const program = await getEffectiveProgram(user);
         if (!program) return 'Cannot draft plan changes: the program could not be loaded.';
 
-        const recent = await getSessionsInRange(userId, subDays(today, 21), today);
+        const recent = await getSessionsInRange(userId, subDays(today, 21), today, timeZone);
         const recentHistory = recent
           .filter(session => session.finishedAt || session.skipped)
           .slice(-5)
@@ -462,7 +470,7 @@ export function buildCoachTools(userId: string, trace: CoachToolTrace, now = new
 
         const upcomingWorkouts: Array<Workout | RunningWorkout> = [];
         for (let offset = 1; offset <= 7; offset++) {
-          const { sessions } = getWorkoutForDay(program, user.startDate, addDays(today, offset));
+          const { sessions } = getWorkoutForDay(program, user.startDate, addDays(today, offset), timeZone);
           upcomingWorkouts.push(...(sessions as Array<Workout | RunningWorkout>));
         }
 

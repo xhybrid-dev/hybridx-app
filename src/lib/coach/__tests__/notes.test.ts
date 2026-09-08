@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { addDays, subDays } from 'date-fns';
 
-const TODAY = new Date(2026, 8, 7, 9, 0, 0);
+// UTC-anchored: expiries are day markers pinned to UTC midnight, so a
+// local-time TODAY would make these assertions depend on the test machine.
+const TODAY = new Date('2026-09-07T09:00:00.000Z');
 
 const noteDocs: Array<{ id: string; data: Record<string, any> }> = [];
 const writes: Array<{ op: string; id?: string; data: Record<string, any> }> = [];
@@ -55,8 +57,8 @@ describe('coach notes', () => {
   it('gives short-lived categories an expiry and lasting ones none', async () => {
     const { defaultExpiry } = await import('@/services/coach-notes');
 
-    expect(defaultExpiry('availability', TODAY)).toEqual(addDays(TODAY, 30));
-    expect(defaultExpiry('commitment', TODAY)).toEqual(addDays(TODAY, 21));
+    expect(defaultExpiry('availability', TODAY)).toEqual(new Date('2026-10-07T00:00:00.000Z'));
+    expect(defaultExpiry('commitment', TODAY)).toEqual(new Date('2026-09-28T00:00:00.000Z'));
     expect(defaultExpiry('goal', TODAY)).toBeNull();
     expect(defaultExpiry('preference', TODAY)).toBeNull();
   });
@@ -139,7 +141,7 @@ describe('coach notes', () => {
     const written = writes.find(write => write.op === 'set');
     expect(written?.data.content).toBe('Committed to three sessions this week.');
     expect(written?.data.userId).toBe('a1');
-    expect(written?.data.expiresAt.toDate()).toEqual(addDays(TODAY, 21));
+    expect(written?.data.expiresAt.toDate()).toEqual(new Date('2026-09-28T00:00:00.000Z'));
   });
 
   it('honours an end date the athlete actually gave', async () => {
