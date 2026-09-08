@@ -23,6 +23,7 @@ import { logger } from '@/lib/logger';
 import { getUser } from '@/services/user-service';
 import { getProgram } from '@/services/program-service';
 import { getWorkoutForDay } from '@/lib/workout-utils';
+import { calendarDayIndex, toCalendarDay } from '@/lib/program-day';
 import { computeTrainingSummary, formatTrainingSummaryForAI } from '@/services/training-load-service';
 import { getValidStravaToken } from '@/lib/strava-token';
 import { fetchRecentActivities } from '@/lib/strava-api';
@@ -47,16 +48,25 @@ import {
 
 // ── Firestore reads ───────────────────────────────────────────────────────────
 
-function sessionFromFirestore(doc: FirebaseFirestore.DocumentSnapshot): WorkoutSession {
+function sessionFromFirestore(
+  doc: FirebaseFirestore.DocumentSnapshot,
+  timeZone?: string,
+): WorkoutSession {
   const data = doc.data() as Record<string, any>;
   const toDate = (value: any): Date | undefined =>
     value?.toDate ? value.toDate() : value instanceof Date ? value : undefined;
+
+  const rawWorkoutDate = toDate(data.workoutDate);
 
   return {
     id: doc.id,
     userId: data.userId,
     programId: data.programId,
-    workoutDate: toDate(data.workoutDate) ?? new Date(),
+    // Re-pinned to the calendar day it belongs to, once, here. The browser
+    // wrote it as the athlete's local midnight, which in UTC is the evening
+    // before — so every downstream comparison (is this today? which weekday?
+    // which week?) read a session scheduled for today as one missed yesterday.
+    workoutDate: rawWorkoutDate ? toCalendarDay(rawWorkoutDate, timeZone) : new Date(),
     workoutTitle: data.workoutTitle || 'Workout',
     programType: data.programType || 'hyrox',
     startedAt: toDate(data.startedAt) ?? new Date(),
@@ -81,19 +91,39 @@ export async function getSessionsInRange(
   userId: string,
   from: Date,
   to: Date,
+  timeZone?: string,
 ): Promise<WorkoutSession[]> {
+  const firstDay = startOfDay(from);
+  const lastDay = startOfDay(to);
+
+  // Stored dates sit up to half a day either side of the UTC midnight they
+  // mean, so the query is widened by a day at each end and the real bounds are
+  // applied below, against the re-pinned dates. Without the padding an
+  // athlete's first and last day fall outside their own range.
   const snapshot = await getAdminDb()
     .collection('workoutSessions')
     .where('userId', '==', userId)
-    .where('workoutDate', '>=', Timestamp.fromDate(startOfDay(from)))
-    .where('workoutDate', '<=', Timestamp.fromDate(startOfDay(to)))
+    .where('workoutDate', '>=', Timestamp.fromDate(subDays(firstDay, 1)))
+    .where('workoutDate', '<=', Timestamp.fromDate(addDays(lastDay, 1)))
     .orderBy('workoutDate', 'asc')
     .get();
 
-  return snapshot.docs.map(sessionFromFirestore);
+  const firstIndex = calendarDayIndex(firstDay);
+  const lastIndex = calendarDayIndex(lastDay);
+
+  return snapshot.docs
+    .map(doc => sessionFromFirestore(doc, timeZone))
+    .filter(session => {
+      const index = calendarDayIndex(session.workoutDate);
+      return index >= firstIndex && index <= lastIndex;
+    });
 }
 
-export async function getRecentJournalEntries(userId: string, limit = 8): Promise<JournalEntry[]> {
+export async function getRecentJournalEntries(
+  userId: string,
+  limit = 8,
+  timeZone?: string,
+): Promise<JournalEntry[]> {
   const collection = getAdminDb().collection('journalEntries').where('userId', '==', userId);
 
   // Ordering server-side matters here: an athlete with a long journal would
@@ -121,7 +151,10 @@ export async function getRecentJournalEntries(userId: string, limit = 8): Promis
       return {
         id: doc.id,
         userId: data.userId,
-        date: toDate(data.date),
+        // Written by the browser as local midnight, like every other day marker
+        // here — so the date the coach quotes back is the one the athlete wrote
+        // against, not the evening before it.
+        date: toCalendarDay(toDate(data.date), timeZone),
         content: data.content || '',
         mood: data.mood ?? undefined,
         tags: data.tags || [],
@@ -243,6 +276,7 @@ export function buildSchedule(
   program: Program | null,
   startDate: Date | undefined,
   today: Date,
+  timeZone?: string,
 ): ScheduledDay[] {
   const byDate = new Map<string, WorkoutSession[]>();
   for (const session of sessions) {
@@ -261,7 +295,7 @@ export function buildSchedule(
     );
 
     const programDay = program && startDate
-      ? getWorkoutForDay(program, startDate, date).day
+      ? getWorkoutForDay(program, startDate, date, timeZone).day
       : null;
 
     if (docs.length > 0) {
@@ -287,7 +321,7 @@ export function buildSchedule(
       continue;
     }
 
-    const { sessions: planned } = getWorkoutForDay(program, startDate, date);
+    const { sessions: planned } = getWorkoutForDay(program, startDate, date, timeZone);
     days.push({
       date,
       programDay,
@@ -390,7 +424,13 @@ const contextCache = new Map<string, { context: CoachContext; expiresAt: number 
 
 /** Drops an athlete's cached briefing — call after writing something they'd expect the coach to see. */
 export function invalidateCoachContext(userId: string): void {
-  contextCache.delete(userId);
+  // Entries are keyed by athlete *and* zone, so this clears every zone they
+  // have been seen in. Deleting the bare userId would silently miss them all
+  // and leave a plan change or a new note invisible for the rest of the minute.
+  const prefix = `${userId}|`;
+  for (const key of contextCache.keys()) {
+    if (key.startsWith(prefix)) contextCache.delete(key);
+  }
 }
 
 /**
@@ -403,16 +443,19 @@ export function invalidateCoachContext(userId: string): void {
 export async function buildCoachContext(
   userId: string,
   now = new Date(),
-  options: { fresh?: boolean } = {},
+  options: { fresh?: boolean; timeZone?: string } = {},
 ): Promise<CoachContext> {
-  const cacheKey = userId;
+  // Cached per athlete *and* zone: the same athlete on a phone that has moved
+  // countries is on a different calendar day, and must not be served the
+  // briefing built for the old one.
+  const cacheKey = `${userId}|${options.timeZone ?? ''}`;
   const cachedAt = Date.now();
   if (!options.fresh) {
     const cached = contextCache.get(cacheKey);
     if (cached && cached.expiresAt > cachedAt) return cached.context;
   }
 
-  const context = await buildCoachContextUncached(userId, now);
+  const context = await buildCoachContextUncached(userId, now, options.timeZone);
 
   for (const [key, entry] of contextCache) {
     if (entry.expiresAt <= cachedAt) contextCache.delete(key);
@@ -422,10 +465,22 @@ export async function buildCoachContext(
   return context;
 }
 
-async function buildCoachContextUncached(userId: string, now: Date): Promise<CoachContext> {
-  const today = startOfDay(now);
-
+async function buildCoachContextUncached(
+  userId: string,
+  now: Date,
+  requestTimeZone?: string,
+): Promise<CoachContext> {
   const user = await getUser(userId);
+
+  // The zone the request arrived with wins — it is where the athlete is right
+  // now. The stored one is the fallback for anything that reaches this without
+  // a browser behind it.
+  const timeZone = requestTimeZone ?? user?.timeZone;
+
+  // "Today" as the athlete would name it, expressed at runtime-local midnight
+  // so ordinary date-fns comparisons downstream stay correct.
+  const today = timeZone ? toCalendarDay(now, timeZone) : startOfDay(now);
+
   if (!user) {
     return {
       user: null,
@@ -439,13 +494,21 @@ async function buildCoachContextUncached(userId: string, now: Date): Promise<Coa
 
   const [program, sessions, journal, trainingLoad, notes] = await Promise.all([
     getEffectiveProgram(user),
-    getSessionsInRange(userId, historyStart, scheduleEnd),
-    getRecentJournalEntries(userId, 8),
+    getSessionsInRange(userId, historyStart, scheduleEnd, timeZone),
+    getRecentJournalEntries(userId, 8, timeZone),
     getTrainingLoadText(userId).catch(() => null),
     getActiveNotes(userId, now),
   ]);
 
-  const schedule = buildSchedule(historyStart, scheduleEnd, sessions, program, user.startDate, today);
+  const schedule = buildSchedule(
+    historyStart,
+    scheduleEnd,
+    sessions,
+    program,
+    user.startDate,
+    today,
+    timeZone,
+  );
   const past = schedule.filter(day => differenceInCalendarDays(day.date, today) < 0);
   const upcoming = schedule.filter(day => differenceInCalendarDays(day.date, today) >= 0);
   const last10Days = past.slice(-10);
@@ -471,14 +534,16 @@ async function buildCoachContextUncached(userId: string, now: Date): Promise<Coa
     ? Math.max(...program.workouts.map(w => w.day))
     : null;
   const programDay = program && user.startDate
-    ? getWorkoutForDay(program, user.startDate, today).day
+    ? getWorkoutForDay(program, user.startDate, today, timeZone).day
     : null;
   const programWeek = programDay && programDay > 0 ? Math.ceil(programDay / 7) : null;
 
   const todaysDay = upcoming[0];
   const todaysSessions = todaysDay?.sessions.map(s => s.title) ?? [];
 
-  const daysToRace = user.raceDate ? differenceInCalendarDays(user.raceDate, today) : null;
+  const raceDate = user.raceDate ? toCalendarDay(user.raceDate, timeZone) : null;
+  const programStart = user.startDate ? toCalendarDay(user.startDate, timeZone) : null;
+  const daysToRace = raceDate ? differenceInCalendarDays(raceDate, today) : null;
   const fatigueLabel = trainingLoad?.match(/Fatigue Status: (.+)/)?.[1]?.trim() ?? null;
 
   const rememberedNotes = formatNotesForPrompt(notes, now);
@@ -499,8 +564,8 @@ async function buildCoachContextUncached(userId: string, now: Date): Promise<Coa
       `- Name: ${user.firstName || 'Athlete'}`,
       `- Experience: ${user.experience ?? 'unknown'} | Goal: ${user.goal ?? 'unknown'} | Target frequency: ${user.frequency ?? '?'} days/week`,
       `- Units: ${user.unitSystem === 'imperial' ? 'imperial (miles/lb)' : 'metric (km/kg)'}`,
-      user.raceName || user.raceDate
-        ? `- Target race: ${user.raceName ?? 'race'}${user.raceDate ? ` on ${format(user.raceDate, 'd MMM yyyy')} (${daysToRace} days away)` : ''}`
+      user.raceName || raceDate
+        ? `- Target race: ${user.raceName ?? 'race'}${raceDate ? ` on ${format(raceDate, 'd MMM yyyy')} (${daysToRace} days away)` : ''}`
         : '- Target race: none set',
       formatPersonalRecords(user),
       formatBenchmarkPaces(user),
@@ -515,7 +580,7 @@ async function buildCoachContextUncached(userId: string, now: Date): Promise<Coa
           `- ${program.name} (${program.programType})${user.customProgram?.length ? ' — personalised: previous coach adjustments have been applied' : ''}`,
           `- ${program.description ?? ''}`.trim(),
           programDay && cycleLength
-            ? `- Currently day ${programDay} of ${cycleLength} (week ${programWeek} of ${Math.ceil(cycleLength / 7)}), started ${user.startDate ? format(user.startDate, 'd MMM yyyy') : 'unknown'}`
+            ? `- Currently day ${programDay} of ${cycleLength} (week ${programWeek} of ${Math.ceil(cycleLength / 7)}), started ${programStart ? format(programStart, 'd MMM yyyy') : 'unknown'}`
             : '- Program start date not set',
         ].join('\n')
       : '- No active program. The athlete is training without a plan from us.',

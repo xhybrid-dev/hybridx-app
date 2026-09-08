@@ -24,5 +24,20 @@ export async function authedFetch(input: RequestInfo | URL, init: RequestInit = 
   if (!token) throw new Error('You must be signed in to do that.');
   const headers = new Headers(init.headers);
   headers.set('Authorization', `Bearer ${token}`);
+
+  // The server runs in UTC and cannot otherwise tell which calendar day the
+  // athlete is on, or which day a stored timestamp was meant to be. Sent on
+  // every call so no individual caller has to remember to.
+  const timeZone = resolveTimeZone();
+  if (timeZone) headers.set('X-Time-Zone', timeZone);
+
   return fetch(input, { ...init, headers });
+}
+
+function resolveTimeZone(): string | null {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || null;
+  } catch {
+    return null;
+  }
 }

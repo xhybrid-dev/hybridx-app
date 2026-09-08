@@ -114,6 +114,12 @@ export interface User {
   completedWorkouts?: number;
   /** When the most recent finished workout was counted. Server-maintained. */
   lastWorkoutAt?: Date;
+  /**
+   * The athlete's IANA timezone (e.g. "Europe/London"), refreshed from the
+   * browser whenever they use the app. Server code runs in UTC and cannot
+   * otherwise work out which calendar day they are on — see lib/program-day.ts.
+   */
+  timeZone?: string;
   notificationTime?: { hour: number; minute: number };
   // Analytics fields
   lastSeenAt?: Date;

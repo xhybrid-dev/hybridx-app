@@ -60,6 +60,41 @@ Three things keep a turn quick:
    and dropped immediately by `invalidateCoachContext` when a plan adjustment is
    applied, a note is written, or a note is dismissed.
 
+### Which day it is
+
+The coach runs on the server, which runs in UTC. The athlete does not. Two
+kinds of date are stored and they are not the same kind of thing:
+
+| Field | Written as | Example (UK, September) |
+| --- | --- | --- |
+| `workoutDate` | the athlete's **local midnight** — a day marker | Tue 8 Sept → `2026-09-07T23:00Z` |
+| `startDate` | `new Date()` — the **instant** they picked the program | 14:37 BST → `2026-06-02T13:37Z` |
+
+Read in UTC, the marker falls back a day and the instant does not. That is why
+no offset-guessing rule fixes both: rounding to the nearest midnight repairs the
+marker and pushes the start a day forward, starting the program late.
+
+Knowing the athlete's timezone collapses both to one question — *what date was
+it, where they are* — so `authedFetch` sends `X-Time-Zone` on every
+authenticated call, `requireUser` validates it against `Intl` and puts it on
+`auth.timeZone`, and it is stored on the user document for the jobs that run
+with no browser behind them. Without one, everything falls back to the runtime's
+zone, which is what the code did before.
+
+`src/lib/program-day.ts` is the only place this math lives. Its one sharp edge,
+which has its own test: `programDayFor` applies the zone to `startDate` **only**.
+The target is the calendar day being asked about and the caller resolves it
+first (`toCalendarDay(instant, zone)`); zoning both double-converts and lands a
+day out whenever the runtime and the athlete are in different zones.
+
+Stored day markers are re-pinned once, on read (`sessionFromFirestore`,
+journal entries, race and start dates), to midnight of the day they belong to in
+the *runtime's* zone — so every `format`, `differenceInCalendarDays` and
+`startOfWeek` downstream is correct without each call site knowing about any of
+this.
+
+The day-math tests run green in six timezones spanning UTC-7 to UTC+13.
+
 ### The briefing
 
 `buildCoachContext(userId)` assembles a page of prose, not a JSON dump:

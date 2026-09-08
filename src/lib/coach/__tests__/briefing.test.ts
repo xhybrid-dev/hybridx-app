@@ -73,12 +73,17 @@ const program: Program = {
   workouts: Array.from({ length: 28 }, (_, index) => workout(index + 1, `Session ${index + 1}`)),
 };
 
+// Overridable so a single case can vary the athlete or the program without
+// every other case inheriting it.
+let userOverride: User | null = null;
+let programOverride: Program | null = null;
+
 vi.mock('@/services/user-service', () => ({
-  getUser: async () => user,
+  getUser: async () => userOverride ?? user,
 }));
 
 vi.mock('@/services/program-service', () => ({
-  getProgram: async () => program,
+  getProgram: async () => programOverride ?? program,
 }));
 
 function toTimestamp(date: Date) {
@@ -90,6 +95,8 @@ describe('buildCoachContext', () => {
     sessionDocs.length = 0;
     journalDocs.length = 0;
     noteDocs.length = 0;
+    userOverride = null;
+    programOverride = null;
   });
 
   it('briefs the coach on what was done, missed and said', async () => {
@@ -218,6 +225,68 @@ describe('buildCoachContext', () => {
     invalidateCoachContext('athlete-1');
     const rebuilt = await buildCoachContext('athlete-1', TODAY);
     expect(rebuilt.briefing).toContain('second version');
+  });
+
+  it("reads today's double session as today's, not as one missed yesterday", async () => {
+    // The reported bug, end to end. A UK browser writes day markers as LOCAL
+    // midnight, so a session for Tue 8 Sept is stored as 2026-09-07T23:00:00Z.
+    // Read in UTC without re-pinning, that is yesterday — and the program day
+    // came out one ahead, landing on the rest day after the double.
+    const ukLocalMidnight = (iso: string) => toTimestamp(new Date(iso));
+
+    const doubleDayUser = {
+      ...user,
+      // Written as `new Date()` when they picked the program: 14:37 BST.
+      startDate: new Date('2026-06-02T13:37:00.000Z'), // Tue 2 June, UK
+    };
+    userOverride = doubleDayUser;
+
+    programOverride = {
+      ...program,
+      workouts: [
+        workout(98, 'Easy Run'),
+        workout(99, 'Threshold Run'),
+        workout(99, 'Lower Body'),
+        // Day 100 is a rest day: no entry at all.
+      ],
+    };
+
+    sessionDocs.push(
+      {
+        userId: 'athlete-1',
+        programId: 'p1',
+        workoutDate: ukLocalMidnight('2026-09-07T23:00:00.000Z'), // Tue 8 Sept
+        startedAt: ukLocalMidnight('2026-09-07T23:00:00.000Z'),
+        workoutTitle: 'Threshold Run',
+        programType: 'running',
+        sessionIndex: 0,
+        workoutDetails: workout(99, 'Threshold Run'),
+      },
+      {
+        userId: 'athlete-1',
+        programId: 'p1',
+        workoutDate: ukLocalMidnight('2026-09-07T23:00:00.000Z'),
+        startedAt: ukLocalMidnight('2026-09-07T23:00:00.000Z'),
+        workoutTitle: 'Lower Body',
+        programType: 'hyrox',
+        sessionIndex: 1,
+        workoutDetails: workout(99, 'Lower Body'),
+      },
+    );
+
+    const { buildCoachContext } = await import('@/services/coach-context');
+    const context = await buildCoachContext(
+      'athlete-1',
+      new Date('2026-09-08T09:00:00.000Z'),
+      { fresh: true, timeZone: 'Europe/London' },
+    );
+
+    // Both sessions are today's, and open — not missed, and not a rest day.
+    expect(context.snapshot.todaysSessions).toEqual(['Threshold Run', 'Lower Body']);
+    expect(context.snapshot.programDay).toBe(99);
+    expect(context.briefing).toContain('Threshold Run [today]');
+    expect(context.briefing).toContain('Lower Body [today]');
+    expect(context.briefing).not.toContain('Threshold Run [missed]');
   });
 
   it('summarises where the athlete is for the UI, with prompts that fit', async () => {

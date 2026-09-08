@@ -1,6 +1,7 @@
 // src/lib/workout-utils.ts
 import type { Program, WorkoutDay, Exercise, PlannedRun } from '@/models/types';
-import { differenceInDays, subDays, isSameDay } from 'date-fns';
+import { subDays, isSameDay } from 'date-fns';
+import { programDayFor } from '@/lib/program-day';
 import { db } from '@/lib/firebase';
 import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
 
@@ -25,14 +26,16 @@ export function formatPlannedRun(run: PlannedRun): string {
 export function getWorkoutForDay(
     program: Pick<Program, 'workouts'>,
     startDate: Date,
-    targetDate: Date
+    targetDate: Date,
+    /**
+     * The athlete's IANA timezone. Server callers must pass it: `startDate` is
+     * stored as the instant they picked the program, and only their own zone
+     * says which calendar day that was. Browser callers can leave it out — the
+     * runtime is already in the athlete's zone.
+     */
+    timeZone?: string,
 ): { day: number; workout: WorkoutDay | null; sessions: WorkoutDay[] } {
-    const start = new Date(startDate);
-    start.setHours(0, 0, 0, 0);
-    const target = new Date(targetDate);
-    target.setHours(0, 0, 0, 0);
-
-    const dayOfProgram = differenceInDays(target, start) + 1;
+    const dayOfProgram = programDayFor(startDate, targetDate, timeZone);
 
     if (dayOfProgram < 1) {
         return { day: dayOfProgram, workout: null, sessions: [] };

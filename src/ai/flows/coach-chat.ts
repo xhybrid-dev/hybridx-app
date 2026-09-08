@@ -31,6 +31,8 @@ export interface CoachChatInput {
   /** Prior turns of this conversation, oldest first. */
   history?: CoachMessage[];
   now?: Date;
+  /** The athlete's IANA timezone, from the request. */
+  timeZone?: string;
 }
 
 export interface CoachChatResult {
@@ -160,10 +162,10 @@ ${input.briefing}
  */
 export async function coachChat(input: CoachChatInput): Promise<CoachChatResult> {
   const now = input.now ?? new Date();
-  const context = await buildCoachContext(input.userId, now);
+  const context = await buildCoachContext(input.userId, now, { timeZone: input.timeZone });
 
   const trace: CoachToolTrace = { used: [], planProposal: null };
-  const tools = buildCoachTools(input.userId, trace, now);
+  const tools = buildCoachTools(input.userId, trace, now, input.timeZone);
 
   let answer: string;
   try {
