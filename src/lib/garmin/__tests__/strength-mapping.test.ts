@@ -127,10 +127,10 @@ describe('coaching-prose rows are not sent as steps', () => {
     expect(steps.some((d) => d.startsWith('Notes'))).toBe(false);
   });
 
-  it('does not collapse a session to just warm-up and cool-down when every row is a note', () => {
-    // Pathological input, but the mapper should not silently push an empty
-    // workout — this documents current behavior rather than asserting an
-    // opinion about what should happen instead.
+  it('schedules nothing when every row is a note', () => {
+    // A rest day that carries the plan's rest-day guidance, or a competition
+    // brief. There is no work to count down, so it must not reach the watch as
+    // a workout of a warm-up and a cool-down and nothing in between.
     const day: WorkoutDay = {
       day: 1,
       title: 'Rest',
@@ -138,8 +138,7 @@ describe('coaching-prose rows are not sent as steps', () => {
       exercises: [{ name: 'Coaching Note', details: 'Take the day fully off.' }],
     };
 
-    const steps = flatten(mapWorkoutDay(day));
-    expect(steps).toEqual(['Warm up — press lap when ready', 'Cool down — press lap when done']);
+    expect(mapWorkoutDay(day)).toBeNull();
   });
 });
 

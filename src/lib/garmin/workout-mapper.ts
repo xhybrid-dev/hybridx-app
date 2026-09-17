@@ -1123,7 +1123,22 @@ function defaultRecovery(row: RunStepSpec): { durationType: 'TIME'; durationValu
   return { durationType: 'TIME', durationValue: long ? 120 : 90 };
 }
 
+/**
+ * A day whose rows are all prose — a rest day's guidance, a competition brief —
+ * has nothing for the watch to count down. Without this it would still map, to a
+ * workout of a warm-up and a cool-down and no work, scheduled on a day the plan
+ * means to leave empty.
+ */
+function isGuidanceOnly(day: WorkoutDay): boolean {
+  return (
+    day.exercises.length > 0 &&
+    day.exercises.every((ex) => isNoteRow(ex.name) && !ex.runSpec)
+  );
+}
+
 export function mapWorkoutDay(day: WorkoutDay): GarminWorkout | null {
+  if (isGuidanceOnly(day)) return null;
+
   // When sessionType is explicitly provided, use it to bypass the heuristic classifier.
   if (day.sessionType) {
     const sport = day.garminSport as GarminSport | undefined;

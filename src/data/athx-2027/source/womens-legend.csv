@@ -1,0 +1,24 @@
+ATHX 2027 — Women's Edition,
+"Twelve-week plan, exported 2026-09-10",
+Assumed start,Monday 02 November 2026
+Assumed competition,"Sunday 24 January 2027 (ATHX London, 23-24 Jan)"
+Note,Racing Saturday 23 Jan? Shift Week 12 Sat and Sun by one day.
+Sheet,What it holds
+Schedule,"One row per day. Session, fuel, hydration, recovery, teaching block and log prompts."
+Sessions,"One row per prescribed element, with Lite, ATHX and Pro loads in separate columns."
+Weeks,"One row per week. Focus, priority, volume targets and phase notes."
+Teaching,"The 84 rotating teaching blocks, by type."
+Reference,"Division loads, benchmark tables and the key figures used in the plan."
+Column,Meaning
+Session type,Plain-language classification for calendar entries.
+Garmin sport,"Activity type for watch or Connect import. Doubles list both, AM first."
+Shape,"Double, Single or Rest. Doubles need a six-hour gap between sessions."
+Load,"Relative weekly load for that day, as printed in the book."
+Lite / ATHX / Pro,"Division loads. Where a row is not tiered, the same value repeats."
+Effort,Reps in reserve. Add weight when a set feels easier than prescribed.
+Period,"AM, PM or Main. On a double day the AM session comes first, six hours clear."
+Safe to edit,"Date columns, and anything you add to the right of the last column."
+Do not edit,Day and Week numbers. Other sheets and the summary formulas key off them.
+Benchmarks,"Derived estimates, not observed results. See Chapter 6 of the book."
+Standards,Built from the 2027 workout specifications and the 2026 movement standards.
+,Check athxgames.com before competing.

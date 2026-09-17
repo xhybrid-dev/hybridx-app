@@ -1,0 +1,481 @@
+Day,Week,Weekday,Date,Session,Period,Block,Order,Element,Lite,ATHX,Pro,Effort,Note
+1,1,MONDAY,2026-11-02,AEROBIC RUN + UPPER ACCUMULATION,AM,AM - AEROBIC RUN,1,Main,25 min easy,30 min easy,35 min easy,,
+1,1,MONDAY,2026-11-02,AEROBIC RUN + UPPER ACCUMULATION,AM,AM - AEROBIC RUN,,Note,,,,,Warm-up 8 min easy. Main set at conversational. Cool-down 5 min easy. Full sentences throughout.
+1,1,MONDAY,2026-11-02,AEROBIC RUN + UPPER ACCUMULATION,PM,PM - UPPER ACCUMULATION  |  MIN 6 H AFTER AM,1,A1 Push Press,4 x 6,4 x 6,4 x 6,3 RIR,
+1,1,MONDAY,2026-11-02,AEROBIC RUN + UPPER ACCUMULATION,PM,PM - UPPER ACCUMULATION  |  MIN 6 H AFTER AM,2,A2 Weighted Pull-Up or Heavy Row,4 x 8,4 x 8,4 x 8,3 RIR,
+1,1,MONDAY,2026-11-02,AEROBIC RUN + UPPER ACCUMULATION,PM,PM - UPPER ACCUMULATION  |  MIN 6 H AFTER AM,3,B1 DB Bench Press  (12.5 kg),3 x 12,3 x 12,3 x 12,-,
+1,1,MONDAY,2026-11-02,AEROBIC RUN + UPPER ACCUMULATION,PM,PM - UPPER ACCUMULATION  |  MIN 6 H AFTER AM,4,B2 Barbell Bent-Over Row,3 x 12,3 x 12,3 x 12,3 RIR,
+1,1,MONDAY,2026-11-02,AEROBIC RUN + UPPER ACCUMULATION,PM,PM - UPPER ACCUMULATION  |  MIN 6 H AFTER AM,5,C Half-Kneeling Z Press,3 x 10,3 x 10,3 x 10,3 RIR,
+1,1,MONDAY,2026-11-02,AEROBIC RUN + UPPER ACCUMULATION,PM,PM - UPPER ACCUMULATION  |  MIN 6 H AFTER AM,,Note,,,,,"Push press, not strict press."
+2,1,TUESDAY,2026-11-03,SKI TECHNIQUE + GRIP,Main,SKI - CONTINUOUS,1,Warm-up,4 min easy,4 min easy,4 min easy,,
+2,1,TUESDAY,2026-11-03,SKI TECHNIQUE + GRIP,Main,SKI - CONTINUOUS,2,Main,12 min,15 min,18 min,,
+2,1,TUESDAY,2026-11-03,SKI TECHNIQUE + GRIP,Main,SKI - CONTINUOUS,3,at,"steady, nasal-capable","steady, nasal-capable","steady, nasal-capable",,
+2,1,TUESDAY,2026-11-03,SKI TECHNIQUE + GRIP,Main,SKI - CONTINUOUS,4,Cool-down,4 min easy,4 min easy,4 min easy,,
+2,1,TUESDAY,2026-11-03,SKI TECHNIQUE + GRIP,Main,SKI - CONTINUOUS,,Note,,,,,Damper between 5 and 8. Stroke rate 34-42. Drive from the hip hinge and let the arms follow. Film yourself once this phase.
+2,1,TUESDAY,2026-11-03,SKI TECHNIQUE + GRIP,Main,GRIP BLOCK  |  12 MIN,1,Farmer Carry (heavy),4 x 40 m,4 x 40 m,4 x 40 m,-,
+2,1,TUESDAY,2026-11-03,SKI TECHNIQUE + GRIP,Main,GRIP BLOCK  |  12 MIN,2,Dead Hang,3 x max hold,3 x max hold,3 x max hold,-,
+2,1,TUESDAY,2026-11-03,SKI TECHNIQUE + GRIP,Main,GRIP BLOCK  |  12 MIN,3,Sandbag Bear-Hug Hold  (30 kg),3 x 40 s,3 x 40 s,3 x 40 s,-,
+3,1,WEDNESDAY,2026-11-04,EASY AEROBIC + LOWER ACCUMULATION,AM,AM - EASY AEROBIC  |  35 MIN,,Note,,,,,"Zone 2 run or bike. Conversational throughout. If in doubt, go slower."
+3,1,WEDNESDAY,2026-11-04,EASY AEROBIC + LOWER ACCUMULATION,PM,PM - LOWER ACCUMULATION  |  MIN 6 H AFTER AM,1,A Back Squat,4 x 6,4 x 6,4 x 6,3 RIR,
+3,1,WEDNESDAY,2026-11-04,EASY AEROBIC + LOWER ACCUMULATION,PM,PM - LOWER ACCUMULATION  |  MIN 6 H AFTER AM,2,B Deadlift,4 x 5,4 x 5,4 x 5,3 RIR,
+3,1,WEDNESDAY,2026-11-04,EASY AEROBIC + LOWER ACCUMULATION,PM,PM - LOWER ACCUMULATION  |  MIN 6 H AFTER AM,3,C Bulgarian Split Squat,3 x 10 each leg,3 x 10 each leg,3 x 10 each leg,3 RIR,
+3,1,WEDNESDAY,2026-11-04,EASY AEROBIC + LOWER ACCUMULATION,PM,PM - LOWER ACCUMULATION  |  MIN 6 H AFTER AM,4,D Copenhagen Plank,3 x 25 s each side,3 x 25 s each side,3 x 25 s each side,-,
+3,1,WEDNESDAY,2026-11-04,EASY AEROBIC + LOWER ACCUMULATION,PM,PM - LOWER ACCUMULATION  |  MIN 6 H AFTER AM,,Note,,,,,"No sumo. Hands outside the knees, as competition requires. Build the habit now."
+4,1,THURSDAY,2026-11-05,COMPLETE REST,Main,NO SESSION,,Note,,,,,"Optional, ten to fifteen minutes: thoracic rotation, hip flexor lengthening, ankle dorsiflexion. Nothing that raises the heart rate. If it starts to feel like a session, stop."
+4,1,THURSDAY,2026-11-05,COMPLETE REST,Main,NO SESSION,,Note,,,,,Feeling good on a rest day is a sign the rest day is doing its job rather than a reason to add a session.
+4,1,THURSDAY,2026-11-05,COMPLETE REST,Main,NO SESSION,,Note,,,,,More progress tends to be lost to training through fatigue than to taking a day off.
+5,1,FRIDAY,2026-11-06,METCON MOVEMENT WORK,Main,CIRCUIT  |  REST 3 MIN BETWEEN ROUNDS,1,DB Bench Press,10 @ 7.5 kg,12 @ 12.5 kg,12 @ 15 kg,,
+5,1,FRIDAY,2026-11-06,METCON MOVEMENT WORK,Main,CIRCUIT  |  REST 3 MIN BETWEEN ROUNDS,2,DB Ground to Overhead,10 @ 7.5 kg,12 @ 12.5 kg,12 dual @ 15 kg,,
+5,1,FRIDAY,2026-11-06,METCON MOVEMENT WORK,Main,CIRCUIT  |  REST 3 MIN BETWEEN ROUNDS,3,Sandbag Squats,10 @ 20 kg,12 @ 30 kg,12 @ 50 kg,,
+5,1,FRIDAY,2026-11-06,METCON MOVEMENT WORK,Main,CIRCUIT  |  REST 3 MIN BETWEEN ROUNDS,4,Sandbag Carry (no rest),30 m @ 20 kg,30 m @ 30 kg,30 m @ 50 kg,,
+5,1,FRIDAY,2026-11-06,METCON MOVEMENT WORK,Main,CIRCUIT  |  REST 3 MIN BETWEEN ROUNDS,5,Rounds,2,3,3,,
+5,1,FRIDAY,2026-11-06,METCON MOVEMENT WORK,Main,CIRCUIT  |  REST 3 MIN BETWEEN ROUNDS,,Note,,,,,The carry follows the squats with no break. Do not set the bag down between them. That is the sequence you will meet in competition.
+5,1,FRIDAY,2026-11-06,METCON MOVEMENT WORK,Main,FINISHER,,Note,,,,,"300 m row, controlled. Not a time trial this phase."
+6,1,SATURDAY,2026-11-07,LONG AEROBIC + SKI INTRODUCTION,Main,RUN,1,Duration,40 min,50 min,60 min,,
+6,1,SATURDAY,2026-11-07,LONG AEROBIC + SKI INTRODUCTION,Main,RUN,2,at,easy aerobic,easy aerobic,easy aerobic,,
+6,1,SATURDAY,2026-11-07,LONG AEROBIC + SKI INTRODUCTION,Main,SKI - IMMEDIATELY AFTER,1,Duration,5 min,6 min,8 min,,
+6,1,SATURDAY,2026-11-07,LONG AEROBIC + SKI INTRODUCTION,Main,SKI - IMMEDIATELY AFTER,2,at,steady,steady,steady,,
+6,1,SATURDAY,2026-11-07,LONG AEROBIC + SKI INTRODUCTION,Main,SKI - IMMEDIATELY AFTER,,Note,,,,,Transition without pausing. Note how the first ninety seconds feel. That sensation is what the Development phase trains away.
+7,1,SUNDAY,2026-11-08,EASY AEROBIC,Main,,1,Duration,30 min,40 min,50 min,,
+7,1,SUNDAY,2026-11-08,EASY AEROBIC,Main,,2,Mode,walk / hike / bike,run / bike / hike,run / bike / hike,,
+7,1,SUNDAY,2026-11-08,EASY AEROBIC,Main,,,Note,,,,,"Conversational the entire time. If your legs are sore from yesterday, walking or riding instead of running is the better choice."
+8,2,MONDAY,2026-11-09,AEROBIC RUN + UPPER ACCUMULATION,AM,AM - AEROBIC RUN,1,Main,30 min easy,35 min easy,40 min easy,,
+8,2,MONDAY,2026-11-09,AEROBIC RUN + UPPER ACCUMULATION,AM,AM - AEROBIC RUN,,Note,,,,,Warm-up 8 min easy. Main set at conversational. Cool-down 5 min easy. Full sentences throughout.
+8,2,MONDAY,2026-11-09,AEROBIC RUN + UPPER ACCUMULATION,PM,PM - UPPER ACCUMULATION  |  MIN 6 H AFTER AM,1,A1 Push Press,4 x 6,4 x 6,4 x 6,2 RIR,
+8,2,MONDAY,2026-11-09,AEROBIC RUN + UPPER ACCUMULATION,PM,PM - UPPER ACCUMULATION  |  MIN 6 H AFTER AM,2,A2 Weighted Pull-Up or Heavy Row,4 x 8,4 x 8,4 x 8,3 RIR,
+8,2,MONDAY,2026-11-09,AEROBIC RUN + UPPER ACCUMULATION,PM,PM - UPPER ACCUMULATION  |  MIN 6 H AFTER AM,3,B1 DB Bench Press  (12.5 kg),3 x 15,3 x 15,3 x 15,-,
+8,2,MONDAY,2026-11-09,AEROBIC RUN + UPPER ACCUMULATION,PM,PM - UPPER ACCUMULATION  |  MIN 6 H AFTER AM,4,B2 Barbell Bent-Over Row,3 x 12,3 x 12,3 x 12,3 RIR,
+8,2,MONDAY,2026-11-09,AEROBIC RUN + UPPER ACCUMULATION,PM,PM - UPPER ACCUMULATION  |  MIN 6 H AFTER AM,5,C Half-Kneeling Z Press,3 x 10,3 x 10,3 x 10,3 RIR,
+8,2,MONDAY,2026-11-09,AEROBIC RUN + UPPER ACCUMULATION,PM,PM - UPPER ACCUMULATION  |  MIN 6 H AFTER AM,,Note,,,,,"Push press, not strict press."
+9,2,TUESDAY,2026-11-10,SKI TECHNIQUE + GRIP,Main,SKI - CONTINUOUS,1,Warm-up,4 min easy,4 min easy,4 min easy,,
+9,2,TUESDAY,2026-11-10,SKI TECHNIQUE + GRIP,Main,SKI - CONTINUOUS,2,Main,15 min,20 min,22 min,,
+9,2,TUESDAY,2026-11-10,SKI TECHNIQUE + GRIP,Main,SKI - CONTINUOUS,3,at,"steady, nasal-capable","steady, nasal-capable","steady, nasal-capable",,
+9,2,TUESDAY,2026-11-10,SKI TECHNIQUE + GRIP,Main,SKI - CONTINUOUS,4,Cool-down,4 min easy,4 min easy,4 min easy,,
+9,2,TUESDAY,2026-11-10,SKI TECHNIQUE + GRIP,Main,SKI - CONTINUOUS,,Note,,,,,Damper between 5 and 8. Stroke rate 34-42. Drive from the hip hinge and let the arms follow. Film yourself once this phase.
+9,2,TUESDAY,2026-11-10,SKI TECHNIQUE + GRIP,Main,GRIP BLOCK  |  12 MIN,1,Farmer Carry (heavy),4 x 40 m,4 x 40 m,4 x 40 m,-,
+9,2,TUESDAY,2026-11-10,SKI TECHNIQUE + GRIP,Main,GRIP BLOCK  |  12 MIN,2,Dead Hang,3 x max hold,3 x max hold,3 x max hold,-,
+9,2,TUESDAY,2026-11-10,SKI TECHNIQUE + GRIP,Main,GRIP BLOCK  |  12 MIN,3,Sandbag Bear-Hug Hold  (30 kg),3 x 40 s,3 x 40 s,3 x 40 s,-,
+10,2,WEDNESDAY,2026-11-11,EASY AEROBIC + LOWER ACCUMULATION,AM,AM - EASY AEROBIC  |  40 MIN,,Note,,,,,"Zone 2 run or bike. Conversational throughout. If in doubt, go slower."
+10,2,WEDNESDAY,2026-11-11,EASY AEROBIC + LOWER ACCUMULATION,PM,PM - LOWER ACCUMULATION  |  MIN 6 H AFTER AM,1,A Back Squat,4 x 6,4 x 6,4 x 6,2 RIR,
+10,2,WEDNESDAY,2026-11-11,EASY AEROBIC + LOWER ACCUMULATION,PM,PM - LOWER ACCUMULATION  |  MIN 6 H AFTER AM,2,B Deadlift,4 x 5,4 x 5,4 x 5,3 RIR,
+10,2,WEDNESDAY,2026-11-11,EASY AEROBIC + LOWER ACCUMULATION,PM,PM - LOWER ACCUMULATION  |  MIN 6 H AFTER AM,3,C Bulgarian Split Squat,3 x 10 each leg,3 x 10 each leg,3 x 10 each leg,3 RIR,
+10,2,WEDNESDAY,2026-11-11,EASY AEROBIC + LOWER ACCUMULATION,PM,PM - LOWER ACCUMULATION  |  MIN 6 H AFTER AM,4,D Copenhagen Plank,3 x 25 s each side,3 x 25 s each side,3 x 25 s each side,-,
+10,2,WEDNESDAY,2026-11-11,EASY AEROBIC + LOWER ACCUMULATION,PM,PM - LOWER ACCUMULATION  |  MIN 6 H AFTER AM,,Note,,,,,"No sumo. Hands outside the knees, as competition requires. Build the habit now."
+11,2,THURSDAY,2026-11-12,COMPLETE REST,Main,NO SESSION,,Note,,,,,"Optional, ten to fifteen minutes: thoracic rotation, hip flexor lengthening, ankle dorsiflexion. Nothing that raises the heart rate. If it starts to feel like a session, stop."
+11,2,THURSDAY,2026-11-12,COMPLETE REST,Main,NO SESSION,,Note,,,,,Feeling good on a rest day is a sign the rest day is doing its job rather than a reason to add a session.
+11,2,THURSDAY,2026-11-12,COMPLETE REST,Main,NO SESSION,,Note,,,,,More progress tends to be lost to training through fatigue than to taking a day off.
+12,2,FRIDAY,2026-11-13,METCON MOVEMENT WORK,Main,CIRCUIT  |  REST 3 MIN BETWEEN ROUNDS,1,DB Bench Press,10 @ 7.5 kg,12 @ 12.5 kg,12 @ 15 kg,,
+12,2,FRIDAY,2026-11-13,METCON MOVEMENT WORK,Main,CIRCUIT  |  REST 3 MIN BETWEEN ROUNDS,2,DB Ground to Overhead,10 @ 7.5 kg,12 @ 12.5 kg,12 dual @ 15 kg,,
+12,2,FRIDAY,2026-11-13,METCON MOVEMENT WORK,Main,CIRCUIT  |  REST 3 MIN BETWEEN ROUNDS,3,Sandbag Squats,10 @ 20 kg,12 @ 30 kg,12 @ 50 kg,,
+12,2,FRIDAY,2026-11-13,METCON MOVEMENT WORK,Main,CIRCUIT  |  REST 3 MIN BETWEEN ROUNDS,4,Sandbag Carry (no rest),30 m @ 20 kg,30 m @ 30 kg,30 m @ 50 kg,,
+12,2,FRIDAY,2026-11-13,METCON MOVEMENT WORK,Main,CIRCUIT  |  REST 3 MIN BETWEEN ROUNDS,5,Rounds,3,3,4,,
+12,2,FRIDAY,2026-11-13,METCON MOVEMENT WORK,Main,CIRCUIT  |  REST 3 MIN BETWEEN ROUNDS,,Note,,,,,The carry follows the squats with no break. Do not set the bag down between them. That is the sequence you will meet in competition.
+12,2,FRIDAY,2026-11-13,METCON MOVEMENT WORK,Main,FINISHER,,Note,,,,,"300 m row, controlled. Not a time trial this phase."
+13,2,SATURDAY,2026-11-14,LONG AEROBIC + SKI INTRODUCTION,Main,RUN,1,Duration,50 min,60 min,70 min,,
+13,2,SATURDAY,2026-11-14,LONG AEROBIC + SKI INTRODUCTION,Main,RUN,2,at,easy aerobic,easy aerobic,easy aerobic,,
+13,2,SATURDAY,2026-11-14,LONG AEROBIC + SKI INTRODUCTION,Main,SKI - IMMEDIATELY AFTER,1,Duration,6 min,8 min,10 min,,
+13,2,SATURDAY,2026-11-14,LONG AEROBIC + SKI INTRODUCTION,Main,SKI - IMMEDIATELY AFTER,2,at,steady,steady,steady,,
+13,2,SATURDAY,2026-11-14,LONG AEROBIC + SKI INTRODUCTION,Main,SKI - IMMEDIATELY AFTER,,Note,,,,,Transition without pausing. Note how the first ninety seconds feel. That sensation is what the Development phase trains away.
+14,2,SUNDAY,2026-11-15,EASY AEROBIC,Main,,1,Duration,30 min,45 min,55 min,,
+14,2,SUNDAY,2026-11-15,EASY AEROBIC,Main,,2,Mode,walk / hike / bike,run / bike / hike,run / bike / hike,,
+14,2,SUNDAY,2026-11-15,EASY AEROBIC,Main,,,Note,,,,,"Conversational the entire time. If your legs are sore from yesterday, walking or riding instead of running is the better choice."
+15,3,MONDAY,2026-11-16,AEROBIC RUN + UPPER ACCUMULATION,AM,AM - AEROBIC RUN,1,Main,35 min easy,40 min easy,45 min easy,,
+15,3,MONDAY,2026-11-16,AEROBIC RUN + UPPER ACCUMULATION,AM,AM - AEROBIC RUN,,Note,,,,,Warm-up 8 min easy. Main set at conversational. Cool-down 5 min easy. Full sentences throughout.
+15,3,MONDAY,2026-11-16,AEROBIC RUN + UPPER ACCUMULATION,PM,PM - UPPER ACCUMULATION  |  MIN 6 H AFTER AM,1,A1 Push Press,5 x 5,5 x 5,5 x 5,2 RIR,
+15,3,MONDAY,2026-11-16,AEROBIC RUN + UPPER ACCUMULATION,PM,PM - UPPER ACCUMULATION  |  MIN 6 H AFTER AM,2,A2 Weighted Pull-Up or Heavy Row,4 x 6,4 x 6,4 x 6,3 RIR,
+15,3,MONDAY,2026-11-16,AEROBIC RUN + UPPER ACCUMULATION,PM,PM - UPPER ACCUMULATION  |  MIN 6 H AFTER AM,3,B1 DB Bench Press  (12.5 kg),4 x 15,4 x 15,4 x 15,-,
+15,3,MONDAY,2026-11-16,AEROBIC RUN + UPPER ACCUMULATION,PM,PM - UPPER ACCUMULATION  |  MIN 6 H AFTER AM,4,B2 Barbell Bent-Over Row,3 x 12,3 x 12,3 x 12,3 RIR,
+15,3,MONDAY,2026-11-16,AEROBIC RUN + UPPER ACCUMULATION,PM,PM - UPPER ACCUMULATION  |  MIN 6 H AFTER AM,5,C Half-Kneeling Z Press,3 x 10,3 x 10,3 x 10,3 RIR,
+15,3,MONDAY,2026-11-16,AEROBIC RUN + UPPER ACCUMULATION,PM,PM - UPPER ACCUMULATION  |  MIN 6 H AFTER AM,,Note,,,,,"Push press, not strict press."
+16,3,TUESDAY,2026-11-17,SKI TECHNIQUE + GRIP,Main,SKI - CONTINUOUS,1,Warm-up,4 min easy,4 min easy,4 min easy,,
+16,3,TUESDAY,2026-11-17,SKI TECHNIQUE + GRIP,Main,SKI - CONTINUOUS,2,Main,18 min,25 min,28 min,,
+16,3,TUESDAY,2026-11-17,SKI TECHNIQUE + GRIP,Main,SKI - CONTINUOUS,3,at,"steady, nasal-capable","steady, nasal-capable","steady, nasal-capable",,
+16,3,TUESDAY,2026-11-17,SKI TECHNIQUE + GRIP,Main,SKI - CONTINUOUS,4,Cool-down,4 min easy,4 min easy,4 min easy,,
+16,3,TUESDAY,2026-11-17,SKI TECHNIQUE + GRIP,Main,SKI - CONTINUOUS,,Note,,,,,Damper between 5 and 8. Stroke rate 34-42. Drive from the hip hinge and let the arms follow. Film yourself once this phase.
+16,3,TUESDAY,2026-11-17,SKI TECHNIQUE + GRIP,Main,GRIP BLOCK  |  12 MIN,1,Farmer Carry (heavy),4 x 40 m,4 x 40 m,4 x 40 m,-,
+16,3,TUESDAY,2026-11-17,SKI TECHNIQUE + GRIP,Main,GRIP BLOCK  |  12 MIN,2,Dead Hang,3 x max hold,3 x max hold,3 x max hold,-,
+16,3,TUESDAY,2026-11-17,SKI TECHNIQUE + GRIP,Main,GRIP BLOCK  |  12 MIN,3,Sandbag Bear-Hug Hold  (30 kg),3 x 40 s,3 x 40 s,3 x 40 s,-,
+17,3,WEDNESDAY,2026-11-18,EASY AEROBIC + LOWER ACCUMULATION,AM,AM - EASY AEROBIC  |  45 MIN,,Note,,,,,"Zone 2 run or bike. Conversational throughout. If in doubt, go slower."
+17,3,WEDNESDAY,2026-11-18,EASY AEROBIC + LOWER ACCUMULATION,PM,PM - LOWER ACCUMULATION  |  MIN 6 H AFTER AM,1,A Back Squat,5 x 5,5 x 5,5 x 5,2 RIR,
+17,3,WEDNESDAY,2026-11-18,EASY AEROBIC + LOWER ACCUMULATION,PM,PM - LOWER ACCUMULATION  |  MIN 6 H AFTER AM,2,B Deadlift,4 x 4,4 x 4,4 x 4,2 RIR,
+17,3,WEDNESDAY,2026-11-18,EASY AEROBIC + LOWER ACCUMULATION,PM,PM - LOWER ACCUMULATION  |  MIN 6 H AFTER AM,3,C Bulgarian Split Squat,3 x 10 each leg,3 x 10 each leg,3 x 10 each leg,3 RIR,
+17,3,WEDNESDAY,2026-11-18,EASY AEROBIC + LOWER ACCUMULATION,PM,PM - LOWER ACCUMULATION  |  MIN 6 H AFTER AM,4,D Copenhagen Plank,3 x 25 s each side,3 x 25 s each side,3 x 25 s each side,-,
+17,3,WEDNESDAY,2026-11-18,EASY AEROBIC + LOWER ACCUMULATION,PM,PM - LOWER ACCUMULATION  |  MIN 6 H AFTER AM,,Note,,,,,"No sumo. Hands outside the knees, as competition requires. Build the habit now."
+18,3,THURSDAY,2026-11-19,COMPLETE REST,Main,NO SESSION,,Note,,,,,"Optional, ten to fifteen minutes: thoracic rotation, hip flexor lengthening, ankle dorsiflexion. Nothing that raises the heart rate. If it starts to feel like a session, stop."
+18,3,THURSDAY,2026-11-19,COMPLETE REST,Main,NO SESSION,,Note,,,,,Feeling good on a rest day is a sign the rest day is doing its job rather than a reason to add a session.
+18,3,THURSDAY,2026-11-19,COMPLETE REST,Main,NO SESSION,,Note,,,,,More progress tends to be lost to training through fatigue than to taking a day off.
+19,3,FRIDAY,2026-11-20,METCON MOVEMENT WORK,Main,CIRCUIT  |  REST 3 MIN BETWEEN ROUNDS,1,DB Bench Press,10 @ 7.5 kg,12 @ 12.5 kg,12 @ 15 kg,,
+19,3,FRIDAY,2026-11-20,METCON MOVEMENT WORK,Main,CIRCUIT  |  REST 3 MIN BETWEEN ROUNDS,2,DB Ground to Overhead,10 @ 7.5 kg,12 @ 12.5 kg,12 dual @ 15 kg,,
+19,3,FRIDAY,2026-11-20,METCON MOVEMENT WORK,Main,CIRCUIT  |  REST 3 MIN BETWEEN ROUNDS,3,Sandbag Squats,10 @ 20 kg,12 @ 30 kg,12 @ 50 kg,,
+19,3,FRIDAY,2026-11-20,METCON MOVEMENT WORK,Main,CIRCUIT  |  REST 3 MIN BETWEEN ROUNDS,4,Sandbag Carry (no rest),30 m @ 20 kg,30 m @ 30 kg,30 m @ 50 kg,,
+19,3,FRIDAY,2026-11-20,METCON MOVEMENT WORK,Main,CIRCUIT  |  REST 3 MIN BETWEEN ROUNDS,5,Rounds,3,4,4,,
+19,3,FRIDAY,2026-11-20,METCON MOVEMENT WORK,Main,CIRCUIT  |  REST 3 MIN BETWEEN ROUNDS,,Note,,,,,The carry follows the squats with no break. Do not set the bag down between them. That is the sequence you will meet in competition.
+19,3,FRIDAY,2026-11-20,METCON MOVEMENT WORK,Main,FINISHER,,Note,,,,,"300 m row, controlled. Not a time trial this phase."
+20,3,SATURDAY,2026-11-21,LONG AEROBIC + SKI INTRODUCTION,Main,RUN,1,Duration,60 min,70 min,80 min,,
+20,3,SATURDAY,2026-11-21,LONG AEROBIC + SKI INTRODUCTION,Main,RUN,2,at,easy aerobic,easy aerobic,easy aerobic,,
+20,3,SATURDAY,2026-11-21,LONG AEROBIC + SKI INTRODUCTION,Main,SKI - IMMEDIATELY AFTER,1,Duration,8 min,10 min,12 min,,
+20,3,SATURDAY,2026-11-21,LONG AEROBIC + SKI INTRODUCTION,Main,SKI - IMMEDIATELY AFTER,2,at,steady,steady,steady,,
+20,3,SATURDAY,2026-11-21,LONG AEROBIC + SKI INTRODUCTION,Main,SKI - IMMEDIATELY AFTER,,Note,,,,,Transition without pausing. Note how the first ninety seconds feel. That sensation is what the Development phase trains away.
+21,3,SUNDAY,2026-11-22,EASY AEROBIC,Main,,1,Duration,35 min,50 min,60 min,,
+21,3,SUNDAY,2026-11-22,EASY AEROBIC,Main,,2,Mode,walk / hike / bike,run / bike / hike,run / bike / hike,,
+21,3,SUNDAY,2026-11-22,EASY AEROBIC,Main,,,Note,,,,,"Conversational the entire time. If your legs are sore from yesterday, walking or riding instead of running is the better choice."
+22,4,MONDAY,2026-11-23,AEROBIC RUN + UPPER ACCUMULATION,AM,AM - AEROBIC RUN,1,Main,20 min easy,25 min easy,25 min easy,,
+22,4,MONDAY,2026-11-23,AEROBIC RUN + UPPER ACCUMULATION,AM,AM - AEROBIC RUN,,Note,,,,,Warm-up 8 min easy. Main set at conversational. Cool-down 5 min easy. Full sentences throughout.
+22,4,MONDAY,2026-11-23,AEROBIC RUN + UPPER ACCUMULATION,PM,PM - UPPER ACCUMULATION  |  MIN 6 H AFTER AM,1,A1 Push Press,3 x 6,3 x 6,3 x 6,4 RIR,
+22,4,MONDAY,2026-11-23,AEROBIC RUN + UPPER ACCUMULATION,PM,PM - UPPER ACCUMULATION  |  MIN 6 H AFTER AM,2,A2 Weighted Pull-Up or Heavy Row,3 x 8,3 x 8,3 x 8,3 RIR,
+22,4,MONDAY,2026-11-23,AEROBIC RUN + UPPER ACCUMULATION,PM,PM - UPPER ACCUMULATION  |  MIN 6 H AFTER AM,3,B1 DB Bench Press  (12.5 kg),2 x 12,2 x 12,2 x 12,-,
+22,4,MONDAY,2026-11-23,AEROBIC RUN + UPPER ACCUMULATION,PM,PM - UPPER ACCUMULATION  |  MIN 6 H AFTER AM,4,B2 Barbell Bent-Over Row,3 x 12,3 x 12,3 x 12,3 RIR,
+22,4,MONDAY,2026-11-23,AEROBIC RUN + UPPER ACCUMULATION,PM,PM - UPPER ACCUMULATION  |  MIN 6 H AFTER AM,5,C Half-Kneeling Z Press,3 x 10,3 x 10,3 x 10,3 RIR,
+22,4,MONDAY,2026-11-23,AEROBIC RUN + UPPER ACCUMULATION,PM,PM - UPPER ACCUMULATION  |  MIN 6 H AFTER AM,,Note,,,,,"Push press, not strict press."
+23,4,TUESDAY,2026-11-24,SKI TECHNIQUE + GRIP,Main,SKI - CONTINUOUS,1,Warm-up,4 min easy,4 min easy,4 min easy,,
+23,4,TUESDAY,2026-11-24,SKI TECHNIQUE + GRIP,Main,SKI - CONTINUOUS,2,Main,10 min,12 min,14 min,,
+23,4,TUESDAY,2026-11-24,SKI TECHNIQUE + GRIP,Main,SKI - CONTINUOUS,3,at,"steady, nasal-capable","steady, nasal-capable","steady, nasal-capable",,
+23,4,TUESDAY,2026-11-24,SKI TECHNIQUE + GRIP,Main,SKI - CONTINUOUS,4,Cool-down,4 min easy,4 min easy,4 min easy,,
+23,4,TUESDAY,2026-11-24,SKI TECHNIQUE + GRIP,Main,SKI - CONTINUOUS,,Note,,,,,Damper between 5 and 8. Stroke rate 34-42. Drive from the hip hinge and let the arms follow. Film yourself once this phase.
+23,4,TUESDAY,2026-11-24,SKI TECHNIQUE + GRIP,Main,GRIP BLOCK  |  12 MIN,1,Farmer Carry (heavy),4 x 40 m,4 x 40 m,4 x 40 m,-,
+23,4,TUESDAY,2026-11-24,SKI TECHNIQUE + GRIP,Main,GRIP BLOCK  |  12 MIN,2,Dead Hang,3 x max hold,3 x max hold,3 x max hold,-,
+23,4,TUESDAY,2026-11-24,SKI TECHNIQUE + GRIP,Main,GRIP BLOCK  |  12 MIN,3,Sandbag Bear-Hug Hold  (30 kg),3 x 40 s,3 x 40 s,3 x 40 s,-,
+24,4,WEDNESDAY,2026-11-25,EASY AEROBIC + LOWER ACCUMULATION,AM,AM - EASY AEROBIC  |  30 MIN,,Note,,,,,"Zone 2 run or bike. Conversational throughout. If in doubt, go slower."
+24,4,WEDNESDAY,2026-11-25,EASY AEROBIC + LOWER ACCUMULATION,PM,PM - LOWER ACCUMULATION  |  MIN 6 H AFTER AM,1,A Back Squat,3 x 6,3 x 6,3 x 6,4 RIR,
+24,4,WEDNESDAY,2026-11-25,EASY AEROBIC + LOWER ACCUMULATION,PM,PM - LOWER ACCUMULATION  |  MIN 6 H AFTER AM,2,B Deadlift,3 x 5,3 x 5,3 x 5,4 RIR,
+24,4,WEDNESDAY,2026-11-25,EASY AEROBIC + LOWER ACCUMULATION,PM,PM - LOWER ACCUMULATION  |  MIN 6 H AFTER AM,3,C Bulgarian Split Squat,3 x 10 each leg,3 x 10 each leg,3 x 10 each leg,3 RIR,
+24,4,WEDNESDAY,2026-11-25,EASY AEROBIC + LOWER ACCUMULATION,PM,PM - LOWER ACCUMULATION  |  MIN 6 H AFTER AM,4,D Copenhagen Plank,3 x 25 s each side,3 x 25 s each side,3 x 25 s each side,-,
+24,4,WEDNESDAY,2026-11-25,EASY AEROBIC + LOWER ACCUMULATION,PM,PM - LOWER ACCUMULATION  |  MIN 6 H AFTER AM,,Note,,,,,"No sumo. Hands outside the knees, as competition requires. Build the habit now."
+25,4,THURSDAY,2026-11-26,COMPLETE REST,Main,NO SESSION,,Note,,,,,"Optional, ten to fifteen minutes: thoracic rotation, hip flexor lengthening, ankle dorsiflexion. Nothing that raises the heart rate. If it starts to feel like a session, stop."
+25,4,THURSDAY,2026-11-26,COMPLETE REST,Main,NO SESSION,,Note,,,,,Feeling good on a rest day is a sign the rest day is doing its job rather than a reason to add a session.
+25,4,THURSDAY,2026-11-26,COMPLETE REST,Main,NO SESSION,,Note,,,,,More progress tends to be lost to training through fatigue than to taking a day off.
+26,4,FRIDAY,2026-11-27,METCON MOVEMENT WORK,Main,CIRCUIT  |  REST 3 MIN BETWEEN ROUNDS,1,DB Bench Press,10 @ 7.5 kg,12 @ 12.5 kg,12 @ 15 kg,,
+26,4,FRIDAY,2026-11-27,METCON MOVEMENT WORK,Main,CIRCUIT  |  REST 3 MIN BETWEEN ROUNDS,2,DB Ground to Overhead,10 @ 7.5 kg,12 @ 12.5 kg,12 dual @ 15 kg,,
+26,4,FRIDAY,2026-11-27,METCON MOVEMENT WORK,Main,CIRCUIT  |  REST 3 MIN BETWEEN ROUNDS,3,Sandbag Squats,10 @ 20 kg,12 @ 30 kg,12 @ 50 kg,,
+26,4,FRIDAY,2026-11-27,METCON MOVEMENT WORK,Main,CIRCUIT  |  REST 3 MIN BETWEEN ROUNDS,4,Sandbag Carry (no rest),30 m @ 20 kg,30 m @ 30 kg,30 m @ 50 kg,,
+26,4,FRIDAY,2026-11-27,METCON MOVEMENT WORK,Main,CIRCUIT  |  REST 3 MIN BETWEEN ROUNDS,5,Rounds,2,2,3,,
+26,4,FRIDAY,2026-11-27,METCON MOVEMENT WORK,Main,CIRCUIT  |  REST 3 MIN BETWEEN ROUNDS,,Note,,,,,The carry follows the squats with no break. Do not set the bag down between them. That is the sequence you will meet in competition.
+26,4,FRIDAY,2026-11-27,METCON MOVEMENT WORK,Main,FINISHER,,Note,,,,,"300 m row, controlled. Not a time trial this phase."
+27,4,SATURDAY,2026-11-28,LONG AEROBIC + SKI INTRODUCTION,Main,RUN,1,Duration,35 min,40 min,45 min,,
+27,4,SATURDAY,2026-11-28,LONG AEROBIC + SKI INTRODUCTION,Main,RUN,2,at,easy aerobic,easy aerobic,easy aerobic,,
+27,4,SATURDAY,2026-11-28,LONG AEROBIC + SKI INTRODUCTION,Main,SKI - IMMEDIATELY AFTER,1,Duration,4 min,5 min,6 min,,
+27,4,SATURDAY,2026-11-28,LONG AEROBIC + SKI INTRODUCTION,Main,SKI - IMMEDIATELY AFTER,2,at,steady,steady,steady,,
+27,4,SATURDAY,2026-11-28,LONG AEROBIC + SKI INTRODUCTION,Main,SKI - IMMEDIATELY AFTER,,Note,,,,,Transition without pausing. Note how the first ninety seconds feel. That sensation is what the Development phase trains away.
+28,4,SUNDAY,2026-11-29,EASY AEROBIC,Main,,1,Duration,25 min,30 min,35 min,,
+28,4,SUNDAY,2026-11-29,EASY AEROBIC,Main,,2,Mode,walk / hike / bike,run / bike / hike,run / bike / hike,,
+28,4,SUNDAY,2026-11-29,EASY AEROBIC,Main,,,Note,,,,,"Conversational the entire time. If your legs are sore from yesterday, walking or riding instead of running is the better choice."
+29,5,MONDAY,2026-11-30,THRESHOLD RUN + UPPER HEAVY,AM,AM - THRESHOLD RUN,1,Main,3 x 5 min,4 x 5 min,5 x 5 min,,
+29,5,MONDAY,2026-11-30,THRESHOLD RUN + UPPER HEAVY,AM,AM - THRESHOLD RUN,,Note,,,,,"Warm-up 10 min + 4 strides. Main set at 10 km race effort, 90 s jog. Cool-down 8 min easy. You should be able to speak a short sentence, not a long one. Comfortable talking means go faster. No talking at all means ease off - this is not an interval session."
+29,5,MONDAY,2026-11-30,THRESHOLD RUN + UPPER HEAVY,PM,PM - UPPER HEAVY  |  MIN 6 H AFTER AM,1,A1 Push Press,5 x 3,5 x 3,5 x 3,2 RIR,
+29,5,MONDAY,2026-11-30,THRESHOLD RUN + UPPER HEAVY,PM,PM - UPPER HEAVY  |  MIN 6 H AFTER AM,2,A2 Weighted Pull-Up or Heavy Row,5 x 5,5 x 5,5 x 5,2 RIR,
+29,5,MONDAY,2026-11-30,THRESHOLD RUN + UPPER HEAVY,PM,PM - UPPER HEAVY  |  MIN 6 H AFTER AM,3,B1 DB Bench Press  (12.5 kg),4 x 12,4 x 12,4 x 12,-,
+29,5,MONDAY,2026-11-30,THRESHOLD RUN + UPPER HEAVY,PM,PM - UPPER HEAVY  |  MIN 6 H AFTER AM,4,B2 Barbell Bent-Over Row,4 x 10,4 x 10,4 x 10,3 RIR,
+29,5,MONDAY,2026-11-30,THRESHOLD RUN + UPPER HEAVY,PM,PM - UPPER HEAVY  |  MIN 6 H AFTER AM,5,C Half-Kneeling Z Press,3 x 8,3 x 8,3 x 8,3 RIR,
+30,5,TUESDAY,2026-12-01,SKI DEVELOPMENT + GRIP,Main,SKI INTERVALS,1,Warm-up,5 min + 3 x 20 s brisk,5 min + 3 x 20 s brisk,5 min + 3 x 20 s brisk,,
+30,5,TUESDAY,2026-12-01,SKI DEVELOPMENT + GRIP,Main,SKI INTERVALS,2,Main,4 x 4 min,4 x 5 min,5 x 5 min,,
+30,5,TUESDAY,2026-12-01,SKI DEVELOPMENT + GRIP,Main,SKI INTERVALS,3,at,target competition pace,target competition pace,target competition pace,,
+30,5,TUESDAY,2026-12-01,SKI DEVELOPMENT + GRIP,Main,SKI INTERVALS,4,Recovery,90 s,90 s,90 s,,
+30,5,TUESDAY,2026-12-01,SKI DEVELOPMENT + GRIP,Main,SKI INTERVALS,,Note,,,,,Target competition pace is roughly 2:20 per 500 m for a well-trained athlete. Use your own figure from the Week 1 benchmark.
+30,5,TUESDAY,2026-12-01,SKI DEVELOPMENT + GRIP,Main,GRIP BLOCK  |  15 MIN,1,Farmer Carry (heavy),4 x 40 m,4 x 40 m,4 x 40 m,-,
+30,5,TUESDAY,2026-12-01,SKI DEVELOPMENT + GRIP,Main,GRIP BLOCK  |  15 MIN,2,Dead Hang,3 x max hold,3 x max hold,3 x max hold,-,
+30,5,TUESDAY,2026-12-01,SKI DEVELOPMENT + GRIP,Main,GRIP BLOCK  |  15 MIN,3,Sandbag Bear-Hug Hold  (30 kg),3 x 45 s,3 x 45 s,3 x 45 s,-,
+31,5,WEDNESDAY,2026-12-02,EASY AEROBIC + LOWER HEAVY,AM,AM - EASY AEROBIC  |  45-55 MIN,,Note,,,,,Zone 2 run or bike. Conversational the whole way. This session is not where fitness is won; it is where the base is maintained without cost.
+31,5,WEDNESDAY,2026-12-02,EASY AEROBIC + LOWER HEAVY,PM,PM - LOWER HEAVY  |  MIN 6 H AFTER AM,1,A Back Squat,5 x 2,5 x 2,5 x 2,2 RIR,
+31,5,WEDNESDAY,2026-12-02,EASY AEROBIC + LOWER HEAVY,PM,PM - LOWER HEAVY  |  MIN 6 H AFTER AM,2,B Deadlift - repeat-triple,"2 x [3, rest 60 s, 3]","2 x [3, rest 60 s, 3]","2 x [3, rest 60 s, 3]",2-3 RIR,
+31,5,WEDNESDAY,2026-12-02,EASY AEROBIC + LOWER HEAVY,PM,PM - LOWER HEAVY  |  MIN 6 H AFTER AM,3,C Bulgarian Split Squat,3 x 8 each leg,3 x 8 each leg,3 x 8 each leg,3 RIR,
+31,5,WEDNESDAY,2026-12-02,EASY AEROBIC + LOWER HEAVY,PM,PM - LOWER HEAVY  |  MIN 6 H AFTER AM,4,D Copenhagen Plank,3 x 30 s each side,3 x 30 s each side,3 x 30 s each side,-,
+31,5,WEDNESDAY,2026-12-02,EASY AEROBIC + LOWER HEAVY,PM,PM - LOWER HEAVY  |  MIN 6 H AFTER AM,,Note,,,,,The repeat-triple: work to a triple with two or three reps in the bank. Rest exactly sixty seconds. Repeat the same weight. That is one round. Three minutes between rounds.
+32,5,THURSDAY,2026-12-03,COMPLETE REST,Main,NO SESSION,,Note,,,,,"Optional, ten to fifteen minutes: thoracic rotation, hip flexor lengthening, ankle dorsiflexion. Nothing that raises the heart rate. If it starts to feel like a session, stop."
+32,5,THURSDAY,2026-12-03,COMPLETE REST,Main,NO SESSION,,Note,,,,,Feeling good on a rest day is a sign the rest day is doing its job rather than a reason to add a session.
+32,5,THURSDAY,2026-12-03,COMPLETE REST,Main,NO SESSION,,Note,,,,,More progress tends to be lost to training through fatigue than to taking a day off.
+33,5,FRIDAY,2026-12-04,METCON SPECIFIC,Main,CIRCUIT  |  REST 3 MIN BETWEEN ROUNDS,1,DB Bench Press,12 @ 7.5 kg,15 @ 12.5 kg,15 @ 15 kg,,
+33,5,FRIDAY,2026-12-04,METCON SPECIFIC,Main,CIRCUIT  |  REST 3 MIN BETWEEN ROUNDS,2,DB Ground to Overhead,12 @ 7.5 kg,15 @ 12.5 kg,15 dual @ 15 kg,,
+33,5,FRIDAY,2026-12-04,METCON SPECIFIC,Main,CIRCUIT  |  REST 3 MIN BETWEEN ROUNDS,3,Sandbag Squats,12 @ 20 kg,15 @ 30 kg,15 @ 50 kg,,
+33,5,FRIDAY,2026-12-04,METCON SPECIFIC,Main,CIRCUIT  |  REST 3 MIN BETWEEN ROUNDS,4,Sandbag Carry (no rest),30 m @ 20 kg,30 m @ 30 kg,30 m @ 50 kg,,
+33,5,FRIDAY,2026-12-04,METCON SPECIFIC,Main,CIRCUIT  |  REST 3 MIN BETWEEN ROUNDS,5,Rounds,3,4,5,,
+33,5,FRIDAY,2026-12-04,METCON SPECIFIC,Main,CIRCUIT  |  REST 3 MIN BETWEEN ROUNDS,,Note,,,,,"One full exhale on each squat ascent, without holding your breath at the bottom. Some guidance suggests nasal breathing through this block, but it limits airflow below what thirty loaded squats require, so a steady rhythm works better."
+33,5,FRIDAY,2026-12-04,METCON SPECIFIC,Main,FINISHER,,Note,,,,,"300 m row, hard."
+34,5,SATURDAY,2026-12-05,RUN-TO-SKI TRANSITION,Main,MAIN  |  REST 3 MIN BETWEEN ROUNDS,1,Run,600 m,800 m,800 m,,
+34,5,SATURDAY,2026-12-05,RUN-TO-SKI TRANSITION,Main,MAIN  |  REST 3 MIN BETWEEN ROUNDS,2,at,3 km race effort,3 km race effort,3 km race effort,,
+34,5,SATURDAY,2026-12-05,RUN-TO-SKI TRANSITION,Main,MAIN  |  REST 3 MIN BETWEEN ROUNDS,3,Ski (immediate),3 min,3 min,3 min,,
+34,5,SATURDAY,2026-12-05,RUN-TO-SKI TRANSITION,Main,MAIN  |  REST 3 MIN BETWEEN ROUNDS,4,at,target competition pace,target competition pace,target competition pace,,
+34,5,SATURDAY,2026-12-05,RUN-TO-SKI TRANSITION,Main,MAIN  |  REST 3 MIN BETWEEN ROUNDS,5,Rounds,3,4,5,,
+34,5,SATURDAY,2026-12-05,RUN-TO-SKI TRANSITION,Main,MAIN  |  REST 3 MIN BETWEEN ROUNDS,,Note,,,,,"Move from the run to the ski without pausing, as you would in competition."
+35,5,SUNDAY,2026-12-06,EASY AEROBIC,Main,,1,Duration,30-40 min,45-60 min,60-75 min,,
+35,5,SUNDAY,2026-12-06,EASY AEROBIC,Main,,2,Mode,walk / hike / bike,Zone 2 run / bike,Zone 2 run / bike,,
+35,5,SUNDAY,2026-12-06,EASY AEROBIC,Main,,,Note,,,,,Conversational the entire time. Running this session too quickly is the easiest way to compromise the following week.
+36,6,MONDAY,2026-12-07,THRESHOLD RUN + UPPER HEAVY,AM,AM - THRESHOLD RUN,1,Main,4 x 5 min,5 x 5 min,5 x 6 min,,
+36,6,MONDAY,2026-12-07,THRESHOLD RUN + UPPER HEAVY,AM,AM - THRESHOLD RUN,,Note,,,,,"Warm-up 10 min + 4 strides. Main set at 10 km race effort, 90 s jog. Cool-down 8 min easy. You should be able to speak a short sentence, not a long one. Comfortable talking means go faster. No talking at all means ease off - this is not an interval session."
+36,6,MONDAY,2026-12-07,THRESHOLD RUN + UPPER HEAVY,PM,PM - UPPER HEAVY  |  MIN 6 H AFTER AM,1,A1 Push Press,5 x 3,5 x 3,5 x 3,1 RIR,
+36,6,MONDAY,2026-12-07,THRESHOLD RUN + UPPER HEAVY,PM,PM - UPPER HEAVY  |  MIN 6 H AFTER AM,2,A2 Weighted Pull-Up or Heavy Row,5 x 5,5 x 5,5 x 5,2 RIR,
+36,6,MONDAY,2026-12-07,THRESHOLD RUN + UPPER HEAVY,PM,PM - UPPER HEAVY  |  MIN 6 H AFTER AM,3,B1 DB Bench Press  (12.5 kg),4 x 15,4 x 15,4 x 15,-,
+36,6,MONDAY,2026-12-07,THRESHOLD RUN + UPPER HEAVY,PM,PM - UPPER HEAVY  |  MIN 6 H AFTER AM,4,B2 Barbell Bent-Over Row,4 x 10,4 x 10,4 x 10,3 RIR,
+36,6,MONDAY,2026-12-07,THRESHOLD RUN + UPPER HEAVY,PM,PM - UPPER HEAVY  |  MIN 6 H AFTER AM,5,C Half-Kneeling Z Press,3 x 8,3 x 8,3 x 8,3 RIR,
+37,6,TUESDAY,2026-12-08,SKI DEVELOPMENT + GRIP,Main,SKI INTERVALS,1,Warm-up,5 min + 3 x 20 s brisk,5 min + 3 x 20 s brisk,5 min + 3 x 20 s brisk,,
+37,6,TUESDAY,2026-12-08,SKI DEVELOPMENT + GRIP,Main,SKI INTERVALS,2,Main,4 x 5 min,5 x 5 min,5 x 6 min,,
+37,6,TUESDAY,2026-12-08,SKI DEVELOPMENT + GRIP,Main,SKI INTERVALS,3,at,target competition pace,target competition pace,target competition pace,,
+37,6,TUESDAY,2026-12-08,SKI DEVELOPMENT + GRIP,Main,SKI INTERVALS,4,Recovery,90 s,90 s,90 s,,
+37,6,TUESDAY,2026-12-08,SKI DEVELOPMENT + GRIP,Main,SKI INTERVALS,,Note,,,,,Target competition pace is roughly 2:20 per 500 m for a well-trained athlete. Use your own figure from the Week 1 benchmark.
+37,6,TUESDAY,2026-12-08,SKI DEVELOPMENT + GRIP,Main,GRIP BLOCK  |  15 MIN,1,Farmer Carry (heavy),4 x 40 m,4 x 40 m,4 x 40 m,-,
+37,6,TUESDAY,2026-12-08,SKI DEVELOPMENT + GRIP,Main,GRIP BLOCK  |  15 MIN,2,Dead Hang,3 x max hold,3 x max hold,3 x max hold,-,
+37,6,TUESDAY,2026-12-08,SKI DEVELOPMENT + GRIP,Main,GRIP BLOCK  |  15 MIN,3,Sandbag Bear-Hug Hold  (30 kg),3 x 45 s,3 x 45 s,3 x 45 s,-,
+38,6,WEDNESDAY,2026-12-09,EASY AEROBIC + LOWER HEAVY,AM,AM - EASY AEROBIC  |  45-55 MIN,,Note,,,,,Zone 2 run or bike. Conversational the whole way. This session is not where fitness is won; it is where the base is maintained without cost.
+38,6,WEDNESDAY,2026-12-09,EASY AEROBIC + LOWER HEAVY,PM,PM - LOWER HEAVY  |  MIN 6 H AFTER AM,1,A Back Squat,5 x 2,5 x 2,5 x 2,1 RIR,
+38,6,WEDNESDAY,2026-12-09,EASY AEROBIC + LOWER HEAVY,PM,PM - LOWER HEAVY  |  MIN 6 H AFTER AM,2,B Deadlift - repeat-triple,"2 x [3, rest 60 s, 3]","2 x [3, rest 60 s, 3]","2 x [3, rest 60 s, 3]",2-3 RIR,
+38,6,WEDNESDAY,2026-12-09,EASY AEROBIC + LOWER HEAVY,PM,PM - LOWER HEAVY  |  MIN 6 H AFTER AM,3,C Bulgarian Split Squat,3 x 8 each leg,3 x 8 each leg,3 x 8 each leg,3 RIR,
+38,6,WEDNESDAY,2026-12-09,EASY AEROBIC + LOWER HEAVY,PM,PM - LOWER HEAVY  |  MIN 6 H AFTER AM,4,D Copenhagen Plank,3 x 30 s each side,3 x 30 s each side,3 x 30 s each side,-,
+38,6,WEDNESDAY,2026-12-09,EASY AEROBIC + LOWER HEAVY,PM,PM - LOWER HEAVY  |  MIN 6 H AFTER AM,,Note,,,,,The repeat-triple: work to a triple with two or three reps in the bank. Rest exactly sixty seconds. Repeat the same weight. That is one round. Three minutes between rounds.
+39,6,THURSDAY,2026-12-10,COMPLETE REST,Main,NO SESSION,,Note,,,,,"Optional, ten to fifteen minutes: thoracic rotation, hip flexor lengthening, ankle dorsiflexion. Nothing that raises the heart rate. If it starts to feel like a session, stop."
+39,6,THURSDAY,2026-12-10,COMPLETE REST,Main,NO SESSION,,Note,,,,,Feeling good on a rest day is a sign the rest day is doing its job rather than a reason to add a session.
+39,6,THURSDAY,2026-12-10,COMPLETE REST,Main,NO SESSION,,Note,,,,,More progress tends to be lost to training through fatigue than to taking a day off.
+40,6,FRIDAY,2026-12-11,METCON SPECIFIC,Main,CIRCUIT  |  REST 3 MIN BETWEEN ROUNDS,1,DB Bench Press,12 @ 7.5 kg,15 @ 12.5 kg,15 @ 15 kg,,
+40,6,FRIDAY,2026-12-11,METCON SPECIFIC,Main,CIRCUIT  |  REST 3 MIN BETWEEN ROUNDS,2,DB Ground to Overhead,12 @ 7.5 kg,15 @ 12.5 kg,15 dual @ 15 kg,,
+40,6,FRIDAY,2026-12-11,METCON SPECIFIC,Main,CIRCUIT  |  REST 3 MIN BETWEEN ROUNDS,3,Sandbag Squats,12 @ 20 kg,15 @ 30 kg,15 @ 50 kg,,
+40,6,FRIDAY,2026-12-11,METCON SPECIFIC,Main,CIRCUIT  |  REST 3 MIN BETWEEN ROUNDS,4,Sandbag Carry (no rest),30 m @ 20 kg,30 m @ 30 kg,30 m @ 50 kg,,
+40,6,FRIDAY,2026-12-11,METCON SPECIFIC,Main,CIRCUIT  |  REST 3 MIN BETWEEN ROUNDS,5,Rounds,3,4,5,,
+40,6,FRIDAY,2026-12-11,METCON SPECIFIC,Main,CIRCUIT  |  REST 3 MIN BETWEEN ROUNDS,,Note,,,,,"One full exhale on each squat ascent, without holding your breath at the bottom. Some guidance suggests nasal breathing through this block, but it limits airflow below what thirty loaded squats require, so a steady rhythm works better."
+40,6,FRIDAY,2026-12-11,METCON SPECIFIC,Main,FINISHER,,Note,,,,,"300 m row, hard."
+41,6,SATURDAY,2026-12-12,RUN-TO-SKI TRANSITION,Main,MAIN  |  REST 3 MIN BETWEEN ROUNDS,1,Run,600 m,800 m,800 m,,
+41,6,SATURDAY,2026-12-12,RUN-TO-SKI TRANSITION,Main,MAIN  |  REST 3 MIN BETWEEN ROUNDS,2,at,3 km race effort,3 km race effort,3 km race effort,,
+41,6,SATURDAY,2026-12-12,RUN-TO-SKI TRANSITION,Main,MAIN  |  REST 3 MIN BETWEEN ROUNDS,3,Ski (immediate),3 min,3 min,3 min,,
+41,6,SATURDAY,2026-12-12,RUN-TO-SKI TRANSITION,Main,MAIN  |  REST 3 MIN BETWEEN ROUNDS,4,at,target competition pace,target competition pace,target competition pace,,
+41,6,SATURDAY,2026-12-12,RUN-TO-SKI TRANSITION,Main,MAIN  |  REST 3 MIN BETWEEN ROUNDS,5,Rounds,3,4,5,,
+41,6,SATURDAY,2026-12-12,RUN-TO-SKI TRANSITION,Main,MAIN  |  REST 3 MIN BETWEEN ROUNDS,,Note,,,,,"Move from the run to the ski without pausing, as you would in competition."
+42,6,SUNDAY,2026-12-13,EASY AEROBIC,Main,,1,Duration,30-40 min,45-60 min,60-75 min,,
+42,6,SUNDAY,2026-12-13,EASY AEROBIC,Main,,2,Mode,walk / hike / bike,Zone 2 run / bike,Zone 2 run / bike,,
+42,6,SUNDAY,2026-12-13,EASY AEROBIC,Main,,,Note,,,,,Conversational the entire time. Running this session too quickly is the easiest way to compromise the following week.
+43,7,MONDAY,2026-12-14,THRESHOLD RUN + UPPER HEAVY,AM,AM - THRESHOLD RUN,1,Main,3 x 6 min,4 x 6 min,4 x 7 min,,
+43,7,MONDAY,2026-12-14,THRESHOLD RUN + UPPER HEAVY,AM,AM - THRESHOLD RUN,,Note,,,,,"Warm-up 10 min + 4 strides. Main set at 10 km race effort, 90 s jog. Cool-down 8 min easy. You should be able to speak a short sentence, not a long one. Comfortable talking means go faster. No talking at all means ease off - this is not an interval session."
+43,7,MONDAY,2026-12-14,THRESHOLD RUN + UPPER HEAVY,PM,PM - UPPER HEAVY  |  MIN 6 H AFTER AM,1,A1 Push Press,4 x 3,4 x 3,4 x 3,1 RIR,
+43,7,MONDAY,2026-12-14,THRESHOLD RUN + UPPER HEAVY,PM,PM - UPPER HEAVY  |  MIN 6 H AFTER AM,2,A2 Weighted Pull-Up or Heavy Row,5 x 5,5 x 5,5 x 5,2 RIR,
+43,7,MONDAY,2026-12-14,THRESHOLD RUN + UPPER HEAVY,PM,PM - UPPER HEAVY  |  MIN 6 H AFTER AM,3,B1 DB Bench Press  (12.5 kg),5 x 15,5 x 15,5 x 15,-,
+43,7,MONDAY,2026-12-14,THRESHOLD RUN + UPPER HEAVY,PM,PM - UPPER HEAVY  |  MIN 6 H AFTER AM,4,B2 Barbell Bent-Over Row,4 x 10,4 x 10,4 x 10,3 RIR,
+43,7,MONDAY,2026-12-14,THRESHOLD RUN + UPPER HEAVY,PM,PM - UPPER HEAVY  |  MIN 6 H AFTER AM,5,C Half-Kneeling Z Press,3 x 8,3 x 8,3 x 8,3 RIR,
+44,7,TUESDAY,2026-12-15,SKI DEVELOPMENT + GRIP,Main,SKI INTERVALS,1,Warm-up,5 min + 3 x 20 s brisk,5 min + 3 x 20 s brisk,5 min + 3 x 20 s brisk,,
+44,7,TUESDAY,2026-12-15,SKI DEVELOPMENT + GRIP,Main,SKI INTERVALS,2,Main,3 x 6 min,3 x 8 min,3 x 9 min,,
+44,7,TUESDAY,2026-12-15,SKI DEVELOPMENT + GRIP,Main,SKI INTERVALS,3,at,target competition pace,target competition pace,target competition pace,,
+44,7,TUESDAY,2026-12-15,SKI DEVELOPMENT + GRIP,Main,SKI INTERVALS,4,Recovery,90 s,90 s,90 s,,
+44,7,TUESDAY,2026-12-15,SKI DEVELOPMENT + GRIP,Main,SKI INTERVALS,,Note,,,,,Target competition pace is roughly 2:20 per 500 m for a well-trained athlete. Use your own figure from the Week 1 benchmark.
+44,7,TUESDAY,2026-12-15,SKI DEVELOPMENT + GRIP,Main,GRIP BLOCK  |  15 MIN,1,Farmer Carry (heavy),4 x 40 m,4 x 40 m,4 x 40 m,-,
+44,7,TUESDAY,2026-12-15,SKI DEVELOPMENT + GRIP,Main,GRIP BLOCK  |  15 MIN,2,Dead Hang,3 x max hold,3 x max hold,3 x max hold,-,
+44,7,TUESDAY,2026-12-15,SKI DEVELOPMENT + GRIP,Main,GRIP BLOCK  |  15 MIN,3,Sandbag Bear-Hug Hold  (30 kg),3 x 45 s,3 x 45 s,3 x 45 s,-,
+45,7,WEDNESDAY,2026-12-16,EASY AEROBIC + LOWER HEAVY,AM,AM - EASY AEROBIC  |  45-55 MIN,,Note,,,,,Zone 2 run or bike. Conversational the whole way. This session is not where fitness is won; it is where the base is maintained without cost.
+45,7,WEDNESDAY,2026-12-16,EASY AEROBIC + LOWER HEAVY,PM,PM - LOWER HEAVY  |  MIN 6 H AFTER AM,1,A Back Squat,4 x 2,4 x 2,4 x 2,1 RIR,
+45,7,WEDNESDAY,2026-12-16,EASY AEROBIC + LOWER HEAVY,PM,PM - LOWER HEAVY  |  MIN 6 H AFTER AM,2,B Deadlift - repeat-triple,"3 x [3, rest 60 s, 3]","3 x [3, rest 60 s, 3]","3 x [3, rest 60 s, 3]",2-3 RIR,
+45,7,WEDNESDAY,2026-12-16,EASY AEROBIC + LOWER HEAVY,PM,PM - LOWER HEAVY  |  MIN 6 H AFTER AM,3,C Bulgarian Split Squat,3 x 8 each leg,3 x 8 each leg,3 x 8 each leg,3 RIR,
+45,7,WEDNESDAY,2026-12-16,EASY AEROBIC + LOWER HEAVY,PM,PM - LOWER HEAVY  |  MIN 6 H AFTER AM,4,D Copenhagen Plank,3 x 30 s each side,3 x 30 s each side,3 x 30 s each side,-,
+45,7,WEDNESDAY,2026-12-16,EASY AEROBIC + LOWER HEAVY,PM,PM - LOWER HEAVY  |  MIN 6 H AFTER AM,,Note,,,,,The repeat-triple: work to a triple with two or three reps in the bank. Rest exactly sixty seconds. Repeat the same weight. That is one round. Three minutes between rounds.
+46,7,THURSDAY,2026-12-17,COMPLETE REST,Main,NO SESSION,,Note,,,,,"Optional, ten to fifteen minutes: thoracic rotation, hip flexor lengthening, ankle dorsiflexion. Nothing that raises the heart rate. If it starts to feel like a session, stop."
+46,7,THURSDAY,2026-12-17,COMPLETE REST,Main,NO SESSION,,Note,,,,,Feeling good on a rest day is a sign the rest day is doing its job rather than a reason to add a session.
+46,7,THURSDAY,2026-12-17,COMPLETE REST,Main,NO SESSION,,Note,,,,,More progress tends to be lost to training through fatigue than to taking a day off.
+47,7,FRIDAY,2026-12-18,METCON SPECIFIC,Main,CIRCUIT  |  REST 3 MIN BETWEEN ROUNDS,1,DB Bench Press,12 @ 7.5 kg,15 @ 12.5 kg,15 @ 15 kg,,
+47,7,FRIDAY,2026-12-18,METCON SPECIFIC,Main,CIRCUIT  |  REST 3 MIN BETWEEN ROUNDS,2,DB Ground to Overhead,12 @ 7.5 kg,15 @ 12.5 kg,15 dual @ 15 kg,,
+47,7,FRIDAY,2026-12-18,METCON SPECIFIC,Main,CIRCUIT  |  REST 3 MIN BETWEEN ROUNDS,3,Sandbag Squats,12 @ 20 kg,15 @ 30 kg,15 @ 50 kg,,
+47,7,FRIDAY,2026-12-18,METCON SPECIFIC,Main,CIRCUIT  |  REST 3 MIN BETWEEN ROUNDS,4,Sandbag Carry (no rest),30 m @ 20 kg,30 m @ 30 kg,30 m @ 50 kg,,
+47,7,FRIDAY,2026-12-18,METCON SPECIFIC,Main,CIRCUIT  |  REST 3 MIN BETWEEN ROUNDS,5,Rounds,4,5,5,,
+47,7,FRIDAY,2026-12-18,METCON SPECIFIC,Main,CIRCUIT  |  REST 3 MIN BETWEEN ROUNDS,,Note,,,,,"One full exhale on each squat ascent, without holding your breath at the bottom. Some guidance suggests nasal breathing through this block, but it limits airflow below what thirty loaded squats require, so a steady rhythm works better."
+47,7,FRIDAY,2026-12-18,METCON SPECIFIC,Main,FINISHER,,Note,,,,,"300 m row, hard."
+48,7,SATURDAY,2026-12-19,ENDURANCE ZONE - FULL REHEARSAL,Main,FULL ENDURANCE ZONE  |  24 MIN CAP,1,Run buy-in,2.4 km,3 km,3 km,,
+48,7,SATURDAY,2026-12-19,ENDURANCE ZONE - FULL REHEARSAL,Main,FULL ENDURANCE ZONE  |  24 MIN CAP,2,at,your chosen entry pace,your chosen entry pace,your chosen entry pace,,
+48,7,SATURDAY,2026-12-19,ENDURANCE ZONE - FULL REHEARSAL,Main,FULL ENDURANCE ZONE  |  24 MIN CAP,3,Then,max ski to cap,max ski to cap,max ski to cap,,
+48,7,SATURDAY,2026-12-19,ENDURANCE ZONE - FULL REHEARSAL,Main,FULL ENDURANCE ZONE  |  24 MIN CAP,4,Score,ski metres only,ski metres only,ski metres only,,
+48,7,SATURDAY,2026-12-19,ENDURANCE ZONE - FULL REHEARSAL,Main,FULL ENDURANCE ZONE  |  24 MIN CAP,,Note,,,,,Run the buy-in at the pace you intend to race and record ski distance at every 500 m. The shape of the decay curve shows whether the limiting factor is the transition or ski endurance.
+48,7,SATURDAY,2026-12-19,ENDURANCE ZONE - FULL REHEARSAL,Main,FULL ENDURANCE ZONE  |  24 MIN CAP,,Note,,,,,Repeat this in Week 9 at a different entry pace. Whichever produces more total ski metres is your race strategy.
+49,7,SUNDAY,2026-12-20,EASY AEROBIC,Main,,1,Duration,30-40 min,45-60 min,60-75 min,,
+49,7,SUNDAY,2026-12-20,EASY AEROBIC,Main,,2,Mode,walk / hike / bike,Zone 2 run / bike,Zone 2 run / bike,,
+49,7,SUNDAY,2026-12-20,EASY AEROBIC,Main,,,Note,,,,,Conversational the entire time. Running this session too quickly is the easiest way to compromise the following week.
+50,8,MONDAY,2026-12-21,THRESHOLD RUN + UPPER HEAVY,AM,AM - THRESHOLD RUN,1,Main,3 x 4 min,3 x 4 min,3 x 5 min,,
+50,8,MONDAY,2026-12-21,THRESHOLD RUN + UPPER HEAVY,AM,AM - THRESHOLD RUN,,Note,,,,,"Warm-up 10 min + 4 strides. Main set at 10 km race effort, 90 s jog. Cool-down 8 min easy. You should be able to speak a short sentence, not a long one. Comfortable talking means go faster. No talking at all means ease off - this is not an interval session."
+50,8,MONDAY,2026-12-21,THRESHOLD RUN + UPPER HEAVY,PM,PM - UPPER HEAVY  |  MIN 6 H AFTER AM,1,A1 Push Press,3 x 3,3 x 3,3 x 3,3 RIR,
+50,8,MONDAY,2026-12-21,THRESHOLD RUN + UPPER HEAVY,PM,PM - UPPER HEAVY  |  MIN 6 H AFTER AM,2,A2 Weighted Pull-Up or Heavy Row,5 x 5,5 x 5,5 x 5,2 RIR,
+50,8,MONDAY,2026-12-21,THRESHOLD RUN + UPPER HEAVY,PM,PM - UPPER HEAVY  |  MIN 6 H AFTER AM,3,B1 DB Bench Press  (12.5 kg),3 x 12,3 x 12,3 x 12,-,
+50,8,MONDAY,2026-12-21,THRESHOLD RUN + UPPER HEAVY,PM,PM - UPPER HEAVY  |  MIN 6 H AFTER AM,4,B2 Barbell Bent-Over Row,4 x 10,4 x 10,4 x 10,3 RIR,
+50,8,MONDAY,2026-12-21,THRESHOLD RUN + UPPER HEAVY,PM,PM - UPPER HEAVY  |  MIN 6 H AFTER AM,5,C Half-Kneeling Z Press,3 x 8,3 x 8,3 x 8,3 RIR,
+51,8,TUESDAY,2026-12-22,SKI DEVELOPMENT + GRIP,Main,SKI INTERVALS,1,Warm-up,5 min + 3 x 20 s brisk,5 min + 3 x 20 s brisk,5 min + 3 x 20 s brisk,,
+51,8,TUESDAY,2026-12-22,SKI DEVELOPMENT + GRIP,Main,SKI INTERVALS,2,Main,3 x 4 min,3 x 4 min,4 x 4 min,,
+51,8,TUESDAY,2026-12-22,SKI DEVELOPMENT + GRIP,Main,SKI INTERVALS,3,at,target competition pace,target competition pace,target competition pace,,
+51,8,TUESDAY,2026-12-22,SKI DEVELOPMENT + GRIP,Main,SKI INTERVALS,4,Recovery,90 s,90 s,90 s,,
+51,8,TUESDAY,2026-12-22,SKI DEVELOPMENT + GRIP,Main,SKI INTERVALS,,Note,,,,,Target competition pace is roughly 2:20 per 500 m for a well-trained athlete. Use your own figure from the Week 1 benchmark.
+51,8,TUESDAY,2026-12-22,SKI DEVELOPMENT + GRIP,Main,GRIP BLOCK  |  15 MIN,1,Farmer Carry (heavy),4 x 40 m,4 x 40 m,4 x 40 m,-,
+51,8,TUESDAY,2026-12-22,SKI DEVELOPMENT + GRIP,Main,GRIP BLOCK  |  15 MIN,2,Dead Hang,3 x max hold,3 x max hold,3 x max hold,-,
+51,8,TUESDAY,2026-12-22,SKI DEVELOPMENT + GRIP,Main,GRIP BLOCK  |  15 MIN,3,Sandbag Bear-Hug Hold  (30 kg),3 x 45 s,3 x 45 s,3 x 45 s,-,
+52,8,WEDNESDAY,2026-12-23,EASY AEROBIC + LOWER HEAVY,AM,AM - EASY AEROBIC  |  45-55 MIN,,Note,,,,,Zone 2 run or bike. Conversational the whole way. This session is not where fitness is won; it is where the base is maintained without cost.
+52,8,WEDNESDAY,2026-12-23,EASY AEROBIC + LOWER HEAVY,PM,PM - LOWER HEAVY  |  MIN 6 H AFTER AM,1,A Back Squat,3 x 2,3 x 2,3 x 2,3 RIR,
+52,8,WEDNESDAY,2026-12-23,EASY AEROBIC + LOWER HEAVY,PM,PM - LOWER HEAVY  |  MIN 6 H AFTER AM,2,B Deadlift - repeat-triple,"1 x [3, rest 60 s, 3]","1 x [3, rest 60 s, 3]","1 x [3, rest 60 s, 3]",2-3 RIR,
+52,8,WEDNESDAY,2026-12-23,EASY AEROBIC + LOWER HEAVY,PM,PM - LOWER HEAVY  |  MIN 6 H AFTER AM,3,C Bulgarian Split Squat,3 x 8 each leg,3 x 8 each leg,3 x 8 each leg,3 RIR,
+52,8,WEDNESDAY,2026-12-23,EASY AEROBIC + LOWER HEAVY,PM,PM - LOWER HEAVY  |  MIN 6 H AFTER AM,4,D Copenhagen Plank,3 x 30 s each side,3 x 30 s each side,3 x 30 s each side,-,
+52,8,WEDNESDAY,2026-12-23,EASY AEROBIC + LOWER HEAVY,PM,PM - LOWER HEAVY  |  MIN 6 H AFTER AM,,Note,,,,,The repeat-triple: work to a triple with two or three reps in the bank. Rest exactly sixty seconds. Repeat the same weight. That is one round. Three minutes between rounds.
+53,8,THURSDAY,2026-12-24,COMPLETE REST,Main,NO SESSION,,Note,,,,,"Optional, ten to fifteen minutes: thoracic rotation, hip flexor lengthening, ankle dorsiflexion. Nothing that raises the heart rate. If it starts to feel like a session, stop."
+53,8,THURSDAY,2026-12-24,COMPLETE REST,Main,NO SESSION,,Note,,,,,Feeling good on a rest day is a sign the rest day is doing its job rather than a reason to add a session.
+53,8,THURSDAY,2026-12-24,COMPLETE REST,Main,NO SESSION,,Note,,,,,More progress tends to be lost to training through fatigue than to taking a day off.
+54,8,FRIDAY,2026-12-25,METCON SPECIFIC,Main,CIRCUIT  |  REST 3 MIN BETWEEN ROUNDS,1,DB Bench Press,12 @ 7.5 kg,15 @ 12.5 kg,15 @ 15 kg,,
+54,8,FRIDAY,2026-12-25,METCON SPECIFIC,Main,CIRCUIT  |  REST 3 MIN BETWEEN ROUNDS,2,DB Ground to Overhead,12 @ 7.5 kg,15 @ 12.5 kg,15 dual @ 15 kg,,
+54,8,FRIDAY,2026-12-25,METCON SPECIFIC,Main,CIRCUIT  |  REST 3 MIN BETWEEN ROUNDS,3,Sandbag Squats,12 @ 20 kg,15 @ 30 kg,15 @ 50 kg,,
+54,8,FRIDAY,2026-12-25,METCON SPECIFIC,Main,CIRCUIT  |  REST 3 MIN BETWEEN ROUNDS,4,Sandbag Carry (no rest),30 m @ 20 kg,30 m @ 30 kg,30 m @ 50 kg,,
+54,8,FRIDAY,2026-12-25,METCON SPECIFIC,Main,CIRCUIT  |  REST 3 MIN BETWEEN ROUNDS,5,Rounds,2,3,3,,
+54,8,FRIDAY,2026-12-25,METCON SPECIFIC,Main,CIRCUIT  |  REST 3 MIN BETWEEN ROUNDS,,Note,,,,,"One full exhale on each squat ascent, without holding your breath at the bottom. Some guidance suggests nasal breathing through this block, but it limits airflow below what thirty loaded squats require, so a steady rhythm works better."
+54,8,FRIDAY,2026-12-25,METCON SPECIFIC,Main,FINISHER,,Note,,,,,"300 m row, hard."
+55,8,SATURDAY,2026-12-26,RUN-TO-SKI TRANSITION,Main,MAIN  |  REST 3 MIN BETWEEN ROUNDS,1,Run,600 m,800 m,800 m,,
+55,8,SATURDAY,2026-12-26,RUN-TO-SKI TRANSITION,Main,MAIN  |  REST 3 MIN BETWEEN ROUNDS,2,at,3 km race effort,3 km race effort,3 km race effort,,
+55,8,SATURDAY,2026-12-26,RUN-TO-SKI TRANSITION,Main,MAIN  |  REST 3 MIN BETWEEN ROUNDS,3,Ski (immediate),3 min,3 min,3 min,,
+55,8,SATURDAY,2026-12-26,RUN-TO-SKI TRANSITION,Main,MAIN  |  REST 3 MIN BETWEEN ROUNDS,4,at,target competition pace,target competition pace,target competition pace,,
+55,8,SATURDAY,2026-12-26,RUN-TO-SKI TRANSITION,Main,MAIN  |  REST 3 MIN BETWEEN ROUNDS,5,Rounds,2,3,3,,
+55,8,SATURDAY,2026-12-26,RUN-TO-SKI TRANSITION,Main,MAIN  |  REST 3 MIN BETWEEN ROUNDS,,Note,,,,,"Move from the run to the ski without pausing, as you would in competition."
+56,8,SUNDAY,2026-12-27,EASY AEROBIC,Main,,1,Duration,30-40 min,45-60 min,60-75 min,,
+56,8,SUNDAY,2026-12-27,EASY AEROBIC,Main,,2,Mode,walk / hike / bike,Zone 2 run / bike,Zone 2 run / bike,,
+56,8,SUNDAY,2026-12-27,EASY AEROBIC,Main,,,Note,,,,,Conversational the entire time. Running this session too quickly is the easiest way to compromise the following week.
+57,9,MONDAY,2026-12-28,3 KM SPECIFIC RUN + UPPER HEAVY,AM,AM - 3 KM SPECIFIC,1,Main,4 x 800 m,5 x 800 m,6 x 800 m,,
+57,9,MONDAY,2026-12-28,3 KM SPECIFIC RUN + UPPER HEAVY,AM,AM - 3 KM SPECIFIC,,Note,,,,,"Warm-up 12 min + 5 strides. Main set at target 3 km buy-in pace, 2 min jog. Cool-down 8 min easy. Run these at the exact pace you intend to use on the day. If you cannot hold it across the set, your entry pace is too aggressive."
+57,9,MONDAY,2026-12-28,3 KM SPECIFIC RUN + UPPER HEAVY,PM,PM - UPPER HEAVY  |  MIN 6 H AFTER AM,1,A Push Press - work to heavy single,1 RIR,1 RIR,1 RIR,5 min cap,
+57,9,MONDAY,2026-12-28,3 KM SPECIFIC RUN + UPPER HEAVY,PM,PM - UPPER HEAVY  |  MIN 6 H AFTER AM,2,B Push Press - back-off,3 x 3 @ 90%,3 x 3 @ 90%,3 x 3 @ 90%,-,
+57,9,MONDAY,2026-12-28,3 KM SPECIFIC RUN + UPPER HEAVY,PM,PM - UPPER HEAVY  |  MIN 6 H AFTER AM,3,C Weighted Pull-Up or Heavy Row,4 x 5,4 x 5,4 x 5,2 RIR,
+57,9,MONDAY,2026-12-28,3 KM SPECIFIC RUN + UPPER HEAVY,PM,PM - UPPER HEAVY  |  MIN 6 H AFTER AM,4,D DB Bench Press  (12.5 kg),5 x 15,5 x 15,5 x 15,-,
+57,9,MONDAY,2026-12-28,3 KM SPECIFIC RUN + UPPER HEAVY,PM,PM - UPPER HEAVY  |  MIN 6 H AFTER AM,,Note,,,,,"Five minutes including warm-up, exactly as the Strength Zone runs it. Rehearse the ramp, not just the lift."
+58,9,TUESDAY,2026-12-29,SKI THRESHOLD + GRIP,Main,SKI INTERVALS,1,Warm-up,5 min + strides,5 min + strides,5 min + strides,,
+58,9,TUESDAY,2026-12-29,SKI THRESHOLD + GRIP,Main,SKI INTERVALS,2,Main,3 x 6 min,3 x 8 min,2 x 12 min,,
+58,9,TUESDAY,2026-12-29,SKI THRESHOLD + GRIP,Main,SKI INTERVALS,3,at,target competition pace,target competition pace,target competition pace,,
+58,9,TUESDAY,2026-12-29,SKI THRESHOLD + GRIP,Main,SKI INTERVALS,4,Recovery,3 min,4 min,3 min,,
+58,9,TUESDAY,2026-12-29,SKI THRESHOLD + GRIP,Main,SKI INTERVALS,,Note,,,,,"Hold the pace to the end of every interval. A fast start followed by a fade trains the wrong thing - the zone scores total metres, not opening speed."
+58,9,TUESDAY,2026-12-29,SKI THRESHOLD + GRIP,Main,GRIP BLOCK  |  12 MIN,1,Farmer Carry (heavy),3 x 40 m,3 x 40 m,3 x 40 m,-,
+58,9,TUESDAY,2026-12-29,SKI THRESHOLD + GRIP,Main,GRIP BLOCK  |  12 MIN,2,Sandbag Bear-Hug Hold  (30 kg),3 x 45 s,3 x 45 s,3 x 45 s,-,
+59,9,WEDNESDAY,2026-12-30,EASY AEROBIC + STRENGTH SEQUENCE,AM,AM - EASY AEROBIC  |  40-50 MIN,,Note,,,,,Zone 2. Keep it genuinely easy - this afternoon is the most demanding session of your week.
+59,9,WEDNESDAY,2026-12-30,EASY AEROBIC + STRENGTH SEQUENCE,PM,"PM - FULL STRENGTH SEQUENCE  |  15 MIN, TIMED",1,0-5 1RM Shoulder to Overhead,warm-up included,warm-up included,warm-up included,-,
+59,9,WEDNESDAY,2026-12-30,EASY AEROBIC + STRENGTH SEQUENCE,PM,"PM - FULL STRENGTH SEQUENCE  |  15 MIN, TIMED",2,5-10 2RM Back Squat,warm-up included,warm-up included,warm-up included,-,
+59,9,WEDNESDAY,2026-12-30,EASY AEROBIC + STRENGTH SEQUENCE,PM,"PM - FULL STRENGTH SEQUENCE  |  15 MIN, TIMED",3,10-12 Deadlift warm-up,-,-,-,-,
+59,9,WEDNESDAY,2026-12-30,EASY AEROBIC + STRENGTH SEQUENCE,PM,"PM - FULL STRENGTH SEQUENCE  |  15 MIN, TIMED",4,12-13 Deadlift window 1,3 reps or singles,3 reps or singles,3 reps or singles,1 min,
+59,9,WEDNESDAY,2026-12-30,EASY AEROBIC + STRENGTH SEQUENCE,PM,"PM - FULL STRENGTH SEQUENCE  |  15 MIN, TIMED",5,13-14 Rest,-,-,-,-,
+59,9,WEDNESDAY,2026-12-30,EASY AEROBIC + STRENGTH SEQUENCE,PM,"PM - FULL STRENGTH SEQUENCE  |  15 MIN, TIMED",6,14-15 Deadlift window 2,3 reps or singles,3 reps or singles,3 reps or singles,1 min,
+59,9,WEDNESDAY,2026-12-30,EASY AEROBIC + STRENGTH SEQUENCE,PM,"PM - FULL STRENGTH SEQUENCE  |  15 MIN, TIMED",,Note,,,,,"Open window one at a weight you are ninety-five per cent confident of, since a miss costs half the component rather than the difference between two weights. Arrive warm, as five minutes per lift allows for two or three loaded singles and the attempt."
+60,9,THURSDAY,2026-12-31,COMPLETE REST,Main,NO SESSION,,Note,,,,,"Optional, ten to fifteen minutes: thoracic rotation, hip flexor lengthening, ankle dorsiflexion. Nothing that raises the heart rate. If it starts to feel like a session, stop."
+60,9,THURSDAY,2026-12-31,COMPLETE REST,Main,NO SESSION,,Note,,,,,Feeling good on a rest day is a sign the rest day is doing its job rather than a reason to add a session.
+60,9,THURSDAY,2026-12-31,COMPLETE REST,Main,NO SESSION,,Note,,,,,More progress tends to be lost to training through fatigue than to taking a day off.
+61,9,FRIDAY,2027-01-01,METCON X - FULL,Main,METCON X  |  25 MIN CAP  |  FOR TIME,1,Row,30 cal,35 cal,35 cal,,
+61,9,FRIDAY,2027-01-01,METCON X - FULL,Main,METCON X  |  25 MIN CAP  |  FOR TIME,2,DB Ground to Overhead,30 @ 7.5 kg,30 @ 12.5 kg,30 dual @ 15 kg,,
+61,9,FRIDAY,2027-01-01,METCON X - FULL,Main,METCON X  |  25 MIN CAP  |  FOR TIME,3,DB Bench Press,30 @ 7.5 kg,30 @ 12.5 kg,30 @ 15 kg,,
+61,9,FRIDAY,2027-01-01,METCON X - FULL,Main,METCON X  |  25 MIN CAP  |  FOR TIME,4,Sandbag Squats,30 @ 20 kg,30 @ 30 kg,30 @ 50 kg,,
+61,9,FRIDAY,2027-01-01,METCON X - FULL,Main,METCON X  |  25 MIN CAP  |  FOR TIME,5,Sandbag Carry,30 m @ 20 kg,30 m @ 30 kg,30 m @ 50 kg,,
+61,9,FRIDAY,2027-01-01,METCON X - FULL,Main,METCON X  |  25 MIN CAP  |  FOR TIME,6,Burpees over bench,30,30,30,,
+61,9,FRIDAY,2027-01-01,METCON X - FULL,Main,METCON X  |  25 MIN CAP  |  FOR TIME,7,Row,30 cal,35 cal,35 cal,,
+61,9,FRIDAY,2027-01-01,METCON X - FULL,Main,METCON X  |  25 MIN CAP  |  FOR TIME,,Note,,,,,"The opening row is the only place you control pace with any precision. Go out at an effort you could hold for the whole piece, not at what feels easy in the first thirty seconds."
+61,9,FRIDAY,2027-01-01,METCON X - FULL,Main,METCON X  |  25 MIN CAP  |  FOR TIME,,Note,,,,,Record your split at the end of each element. Where you lose time is more useful than the total.
+62,9,SATURDAY,2027-01-02,ENDURANCE ZONE - SECOND REHEARSAL,Main,FULL ENDURANCE ZONE  |  24 MIN CAP,1,Run buy-in,2.4 km,3 km,3 km,,
+62,9,SATURDAY,2027-01-02,ENDURANCE ZONE - SECOND REHEARSAL,Main,FULL ENDURANCE ZONE  |  24 MIN CAP,2,at,a faster entry than Week 7,a faster entry than Week 7,a faster entry than Week 7,,
+62,9,SATURDAY,2027-01-02,ENDURANCE ZONE - SECOND REHEARSAL,Main,FULL ENDURANCE ZONE  |  24 MIN CAP,3,Then,max ski to cap,max ski to cap,max ski to cap,,
+62,9,SATURDAY,2027-01-02,ENDURANCE ZONE - SECOND REHEARSAL,Main,FULL ENDURANCE ZONE  |  24 MIN CAP,4,Score,ski metres only,ski metres only,ski metres only,,
+62,9,SATURDAY,2027-01-02,ENDURANCE ZONE - SECOND REHEARSAL,Main,FULL ENDURANCE ZONE  |  24 MIN CAP,,Note,,,,,Record 500 m ski splits throughout. Total metres is the number that decides which strategy you take to the floor.
+63,9,SUNDAY,2027-01-03,EASY AEROBIC,Main,,1,Duration,30 min,40-50 min,50-60 min,,
+63,9,SUNDAY,2027-01-03,EASY AEROBIC,Main,,2,Mode,walk / bike,Zone 2 run / bike,Zone 2 run / bike,,
+63,9,SUNDAY,2027-01-03,EASY AEROBIC,Main,,,Note,,,,,"If Saturday was a full simulation, take today as a walk regardless of what the table says."
+64,10,MONDAY,2027-01-04,3 KM SPECIFIC RUN + UPPER HEAVY,AM,AM - 3 KM SPECIFIC,1,Main,3 x 1 km,4 x 1 km,5 x 1 km,,
+64,10,MONDAY,2027-01-04,3 KM SPECIFIC RUN + UPPER HEAVY,AM,AM - 3 KM SPECIFIC,,Note,,,,,"Warm-up 12 min + 5 strides. Main set at target 3 km buy-in pace, 2 min jog. Cool-down 8 min easy. Run these at the exact pace you intend to use on the day. If you cannot hold it across the set, your entry pace is too aggressive."
+64,10,MONDAY,2027-01-04,3 KM SPECIFIC RUN + UPPER HEAVY,PM,PM - UPPER HEAVY  |  MIN 6 H AFTER AM,1,A Push Press - work to heavy single,0-1 RIR,0-1 RIR,0-1 RIR,5 min cap,
+64,10,MONDAY,2027-01-04,3 KM SPECIFIC RUN + UPPER HEAVY,PM,PM - UPPER HEAVY  |  MIN 6 H AFTER AM,2,B Push Press - back-off,3 x 3 @ 90%,3 x 3 @ 90%,3 x 3 @ 90%,-,
+64,10,MONDAY,2027-01-04,3 KM SPECIFIC RUN + UPPER HEAVY,PM,PM - UPPER HEAVY  |  MIN 6 H AFTER AM,3,C Weighted Pull-Up or Heavy Row,4 x 5,4 x 5,4 x 5,2 RIR,
+64,10,MONDAY,2027-01-04,3 KM SPECIFIC RUN + UPPER HEAVY,PM,PM - UPPER HEAVY  |  MIN 6 H AFTER AM,4,D DB Bench Press  (12.5 kg),4 x 20,4 x 20,4 x 20,-,
+64,10,MONDAY,2027-01-04,3 KM SPECIFIC RUN + UPPER HEAVY,PM,PM - UPPER HEAVY  |  MIN 6 H AFTER AM,,Note,,,,,"Five minutes including warm-up, exactly as the Strength Zone runs it. Rehearse the ramp, not just the lift."
+65,10,TUESDAY,2027-01-05,SKI THRESHOLD + GRIP,Main,SKI INTERVALS,1,Warm-up,5 min + strides,5 min + strides,5 min + strides,,
+65,10,TUESDAY,2027-01-05,SKI THRESHOLD + GRIP,Main,SKI INTERVALS,2,Main,2 x 9 min,2 x 11 min,1 x 14 min + 1 x 8,,
+65,10,TUESDAY,2027-01-05,SKI THRESHOLD + GRIP,Main,SKI INTERVALS,3,at,target competition pace,target competition pace,target competition pace,,
+65,10,TUESDAY,2027-01-05,SKI THRESHOLD + GRIP,Main,SKI INTERVALS,4,Recovery,3 min,4 min,3 min,,
+65,10,TUESDAY,2027-01-05,SKI THRESHOLD + GRIP,Main,SKI INTERVALS,,Note,,,,,"Hold the pace to the end of every interval. A fast start followed by a fade trains the wrong thing - the zone scores total metres, not opening speed."
+65,10,TUESDAY,2027-01-05,SKI THRESHOLD + GRIP,Main,GRIP BLOCK  |  12 MIN,1,Farmer Carry (heavy),3 x 40 m,3 x 40 m,3 x 40 m,-,
+65,10,TUESDAY,2027-01-05,SKI THRESHOLD + GRIP,Main,GRIP BLOCK  |  12 MIN,2,Sandbag Bear-Hug Hold  (30 kg),3 x 45 s,3 x 45 s,3 x 45 s,-,
+66,10,WEDNESDAY,2027-01-06,EASY AEROBIC + STRENGTH SEQUENCE,AM,AM - EASY AEROBIC  |  40-50 MIN,,Note,,,,,Zone 2. Keep it genuinely easy - this afternoon is the most demanding session of your week.
+66,10,WEDNESDAY,2027-01-06,EASY AEROBIC + STRENGTH SEQUENCE,PM,"PM - FULL STRENGTH SEQUENCE  |  15 MIN, TIMED",1,0-5 1RM Shoulder to Overhead,warm-up included,warm-up included,warm-up included,-,
+66,10,WEDNESDAY,2027-01-06,EASY AEROBIC + STRENGTH SEQUENCE,PM,"PM - FULL STRENGTH SEQUENCE  |  15 MIN, TIMED",2,5-10 2RM Back Squat,warm-up included,warm-up included,warm-up included,-,
+66,10,WEDNESDAY,2027-01-06,EASY AEROBIC + STRENGTH SEQUENCE,PM,"PM - FULL STRENGTH SEQUENCE  |  15 MIN, TIMED",3,10-12 Deadlift warm-up,-,-,-,-,
+66,10,WEDNESDAY,2027-01-06,EASY AEROBIC + STRENGTH SEQUENCE,PM,"PM - FULL STRENGTH SEQUENCE  |  15 MIN, TIMED",4,12-13 Deadlift window 1,3 reps or singles,3 reps or singles,3 reps or singles,1 min,
+66,10,WEDNESDAY,2027-01-06,EASY AEROBIC + STRENGTH SEQUENCE,PM,"PM - FULL STRENGTH SEQUENCE  |  15 MIN, TIMED",5,13-14 Rest,-,-,-,-,
+66,10,WEDNESDAY,2027-01-06,EASY AEROBIC + STRENGTH SEQUENCE,PM,"PM - FULL STRENGTH SEQUENCE  |  15 MIN, TIMED",6,14-15 Deadlift window 2,3 reps or singles,3 reps or singles,3 reps or singles,1 min,
+66,10,WEDNESDAY,2027-01-06,EASY AEROBIC + STRENGTH SEQUENCE,PM,"PM - FULL STRENGTH SEQUENCE  |  15 MIN, TIMED",,Note,,,,,"Open window one at a weight you are ninety-five per cent confident of, since a miss costs half the component rather than the difference between two weights. Arrive warm, as five minutes per lift allows for two or three loaded singles and the attempt."
+67,10,THURSDAY,2027-01-07,COMPLETE REST,Main,NO SESSION,,Note,,,,,"Optional, ten to fifteen minutes: thoracic rotation, hip flexor lengthening, ankle dorsiflexion. Nothing that raises the heart rate. If it starts to feel like a session, stop."
+67,10,THURSDAY,2027-01-07,COMPLETE REST,Main,NO SESSION,,Note,,,,,Feeling good on a rest day is a sign the rest day is doing its job rather than a reason to add a session.
+67,10,THURSDAY,2027-01-07,COMPLETE REST,Main,NO SESSION,,Note,,,,,More progress tends to be lost to training through fatigue than to taking a day off.
+68,10,FRIDAY,2027-01-08,METCON X - FULL,Main,METCON X  |  25 MIN CAP  |  FOR TIME,1,Row,30 cal,35 cal,35 cal,,
+68,10,FRIDAY,2027-01-08,METCON X - FULL,Main,METCON X  |  25 MIN CAP  |  FOR TIME,2,DB Ground to Overhead,30 @ 7.5 kg,30 @ 12.5 kg,30 dual @ 15 kg,,
+68,10,FRIDAY,2027-01-08,METCON X - FULL,Main,METCON X  |  25 MIN CAP  |  FOR TIME,3,DB Bench Press,30 @ 7.5 kg,30 @ 12.5 kg,30 @ 15 kg,,
+68,10,FRIDAY,2027-01-08,METCON X - FULL,Main,METCON X  |  25 MIN CAP  |  FOR TIME,4,Sandbag Squats,30 @ 20 kg,30 @ 30 kg,30 @ 50 kg,,
+68,10,FRIDAY,2027-01-08,METCON X - FULL,Main,METCON X  |  25 MIN CAP  |  FOR TIME,5,Sandbag Carry,30 m @ 20 kg,30 m @ 30 kg,30 m @ 50 kg,,
+68,10,FRIDAY,2027-01-08,METCON X - FULL,Main,METCON X  |  25 MIN CAP  |  FOR TIME,6,Burpees over bench,30,30,30,,
+68,10,FRIDAY,2027-01-08,METCON X - FULL,Main,METCON X  |  25 MIN CAP  |  FOR TIME,7,Row,30 cal,35 cal,35 cal,,
+68,10,FRIDAY,2027-01-08,METCON X - FULL,Main,METCON X  |  25 MIN CAP  |  FOR TIME,,Note,,,,,"The opening row is the only place you control pace with any precision. Go out at an effort you could hold for the whole piece, not at what feels easy in the first thirty seconds."
+68,10,FRIDAY,2027-01-08,METCON X - FULL,Main,METCON X  |  25 MIN CAP  |  FOR TIME,,Note,,,,,Record your split at the end of each element. Where you lose time is more useful than the total.
+69,10,SATURDAY,2027-01-09,ENDURANCE ZONE - PACED,Main,FULL ENDURANCE ZONE  |  24 MIN CAP,1,Run buy-in,2.4 km,3 km,3 km,,
+69,10,SATURDAY,2027-01-09,ENDURANCE ZONE - PACED,Main,FULL ENDURANCE ZONE  |  24 MIN CAP,2,at,your chosen entry pace,your chosen entry pace,your chosen entry pace,,
+69,10,SATURDAY,2027-01-09,ENDURANCE ZONE - PACED,Main,FULL ENDURANCE ZONE  |  24 MIN CAP,3,Then,max ski to cap,max ski to cap,max ski to cap,,
+69,10,SATURDAY,2027-01-09,ENDURANCE ZONE - PACED,Main,FULL ENDURANCE ZONE  |  24 MIN CAP,4,Score,ski metres only,ski metres only,ski metres only,,
+69,10,SATURDAY,2027-01-09,ENDURANCE ZONE - PACED,Main,FULL ENDURANCE ZONE  |  24 MIN CAP,,Note,,,,,Record 500 m ski splits throughout. Total metres is the number that decides which strategy you take to the floor.
+70,10,SUNDAY,2027-01-10,EASY AEROBIC,Main,,1,Duration,30 min,40-50 min,50-60 min,,
+70,10,SUNDAY,2027-01-10,EASY AEROBIC,Main,,2,Mode,walk / bike,Zone 2 run / bike,Zone 2 run / bike,,
+70,10,SUNDAY,2027-01-10,EASY AEROBIC,Main,,,Note,,,,,"If Saturday was a full simulation, take today as a walk regardless of what the table says."
+71,11,MONDAY,2027-01-11,3 KM SPECIFIC RUN + UPPER HEAVY,AM,AM - 3 KM SPECIFIC,1,Main,3 x 800 m,3 x 1 km,4 x 1 km,,
+71,11,MONDAY,2027-01-11,3 KM SPECIFIC RUN + UPPER HEAVY,AM,AM - 3 KM SPECIFIC,,Note,,,,,"Warm-up 12 min + 5 strides. Main set at target 3 km buy-in pace, 2 min jog. Cool-down 8 min easy. Run these at the exact pace you intend to use on the day. If you cannot hold it across the set, your entry pace is too aggressive."
+71,11,MONDAY,2027-01-11,3 KM SPECIFIC RUN + UPPER HEAVY,PM,PM - UPPER HEAVY  |  MIN 6 H AFTER AM,1,A Push Press - work to heavy single,1 RIR,1 RIR,1 RIR,5 min cap,
+71,11,MONDAY,2027-01-11,3 KM SPECIFIC RUN + UPPER HEAVY,PM,PM - UPPER HEAVY  |  MIN 6 H AFTER AM,2,B Push Press - back-off,3 x 3 @ 90%,3 x 3 @ 90%,3 x 3 @ 90%,-,
+71,11,MONDAY,2027-01-11,3 KM SPECIFIC RUN + UPPER HEAVY,PM,PM - UPPER HEAVY  |  MIN 6 H AFTER AM,3,C Weighted Pull-Up or Heavy Row,4 x 5,4 x 5,4 x 5,2 RIR,
+71,11,MONDAY,2027-01-11,3 KM SPECIFIC RUN + UPPER HEAVY,PM,PM - UPPER HEAVY  |  MIN 6 H AFTER AM,4,D DB Bench Press  (12.5 kg),3 x 15,3 x 15,3 x 15,-,
+71,11,MONDAY,2027-01-11,3 KM SPECIFIC RUN + UPPER HEAVY,PM,PM - UPPER HEAVY  |  MIN 6 H AFTER AM,,Note,,,,,"Five minutes including warm-up, exactly as the Strength Zone runs it. Rehearse the ramp, not just the lift."
+72,11,TUESDAY,2027-01-12,SKI THRESHOLD + GRIP,Main,SKI INTERVALS,1,Warm-up,5 min + strides,5 min + strides,5 min + strides,,
+72,11,TUESDAY,2027-01-12,SKI THRESHOLD + GRIP,Main,SKI INTERVALS,2,Main,2 x 8 min,2 x 9 min,2 x 10 min,,
+72,11,TUESDAY,2027-01-12,SKI THRESHOLD + GRIP,Main,SKI INTERVALS,3,at,target competition pace,target competition pace,target competition pace,,
+72,11,TUESDAY,2027-01-12,SKI THRESHOLD + GRIP,Main,SKI INTERVALS,4,Recovery,3 min,4 min,3 min,,
+72,11,TUESDAY,2027-01-12,SKI THRESHOLD + GRIP,Main,SKI INTERVALS,,Note,,,,,"Hold the pace to the end of every interval. A fast start followed by a fade trains the wrong thing - the zone scores total metres, not opening speed."
+72,11,TUESDAY,2027-01-12,SKI THRESHOLD + GRIP,Main,GRIP BLOCK  |  12 MIN,1,Farmer Carry (heavy),3 x 40 m,3 x 40 m,3 x 40 m,-,
+72,11,TUESDAY,2027-01-12,SKI THRESHOLD + GRIP,Main,GRIP BLOCK  |  12 MIN,2,Sandbag Bear-Hug Hold  (30 kg),3 x 45 s,3 x 45 s,3 x 45 s,-,
+73,11,WEDNESDAY,2027-01-13,EASY AEROBIC + STRENGTH SEQUENCE,AM,AM - EASY AEROBIC  |  40-50 MIN,,Note,,,,,Zone 2. Keep it genuinely easy - this afternoon is the most demanding session of your week.
+73,11,WEDNESDAY,2027-01-13,EASY AEROBIC + STRENGTH SEQUENCE,PM,"PM - FULL STRENGTH SEQUENCE  |  15 MIN, TIMED",1,0-5 1RM Shoulder to Overhead,warm-up included,warm-up included,warm-up included,-,
+73,11,WEDNESDAY,2027-01-13,EASY AEROBIC + STRENGTH SEQUENCE,PM,"PM - FULL STRENGTH SEQUENCE  |  15 MIN, TIMED",2,5-10 2RM Back Squat,warm-up included,warm-up included,warm-up included,-,
+73,11,WEDNESDAY,2027-01-13,EASY AEROBIC + STRENGTH SEQUENCE,PM,"PM - FULL STRENGTH SEQUENCE  |  15 MIN, TIMED",3,10-12 Deadlift warm-up,-,-,-,-,
+73,11,WEDNESDAY,2027-01-13,EASY AEROBIC + STRENGTH SEQUENCE,PM,"PM - FULL STRENGTH SEQUENCE  |  15 MIN, TIMED",4,12-13 Deadlift window 1,3 reps or singles,3 reps or singles,3 reps or singles,1 min,
+73,11,WEDNESDAY,2027-01-13,EASY AEROBIC + STRENGTH SEQUENCE,PM,"PM - FULL STRENGTH SEQUENCE  |  15 MIN, TIMED",5,13-14 Rest,-,-,-,-,
+73,11,WEDNESDAY,2027-01-13,EASY AEROBIC + STRENGTH SEQUENCE,PM,"PM - FULL STRENGTH SEQUENCE  |  15 MIN, TIMED",6,14-15 Deadlift window 2,3 reps or singles,3 reps or singles,3 reps or singles,1 min,
+73,11,WEDNESDAY,2027-01-13,EASY AEROBIC + STRENGTH SEQUENCE,PM,"PM - FULL STRENGTH SEQUENCE  |  15 MIN, TIMED",,Note,,,,,"Open window one at a weight you are ninety-five per cent confident of, since a miss costs half the component rather than the difference between two weights. Arrive warm, as five minutes per lift allows for two or three loaded singles and the attempt."
+74,11,THURSDAY,2027-01-14,COMPLETE REST,Main,NO SESSION,,Note,,,,,"Optional, ten to fifteen minutes: thoracic rotation, hip flexor lengthening, ankle dorsiflexion. Nothing that raises the heart rate. If it starts to feel like a session, stop."
+74,11,THURSDAY,2027-01-14,COMPLETE REST,Main,NO SESSION,,Note,,,,,Feeling good on a rest day is a sign the rest day is doing its job rather than a reason to add a session.
+74,11,THURSDAY,2027-01-14,COMPLETE REST,Main,NO SESSION,,Note,,,,,More progress tends to be lost to training through fatigue than to taking a day off.
+75,11,FRIDAY,2027-01-15,METCON X - FULL,Main,METCON X  |  25 MIN CAP  |  FOR TIME,1,Row,30 cal,35 cal,35 cal,,
+75,11,FRIDAY,2027-01-15,METCON X - FULL,Main,METCON X  |  25 MIN CAP  |  FOR TIME,2,DB Ground to Overhead,30 @ 7.5 kg,30 @ 12.5 kg,30 dual @ 15 kg,,
+75,11,FRIDAY,2027-01-15,METCON X - FULL,Main,METCON X  |  25 MIN CAP  |  FOR TIME,3,DB Bench Press,30 @ 7.5 kg,30 @ 12.5 kg,30 @ 15 kg,,
+75,11,FRIDAY,2027-01-15,METCON X - FULL,Main,METCON X  |  25 MIN CAP  |  FOR TIME,4,Sandbag Squats,30 @ 20 kg,30 @ 30 kg,30 @ 50 kg,,
+75,11,FRIDAY,2027-01-15,METCON X - FULL,Main,METCON X  |  25 MIN CAP  |  FOR TIME,5,Sandbag Carry,30 m @ 20 kg,30 m @ 30 kg,30 m @ 50 kg,,
+75,11,FRIDAY,2027-01-15,METCON X - FULL,Main,METCON X  |  25 MIN CAP  |  FOR TIME,6,Burpees over bench,30,30,30,,
+75,11,FRIDAY,2027-01-15,METCON X - FULL,Main,METCON X  |  25 MIN CAP  |  FOR TIME,7,Row,30 cal,35 cal,35 cal,,
+75,11,FRIDAY,2027-01-15,METCON X - FULL,Main,METCON X  |  25 MIN CAP  |  FOR TIME,,Note,,,,,"The opening row is the only place you control pace with any precision. Go out at an effort you could hold for the whole piece, not at what feels easy in the first thirty seconds."
+75,11,FRIDAY,2027-01-15,METCON X - FULL,Main,METCON X  |  25 MIN CAP  |  FOR TIME,,Note,,,,,Record your split at the end of each element. Where you lose time is more useful than the total.
+76,11,SATURDAY,2027-01-16,FULL COMPETITION SIMULATION,Main,FULL SIMULATION  |  ALL THREE ZONES,1,Zone 1,Strength - 15 min,Strength - 15 min,Strength - 15 min,,
+76,11,SATURDAY,2027-01-16,FULL COMPETITION SIMULATION,Main,FULL SIMULATION  |  ALL THREE ZONES,2,Recovery,30-40 min,30-40 min,30-40 min,,
+76,11,SATURDAY,2027-01-16,FULL COMPETITION SIMULATION,Main,FULL SIMULATION  |  ALL THREE ZONES,3,Zone 2,Endurance - 24 min,Endurance - 24 min,Endurance - 24 min,,
+76,11,SATURDAY,2027-01-16,FULL COMPETITION SIMULATION,Main,FULL SIMULATION  |  ALL THREE ZONES,4,Recovery,30-40 min,30-40 min,30-40 min,,
+76,11,SATURDAY,2027-01-16,FULL COMPETITION SIMULATION,Main,FULL SIMULATION  |  ALL THREE ZONES,5,Zone 3,MetCon X - 25 min,MetCon X - 25 min,MetCon X - 25 min,,
+76,11,SATURDAY,2027-01-16,FULL COMPETITION SIMULATION,Main,FULL SIMULATION  |  ALL THREE ZONES,,Note,,,,,"Rehearse the whole day: warm-up timing before each zone, what you eat and drink in the gaps, kit changes and chalk. The logistics are as much a part of the test as the sessions."
+76,11,SATURDAY,2027-01-16,FULL COMPETITION SIMULATION,Main,FULL SIMULATION  |  ALL THREE ZONES,,Note,,,,,"Zone order on competition day is set by the event. If you can confirm it in advance, run the simulation in that order."
+77,11,SUNDAY,2027-01-17,EASY AEROBIC,Main,,1,Duration,30 min,40-50 min,50-60 min,,
+77,11,SUNDAY,2027-01-17,EASY AEROBIC,Main,,2,Mode,walk / bike,Zone 2 run / bike,Zone 2 run / bike,,
+77,11,SUNDAY,2027-01-17,EASY AEROBIC,Main,,,Note,,,,,"If Saturday was a full simulation, take today as a walk regardless of what the table says."
+78,12,MONDAY,2027-01-18,SHORT THRESHOLD RUN + UPPER PRIMER,AM,AM - SHORT THRESHOLD,1,Main,2 x 4 min,2 x 5 min,3 x 4 min,,
+78,12,MONDAY,2027-01-18,SHORT THRESHOLD RUN + UPPER PRIMER,AM,AM - SHORT THRESHOLD,,Note,,,,,"Warm-up 10 min easy + strides. Main set at 10 km race effort, 2 min jog. Cool-down 6 min easy. This should feel comfortably fast. If it feels hard, you are not tapered - reduce Wednesday further."
+78,12,MONDAY,2027-01-18,SHORT THRESHOLD RUN + UPPER PRIMER,PM,PM - UPPER PRIMER,1,A Push Press,3 x 2 @ 85%,3 x 2 @ 85%,3 x 2 @ 85%,4 RIR,
+78,12,MONDAY,2027-01-18,SHORT THRESHOLD RUN + UPPER PRIMER,PM,PM - UPPER PRIMER,2,B Row or Pull-Up,3 x 5,3 x 5,3 x 5,4 RIR,
+78,12,MONDAY,2027-01-18,SHORT THRESHOLD RUN + UPPER PRIMER,PM,PM - UPPER PRIMER,3,C DB Bench Press  (12.5 kg),2 x 10,2 x 10,2 x 10,-,
+78,12,MONDAY,2027-01-18,SHORT THRESHOLD RUN + UPPER PRIMER,PM,PM - UPPER PRIMER,,Note,,,,,"Loads stay heavy, volume halves. This maintains neural drive without structural breakdown."
+79,12,TUESDAY,2027-01-19,"SKI - SHORT, AT PACE",Main,,1,Warm-up,5 min easy,5 min easy,5 min easy,,
+79,12,TUESDAY,2027-01-19,"SKI - SHORT, AT PACE",Main,,2,Main,3 x 2 min,4 x 2 min,4 x 2 min,,
+79,12,TUESDAY,2027-01-19,"SKI - SHORT, AT PACE",Main,,3,at,target competition pace,target competition pace,target competition pace,,
+79,12,TUESDAY,2027-01-19,"SKI - SHORT, AT PACE",Main,,4,Recovery,2 min,2 min,2 min,,
+79,12,TUESDAY,2027-01-19,"SKI - SHORT, AT PACE",Main,,5,Cool-down,4 min easy,4 min easy,4 min easy,,
+79,12,TUESDAY,2027-01-19,"SKI - SHORT, AT PACE",Main,,,Note,,,,,"Check your damper setting and write it down, since venue machines vary and it saves a decision on the day."
+80,12,WEDNESDAY,2027-01-20,STRENGTH PRIMER - CONCENTRIC ONLY,Main,PRIMER  |  40 MIN,1,A Back Squat - to a comfortable double,1 x 2 @ 85%,1 x 2 @ 85%,1 x 2 @ 85%,4 RIR,
+80,12,WEDNESDAY,2027-01-20,STRENGTH PRIMER - CONCENTRIC ONLY,Main,PRIMER  |  40 MIN,2,B Deadlift - single window rehearsal,1 x 3 @ 85%,1 x 3 @ 85%,1 x 3 @ 85%,4 RIR,
+80,12,WEDNESDAY,2027-01-20,STRENGTH PRIMER - CONCENTRIC ONLY,Main,PRIMER  |  40 MIN,3,C Shoulder to Overhead,2 x 2 @ 85%,2 x 2 @ 85%,2 x 2 @ 85%,4 RIR,
+80,12,WEDNESDAY,2027-01-20,STRENGTH PRIMER - CONCENTRIC ONLY,Main,PRIMER  |  40 MIN,,Note,,,,,"No back-off sets and no accessories. Lower under control, without chasing slow eccentrics."
+80,12,WEDNESDAY,2027-01-20,STRENGTH PRIMER - CONCENTRIC ONLY,Main,PRIMER  |  40 MIN,,Note,,,,,Rehearse the deadlift as three singles with your hands staying in contact with the bar between reps. This is the last chance to make that automatic.
+81,12,THURSDAY,2027-01-21,COMPLETE REST,Main,NO SESSION,,Note,,,,,"Optional, ten to fifteen minutes: thoracic rotation, hip flexor lengthening, ankle dorsiflexion. Nothing that raises the heart rate. If it starts to feel like a session, stop."
+81,12,THURSDAY,2027-01-21,COMPLETE REST,Main,NO SESSION,,Note,,,,,Feeling good on a rest day is a sign the rest day is doing its job rather than a reason to add a session.
+81,12,THURSDAY,2027-01-21,COMPLETE REST,Main,NO SESSION,,Note,,,,,More progress tends to be lost to training through fatigue than to taking a day off.
+82,12,FRIDAY,2027-01-22,SHAKEOUT + MOVEMENT REHEARSAL,Main,SHAKEOUT  |  20 MIN TOTAL,1,Run,10 min easy,12 min easy,15 min easy,,
+82,12,FRIDAY,2027-01-22,SHAKEOUT + MOVEMENT REHEARSAL,Main,SHAKEOUT  |  20 MIN TOTAL,2,Strides,3 x 15 s,4 x 15 s,4 x 15 s,,
+82,12,FRIDAY,2027-01-22,SHAKEOUT + MOVEMENT REHEARSAL,Main,SHAKEOUT  |  20 MIN TOTAL,3,Ski,3 min easy,4 min easy,4 min easy,,
+82,12,FRIDAY,2027-01-22,SHAKEOUT + MOVEMENT REHEARSAL,Main,MOVEMENT REHEARSAL  |  LIGHT,,Note,,,,,"Five reps each of ground to overhead and burpee over bench, at light load. Movement patterns only. Stop while it still feels easy."
+82,12,FRIDAY,2027-01-22,SHAKEOUT + MOVEMENT REHEARSAL,Main,MOVEMENT REHEARSAL  |  LIGHT,,Note,,,,,"Pack your kit tonight. Chalk, knee sleeves (one pair, unrolled), belt, lifting shoes. No straps, no hand grips, no headphones - all banned on the floor."
+83,12,SATURDAY,2027-01-23,REST OR TRAVEL,Main,,,Note,,,,,Complete rest. A twenty minute walk is permitted and often helps if you are travelling or sitting for long periods.
+83,12,SATURDAY,2027-01-23,REST OR TRAVEL,Main,,,Note,,,,,Confirm your zone order and start times. Write your deadlift attempt weights on paper and put it in your bag.
+83,12,SATURDAY,2027-01-23,REST OR TRAVEL,Main,,,Note,,,,,"Eat normally. There is no loading protocol for this event - total working time across the three zones is around sixty-nine minutes spread over two and a half hours, so glycogen is not your limiter. Loading buys water weight and a heavy gut for no return."
+84,12,SUNDAY,2027-01-24,COMPETITION,Main,THE BRIEF,,Note,,,,,STRENGTH: arrive warm. Open the deadlift at a weight you are certain of - a miss costs half the component and can drop your Strength placing by dozens of positions.
+84,12,SUNDAY,2027-01-24,COMPETITION,Main,THE BRIEF,,Note,,,,,"ENDURANCE: one twenty-four minute effort, not two events. Run the buy-in at your rehearsed pace from the gun. Every second saved is roughly four metres of ski score."
+84,12,SUNDAY,2027-01-24,COMPETITION,Main,THE BRIEF,,Note,,,,,"METCON X: control the opening row. The sandbag squat into carry is the crux - one full exhale per ascent, no breath holding, and do not set the bag down."
+84,12,SUNDAY,2027-01-24,COMPETITION,Main,THE BRIEF,,Note,,,,,"Lowest total placing wins, so consistency across the three zones matters more than an outstanding result in one."
