@@ -137,10 +137,11 @@ export default function AdminUsersPage() {
 
     // Apply search filter
     if (searchQuery) {
+      const query = searchQuery.toLowerCase();
       filtered = filtered.filter(user =>
-        user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        user.firstName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        user.lastName.toLowerCase().includes(searchQuery.toLowerCase())
+        (user.email || '').toLowerCase().includes(query) ||
+        (user.firstName || '').toLowerCase().includes(query) ||
+        (user.lastName || '').toLowerCase().includes(query)
       );
     }
 
