@@ -6,6 +6,8 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 
+import { assertUser } from '@/lib/api-auth';
+
 const TrainingLoadAnalysisInputSchema = z.object({
   userName: z.string(),
   userGoal: z.string().describe("e.g. 'strength', 'endurance', 'hybrid'"),
@@ -29,6 +31,11 @@ export type TrainingLoadAnalysisOutput = z.infer<typeof TrainingLoadAnalysisOutp
 export async function analyzeTrainingLoad(
   input: TrainingLoadAnalysisInput,
 ): Promise<TrainingLoadAnalysisOutput> {
+  // Exported from a `'use server'` module that client components import, so this
+  // is a public HTTP endpoint with its id in the browser bundle. Guarded because
+  // every call spends Gemini quota: unauthenticated, it was an open drain on
+  // GEMINI_API_KEY. Mirrors the per-bucket limits the /api/ai/* routes use.
+  await assertUser('ai:training-load', { max: 10 });
   return trainingLoadAnalysisFlow(input);
 }
 

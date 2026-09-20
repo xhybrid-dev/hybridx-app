@@ -33,7 +33,7 @@ const app: FirebaseApp = !getApps().length ? initializeApp(firebaseConfig) : get
 
 // Enable IndexedDB offline persistence on the client; fall back to in-memory on the server.
 // initializeFirestore must be called before any getFirestore call on the same app instance.
-let db = (() => {
+const db = (() => {
   if (typeof window !== 'undefined') {
     try {
       return initializeFirestore(app, {

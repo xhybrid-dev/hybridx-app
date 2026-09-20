@@ -46,11 +46,58 @@ function fromFirestore(doc: any): WorkoutSession {
 
 const sessionsCollection = collection(db, 'workoutSessions');
 
-export async function getAllUserSessions(userId: string): Promise<WorkoutSession[]> {
+/**
+ * Default ceiling for the "recent sessions" read.
+ *
+ * Every document here embeds its whole workoutDetails object — the full exercise
+ * list, extendedExercises, timerRecord, stravaActivity — so an unbounded read of
+ * an athlete two years in is several MB and hundreds of read units, on every app
+ * open, on every device. 400 covers well over a year of daily training, which is
+ * more than the streak calculator, the four-week progress chart or the history
+ * list ever look at.
+ */
+export const RECENT_SESSIONS_LIMIT = 400;
+
+/**
+ * The athlete's most recent sessions, newest first.
+ *
+ * Prefer this over an unbounded read. If you need a specific window (a calendar
+ * month, a coaching range), query by date instead — the userId + workoutDate
+ * composite indexes in firestore.indexes.json serve both directions.
+ */
+export async function getRecentUserSessions(
+    userId: string,
+    max: number = RECENT_SESSIONS_LIMIT,
+): Promise<WorkoutSession[]> {
     const q = query(
         sessionsCollection,
         where('userId', '==', userId),
-        orderBy('workoutDate', 'desc')
+        orderBy('workoutDate', 'desc'),
+        limit(max),
+    );
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(fromFirestore);
+}
+
+/**
+ * The athlete's sessions whose workoutDate falls in [from, to], inclusive.
+ *
+ * Preferred over {@link getRecentUserSessions} whenever the caller knows the
+ * window it will actually read — the calendar's schedule view walks exactly one
+ * date range, so anything outside it was transferred and discarded. Served by
+ * the userId + workoutDate composite index in firestore.indexes.json.
+ */
+export async function getUserSessionsInRange(
+    userId: string,
+    from: Date,
+    to: Date,
+): Promise<WorkoutSession[]> {
+    const q = query(
+        sessionsCollection,
+        where('userId', '==', userId),
+        where('workoutDate', '>=', Timestamp.fromDate(from)),
+        where('workoutDate', '<=', Timestamp.fromDate(to)),
+        orderBy('workoutDate', 'desc'),
     );
     const snapshot = await getDocs(q);
     return snapshot.docs.map(fromFirestore);

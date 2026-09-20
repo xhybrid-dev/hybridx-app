@@ -18,7 +18,7 @@ import { getAuthInstance } from '@/lib/firebase';
 import { getPaginatedJournalEntries } from '@/services/journal-service-client';
 import { getUserClient } from '@/services/user-service-client';
 import { getProgramClient } from '@/services/program-service-client';
-import { getAllUserSessions } from '@/services/session-service-client';
+import { getRecentUserSessions } from '@/services/session-service-client';
 import { JournalEntryForm } from '@/components/journal-entry-form';
 import { JournalEntryCard } from '@/components/journal-entry-card';
 import { JournalTrendsCard } from '@/components/journal-trends-card';
@@ -54,13 +54,15 @@ export default function JournalPage() {
     try {
       const [user, sessions] = await Promise.all([
         getUserClient(uid),
-        getAllUserSessions(uid),
+        // Only the 10 newest are used below, so only 10 are fetched. This
+        // previously read the athlete's entire session history to slice it away.
+        getRecentUserSessions(uid, 10),
       ]);
       let program = null;
       if (user?.programId) {
         program = await getProgramClient(user.programId);
       }
-      setUserData(JSON.stringify({ user, program, allSessions: sessions.slice(0, 10) }));
+      setUserData(JSON.stringify({ user, program, allSessions: sessions }));
     } catch {
       // Non-fatal — AI insight will work with less context
     }

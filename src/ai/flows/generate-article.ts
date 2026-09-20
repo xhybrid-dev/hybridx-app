@@ -11,6 +11,8 @@
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
+import { assertUser } from '@/lib/api-auth';
+
 const GenerateArticleInputSchema = z.object({
   prompt: z.string().describe("The user's query or topic for the article."),
 });
@@ -26,6 +28,11 @@ export type GenerateArticleOutput = z.infer<typeof GenerateArticleOutputSchema>;
 
 
 export async function generateArticle(input: GenerateArticleInput): Promise<GenerateArticleOutput> {
+  // Exported from a `'use server'` module that client components import, so this
+  // is a public HTTP endpoint with its id in the browser bundle. Guarded because
+  // every call spends Gemini quota: unauthenticated, it was an open drain on
+  // GEMINI_API_KEY. Mirrors the per-bucket limits the /api/ai/* routes use.
+  await assertUser('ai:generate-article', { max: 5 });
   return generateArticleFlow(input);
 }
 

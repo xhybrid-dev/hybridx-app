@@ -40,6 +40,7 @@ import { StatsWidget } from '@/components/stats-widget';
 import { Badge } from '@/components/ui/badge';
 import { useUser } from '@/contexts/user-context';
 import { logger } from '@/lib/logger';
+import { aiCopyKey, readAiCopy, writeAiCopy } from '@/lib/ai-copy-cache';
 import { hasRuns, hasExercises } from '@/lib/type-guards';
 import { AndroidBetaBanner } from '@/components/android-beta-banner';
 import { TrialBanner } from '@/components/trial-banner';
@@ -148,24 +149,44 @@ export default function DashboardPage() {
     if (summaryFiredRef.current) return; // Don't fire more than once per mount
 
     summaryFiredRef.current = true;
+
+    const weeklyConsistency = [
+      `3 weeks ago: ${progressData[0]?.workouts ?? 0} workouts`,
+      `2 weeks ago: ${progressData[1]?.workouts ?? 0} workouts`,
+      `last week: ${progressData[2]?.workouts ?? 0} workouts`,
+      `this week so far: ${progressData[3]?.workouts ?? 0} workouts`,
+    ].join(', ');
+    // Only pass Strava activity when it loaded successfully (not when errored)
+    const stravaForSummary = stravaLoadError ? undefined : (todayStravaSummary ?? undefined);
+
+    // Cache-first: this copy is day-stable, and re-generating it on every mount
+    // made the dashboard wait on a model each time the athlete navigated back.
+    const cacheKey = aiCopyKey(
+      'dashboard', user.id,
+      program.name, todaysWorkout.day, weeklyConsistency,
+      stravaForSummary, coachNotes.promptText,
+    );
+    const cached = readAiCopy(cacheKey);
+    if (cached) {
+      setSummary(cached);
+      setSummaryLoading(false);
+      return;
+    }
+
     setSummaryLoading(true);
     dashboardSummary({
       userName: user.firstName,
       programName: program.name,
       daysCompleted: todaysWorkout.day > 0 ? todaysWorkout.day : 0,
-      weeklyConsistency: [
-        `3 weeks ago: ${progressData[0]?.workouts ?? 0} workouts`,
-        `2 weeks ago: ${progressData[1]?.workouts ?? 0} workouts`,
-        `last week: ${progressData[2]?.workouts ?? 0} workouts`,
-        `this week so far: ${progressData[3]?.workouts ?? 0} workouts`,
-      ].join(', '),
-      // Only pass Strava activity when it loaded successfully (not when errored)
-      todayStravaActivity: stravaLoadError ? undefined : (todayStravaSummary ?? undefined),
+      weeklyConsistency,
+      todayStravaActivity: stravaForSummary,
       coachNotes: coachNotes.promptText ?? undefined,
     }).then(result => {
       setSummary(result.summary);
+      writeAiCopy(cacheKey, result.summary);
     }).catch(aiError => {
       logger.error("Failed to generate AI dashboard summary:", aiError);
+      // Deliberately not cached — a fallback line should not stick for the day.
       setSummary("Here's your plan for today. Let's get it done.");
     }).finally(() => {
       setSummaryLoading(false);
@@ -179,10 +200,24 @@ export default function DashboardPage() {
       return;
     }
 
-    setWorkoutSummaryLoading(true);
     const runParts = hasRuns(todaysWorkout.workout) ? todaysWorkout.workout.runs.map(r => r.type) : [];
     const exParts = hasExercises(todaysWorkout.workout) ? todaysWorkout.workout.exercises.map(e => e.name) : [];
     const exercisesForSummary = [...runParts, ...exParts].join(', ');
+
+    const cacheKey = aiCopyKey(
+      'workout', user.id,
+      todaysWorkout.workout.title, exercisesForSummary,
+      todaysSession.notes, coachNotes.promptText,
+    );
+    const cached = readAiCopy(cacheKey);
+    if (cached) {
+      // Cache hit: render immediately and skip both the stagger and the call.
+      setWorkoutSummaryText(cached);
+      setWorkoutSummaryLoading(false);
+      return;
+    }
+
+    setWorkoutSummaryLoading(true);
 
     // Delay slightly so dashboard summary fires first, avoiding concurrent API calls
     const timer = setTimeout(() => {
@@ -194,8 +229,10 @@ export default function DashboardPage() {
         coachNotes: coachNotes.promptText ?? undefined,
       }).then(result => {
         setWorkoutSummaryText(result.summary);
+        writeAiCopy(cacheKey, result.summary);
       }).catch(aiError => {
         logger.error("Failed to generate AI workout summary:", aiError);
+        // Not cached: the fallback is the bare workout title, not coaching copy.
         setWorkoutSummaryText(todaysWorkout.workout!.title);
       }).finally(() => {
         setWorkoutSummaryLoading(false);

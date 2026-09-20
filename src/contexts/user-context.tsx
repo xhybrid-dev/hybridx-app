@@ -6,7 +6,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { getAuthInstance } from '@/lib/firebase';
 import { getUserClient } from '@/services/user-service-client';
 import { getProgramClient } from '@/services/program-service-client';
-import { getTodaysOneOffSession, getOrCreateProgramSessionsForDay, getAllUserSessions, type WorkoutSession } from '@/services/session-service-client';
+import { getTodaysOneOffSession, getOrCreateProgramSessionsForDay, getRecentUserSessions, type WorkoutSession } from '@/services/session-service-client';
 import { getWorkoutForDay } from '@/lib/workout-utils';
 import type { User, Program, Workout, RunningWorkout, WorkoutDay } from '@/models/types';
 import { calculateTrainingPaces } from '@/lib/pace-utils';
@@ -82,17 +82,22 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
                 setTrainingPaces(paces);
             }
 
-            // Sessions drive streaks and history only. A failure here (a Firestore
-            // index still building, a transient network drop) must not stop today's
-            // workout resolving below: the difference is a stale streak versus the
-            // app looking like the user has no program at all.
-            try {
-                const sessions = await getAllUserSessions(userId);
-                setAllSessions(sessions);
-                setStreakData(calculateStreakData(sessions));
-            } catch (error) {
-                logger.error('Failed to load workout sessions for streaks:', error);
-            }
+            // Sessions drive streaks and history only, so they are deliberately NOT
+            // awaited here: this read is the largest of the set, and awaiting it put
+            // it in front of the program resolution that decides what the dashboard
+            // actually shows. It now lands after the page is interactive.
+            //
+            // A failure (a Firestore index still building, a transient network drop)
+            // must not stop today's workout resolving below: the difference is a
+            // stale streak versus the app looking like the user has no program at all.
+            void getRecentUserSessions(userId)
+                .then(sessions => {
+                    setAllSessions(sessions);
+                    setStreakData(calculateStreakData(sessions));
+                })
+                .catch(error => {
+                    logger.error('Failed to load workout sessions for streaks:', error);
+                });
 
             // Update sync time
             OfflineCache.updateSyncTime();
@@ -103,14 +108,22 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
             const today = new Date();
             today.setHours(0, 0, 0, 0);
 
-            // Priority 1: Check for a one-off or custom workout for today
-            let oneOffSession: WorkoutSession | null = null;
-            try {
-                oneOffSession = await getTodaysOneOffSession(userId, today);
-            } catch (error) {
+            // The one-off check and the program fetch do not depend on each other, so
+            // they run together rather than as two serial round trips. A one-off wins
+            // if there is one, and the program is simply discarded in that case.
+            const [oneOffSession, fetchedProgram] = await Promise.all([
                 // Treated as "no one-off today" so the program schedule below still runs.
-                logger.error("Failed to check for today's one-off workout:", error);
-            }
+                getTodaysOneOffSession(userId, today).catch(error => {
+                    logger.error("Failed to check for today's one-off workout:", error);
+                    return null;
+                }),
+                currentUser.programId && currentUser.startDate && !currentUser.customProgram
+                    ? getProgramClient(currentUser.programId).catch(error => {
+                        logger.error('Failed to load the assigned program:', error);
+                        return null;
+                    })
+                    : Promise.resolve(null),
+            ]);
 
             if (oneOffSession) {
                 workoutSessions = [oneOffSession];
@@ -120,11 +133,11 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
                     sessions: oneOffSession.workoutDetails ? [oneOffSession.workoutDetails as Workout] : [],
                 };
             } else if (currentUser.programId && currentUser.startDate) {
-                if (currentUser.customProgram) {
-                    currentProgram = { id: currentUser.programId, workouts: currentUser.customProgram } as Program;
-                } else {
-                    currentProgram = await getProgramClient(currentUser.programId);
-                }
+                // A personalised customProgram overrides the stored plan, and is already
+                // on the user document — which is why the fetch above skips it entirely.
+                currentProgram = currentUser.customProgram
+                    ? ({ id: currentUser.programId, workouts: currentUser.customProgram } as Program)
+                    : fetchedProgram;
 
                 // Only proceed if a program was found
                 if (currentProgram) {
@@ -243,13 +256,27 @@ export function useUser() {
     return context;
 }
 
-// === PERFORMANCE OPTIMIZED SELECTOR HOOKS ===
-// Use these hooks to subscribe to specific parts of the context
-// This prevents unnecessary re-renders when unrelated state changes
+// === SELECTOR HOOKS ===
+//
+// These narrow what a component reads from the context, and give it a stable
+// object identity so passing the result as a prop, or into a dependency array,
+// does not churn.
+//
+// They do NOT prevent re-renders, which is what the comment here used to claim.
+// useContext re-renders every consumer whenever the provider's value changes,
+// regardless of which fields the consumer actually reads — so a component using
+// useUserProfile still re-renders when allSessions arrives. The useMemo only
+// stabilises the returned object, not the render.
+//
+// Getting the real behaviour means splitting UserProvider into separate contexts
+// (profile / today's workout / sessions) so unrelated updates cannot cross a
+// boundary. That is worth doing — allSessions and streakData update on every
+// refresh and currently re-render every useUserProfile consumer, the nav
+// included — but it is a change to the provider, not to these hooks.
 
 /**
- * Subscribe to user profile only
- * Re-renders only when user or trainingPaces change
+ * Subscribe to user profile only.
+ * Stable identity while user, trainingPaces and loading are unchanged.
  */
 export function useUserProfile() {
     const context = useContext(UserContext);
@@ -265,8 +292,8 @@ export function useUserProfile() {
 }
 
 /**
- * Subscribe to today's workout only
- * Re-renders only when todaysWorkout, todaysSession, or program change
+ * Subscribe to today's workout only.
+ * Stable identity while program, todaysWorkout and the day's sessions are unchanged.
  */
 export function useTodaysWorkout() {
     const context = useContext(UserContext);
@@ -284,8 +311,8 @@ export function useTodaysWorkout() {
 }
 
 /**
- * Subscribe to sessions and streaks only
- * Re-renders only when allSessions or streakData change
+ * Subscribe to sessions and streaks only.
+ * Stable identity while allSessions and streakData are unchanged.
  */
 export function useSessions() {
     const context = useContext(UserContext);
@@ -301,8 +328,8 @@ export function useSessions() {
 }
 
 /**
- * Subscribe to user and today's workout (common combination)
- * Re-renders only when user, program, todaysWorkout, or todaysSession change
+ * Subscribe to user and today's workout (common combination).
+ * Stable identity while those fields are unchanged.
  */
 export function useUserAndWorkout() {
     const context = useContext(UserContext);

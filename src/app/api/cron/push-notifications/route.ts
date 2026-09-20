@@ -8,14 +8,31 @@
 
 import { NextResponse } from 'next/server';
 import { requireCronAuth } from '@/lib/cron-auth';
+import { logger } from '@/lib/logger';
 import { getAdminDb } from '@/lib/firebase-admin';
 import { sendPushToUser } from '@/lib/web-push';
 import { notificationMessage } from '@/ai/flows/notification-message';
+import { mapWithLimit } from '@/lib/concurrency';
 import { Timestamp } from 'firebase-admin/firestore';
 import type { User, Workout, RunningWorkout } from '@/models/types';
 
 export const maxDuration = 300;
 export const dynamic = 'force-dynamic';
+
+/**
+ * Same ceiling daily-coach uses. This route previously fanned out with a bare
+ * Promise.all over every subscriber, which is the shape src/lib/concurrency.ts
+ * exists to prevent: at two thousand subscribers that was two thousand
+ * simultaneous Gemini calls plus ~6000 concurrent Firestore operations from one
+ * App Hosting instance, and the failure arrives all at once, at 3am.
+ */
+const AI_CONCURRENCY = 4;
+
+/** Leave headroom under maxDuration so the handler always returns a summary. */
+const TIME_BUDGET_MS = 150_000;
+
+/** One run's ceiling on subscribers; the rest are picked up next run. */
+const MAX_SUBSCRIBERS_PER_RUN = 500;
 
 function getTodayWorkout(
   workouts: (Workout | RunningWorkout)[],
@@ -58,8 +75,9 @@ export async function GET(request: Request) {
 
   const db = getAdminDb();
 
-  // Get all users with push subscriptions
-  const subsSnap = await db.collection('pushSubscriptions').get();
+  // Bounded: an unbounded scan grows with the subscriber list until the run no
+  // longer fits in maxDuration.
+  const subsSnap = await db.collection('pushSubscriptions').limit(MAX_SUBSCRIBERS_PER_RUN).get();
   if (subsSnap.empty) {
     return NextResponse.json({ message: 'No push subscribers' });
   }
@@ -72,14 +90,47 @@ export async function GET(request: Request) {
     userIds.map((id) => db.collection('users').doc(id).get())
   );
 
+  // Resolve every distinct programme once, rather than 1-2 document reads per
+  // subscriber inside the loop below. Programmes are shared across athletes, so
+  // that per-user lookup was almost entirely redundant. Same approach as
+  // daily-coach: check the public collection first, then only the ids it did not
+  // resolve against customPrograms.
+  const programIds = [...new Set(
+    userDocs.filter(d => d.exists).map(d => (d.data() as User).programId).filter((id): id is string => !!id)
+  )];
+  const programCache = new Map<string, Record<string, unknown> | undefined>();
+  if (programIds.length > 0) {
+    const publicSnaps = await Promise.all(
+      programIds.map(id => db.collection('programs').doc(id).get())
+    );
+    for (const snap of publicSnaps) {
+      if (snap.exists) programCache.set(snap.id, snap.data());
+    }
+    const unresolvedIds = programIds.filter(id => !programCache.has(id));
+    if (unresolvedIds.length > 0) {
+      const customSnaps = await Promise.all(
+        unresolvedIds.map(id => db.collection('customPrograms').doc(id).get())
+      );
+      for (const snap of customSnaps) {
+        if (snap.exists) programCache.set(snap.id, snap.data());
+      }
+    }
+  }
+
   const now = new Date();
   const threeDaysAgo = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
 
   const results = { sent: 0, skipped: 0, errors: 0 };
+  const startedAt = Date.now();
+  let skippedForTime = 0;
 
-  await Promise.all(
-    userDocs.map(async (userDoc) => {
+  await mapWithLimit(userDocs, AI_CONCURRENCY, async (userDoc) => {
       if (!userDoc.exists) return;
+
+      if (Date.now() - startedAt > TIME_BUDGET_MS) {
+        skippedForTime++;
+        return;
+      }
 
       const user = userDoc.data() as User;
       const userId = userDoc.id;
@@ -103,14 +154,10 @@ export async function GET(request: Request) {
               ? user.startDate.toDate()
               : new Date(user.startDate as any);
 
-          // Programs live in `programs` (public) or `customPrograms` (assigned
-          // to specific athletes) and share an id space — check both.
-          let programDoc = await db.collection('programs').doc(user.programId).get();
-          if (!programDoc.exists) {
-            programDoc = await db.collection('customPrograms').doc(user.programId).get();
-          }
-          if (programDoc.exists) {
-            const workouts = programDoc.data()?.workouts as (Workout | RunningWorkout)[];
+          // Resolved once above, across both collections.
+          const programData = programCache.get(user.programId);
+          if (programData) {
+            const workouts = programData.workouts as (Workout | RunningWorkout)[];
             const customWorkouts = user.customProgram;
             const allWorkouts = customWorkouts?.length ? customWorkouts : workouts;
             const todayWorkout = getTodayWorkout(allWorkouts ?? [], startDate);
@@ -160,11 +207,15 @@ export async function GET(request: Request) {
         if (sent > 0) results.sent++;
         else results.skipped++;
       } catch (err) {
-        console.error(`Push failed for user ${userId}:`, err);
+        logger.error(`Push failed for user ${userId}:`, err);
         results.errors++;
       }
-    })
-  );
+  });
 
-  return NextResponse.json({ success: true, results, subscribers: userIds.length });
+  return NextResponse.json({
+    success: true,
+    results,
+    subscribers: userIds.length,
+    skippedForTime,
+  });
 }

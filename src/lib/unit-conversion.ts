@@ -88,11 +88,11 @@ export function convertTextWithUnits(text: string, system: UnitSystem): string {
     // Capture groups: 1=number, 2=unit
     const weightRegex = /(\d+(?:\.\d+)?)\s*(kg|lbs?)/gi;
 
-    let convertedText = text.replace(weightRegex, (match, numStr, unit) => {
+    const convertedText = text.replace(weightRegex, (match, numStr, unit) => {
         const num = parseFloat(numStr);
         const isLbs = unit.toLowerCase().startsWith('lb');
         
-        let weightKg = isLbs ? num * 0.453592 : num;
+        const weightKg = isLbs ? num * 0.453592 : num;
 
         if (system === 'imperial') {
              const lbs = Math.round(weightKg * 2.20462);
@@ -120,11 +120,11 @@ export function convertDistanceInText(text: string, system: UnitSystem): string 
     // Capture groups: 1=number, 2=unit
     const distRegex = /(\d+(?:\.\d+)?)\s*(km|kilometers?|mi|miles?)/gi;
 
-    let convertedText = text.replace(distRegex, (match, numStr, unit) => {
+    const convertedText = text.replace(distRegex, (match, numStr, unit) => {
         const num = parseFloat(numStr);
         const isMiles = unit.toLowerCase().startsWith('mi');
         
-        let distKm = isMiles ? num * 1.60934 : num;
+        const distKm = isMiles ? num * 1.60934 : num;
 
         if (system === 'imperial') {
              const miles = distKm * 0.621371;

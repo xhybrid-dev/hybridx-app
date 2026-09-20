@@ -3,10 +3,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAllUsers, getUser } from '@/services/user-service';
 import { getAdminAuth } from '@/lib/firebase-admin';
+import { checkRateLimit } from '@/lib/rate-limit';
+import { logger } from '@/lib/logger';
 
 export async function POST(request: NextRequest) {
-    console.log('=== ADMIN USERS ALT API ROUTE START ===');
-
     try {
         const body = await request.json();
         const { idToken } = body;
@@ -15,50 +15,40 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'ID token required' }, { status: 400 });
         }
 
-        console.log('🔐 Verifying ID token directly...');
         // Verify the ID token directly
         const decodedToken = await getAdminAuth().verifyIdToken(idToken, true);
         const userId = decodedToken.uid;
-        console.log('✅ ID token verified for user:', userId);
 
-        console.log('👤 Fetching user data to check admin status...');
         // Get user data to check admin status
         const user = await getUser(userId);
-        console.log('📋 User data:', {
-            id: user?.id,
-            email: user?.email,
-            isAdmin: user?.isAdmin
-        });
 
         if (!user?.isAdmin) {
-            console.log('❌ User is not admin:', user?.isAdmin);
             return NextResponse.json({ error: 'Forbidden - Admin access required' }, { status: 403 });
         }
 
-        console.log('👑 User is admin, fetching all users...');
-        // If user is admin, fetch all users
-        const users = await getAllUsers();
-        console.log('✅ Successfully fetched', users.length, 'users');
-
-        // Log sample user data for debugging
-        if (users.length > 0) {
-            console.log('📋 First user sample:', {
-                id: users[0].id,
-                email: users[0].email,
-                firstName: users[0].firstName,
-                lastName: users[0].lastName,
-                isAdmin: users[0].isAdmin,
-                subscriptionStatus: users[0].subscriptionStatus
-            });
+        // Rate-limited like its cookie-based sibling, which goes through
+        // requireAdmin. This route had no limit at all.
+        const rl = checkRateLimit(`admin:users:list-alt:${userId}`, 60_000, 30);
+        if (!rl.allowed) {
+            return NextResponse.json(
+                { error: 'Too many requests. Please wait before trying again.' },
+                { status: 429, headers: { 'Retry-After': String(Math.ceil(rl.retryAfterMs / 1000)) } },
+            );
         }
+
+        const users = await getAllUsers();
+        // Counts only. This used to log a full user record (email, name) plus a
+        // "first user sample" straight to Cloud Logging via console.log, which
+        // bypasses the redaction logger.error applies in production.
+        logger.log(`[admin/users-alt] Returned ${users.length} users to ${userId}`);
 
         return NextResponse.json(users);
 
     } catch (error) {
-        console.error('❌ Error in admin users alt API:', error);
-        return NextResponse.json({
-            error: 'Internal server error',
-            details: error instanceof Error ? error.message : 'Unknown error'
-        }, { status: 500 });
+        // No `details` in the response: Firestore and Admin SDK messages carry
+        // collection names, index URLs and sometimes document paths. The server
+        // log is the right place for them.
+        logger.error('[admin/users-alt] POST failed:', error);
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }

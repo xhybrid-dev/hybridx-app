@@ -103,8 +103,24 @@ service cloud.firestore {
       // For read operations, check userId on the existing document
       allow get, list: if request.auth != null && resource.data.userId == request.auth.uid;
 
-      // For write operations, check userId on the incoming document
-      allow create, update, delete: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+
+      // Both sides are checked, like journalEntries below.
+      //
+      // `request.resource.data` on an update is the POST-write document, so
+      // testing it alone said only "the doc is mine afterwards" — a caller who
+      // updated someone else's session and set userId to their own uid in the
+      // same write passed, and took the document over. `resource.data` is the
+      // pre-write state, so requiring both means: it was already mine, and it
+      // stays mine.
+      allow update: if request.auth != null
+                    && resource.data.userId == request.auth.uid
+                    && request.resource.data.userId == request.auth.uid;
+
+      // `request.resource` does not exist on a delete, so the previous combined
+      // rule referenced a null field and denied every delete. Check the existing
+      // document instead.
+      allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
     }
 
     match /notifications/{notificationId} {
@@ -145,11 +161,33 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // The event document src/lib/analytics.ts writes, and nothing else. Rules
+    // cannot rate-limit, so for the unauthenticated clause the shape IS the
+    // limit: without it, any script could write unlimited documents of
+    // near-arbitrary size to this collection (a billing-abuse vector) and
+    // poison the admin analytics dashboard that reads it.
+    function isWellFormedAnalyticsEvent() {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['userId', 'event', 'properties', 'platform', 'sessionId', 'timestamp'])
+          && d.event is string && d.event.size() <= 64
+          && d.platform is string && d.platform.size() <= 16
+          && d.sessionId is string && d.sessionId.size() <= 64
+          && d.properties is map && d.properties.size() <= 20;
+    }
+
     match /analyticsEvents/{eventId} {
       // Authenticated users can write events tagged with their own UID
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
-      // Unauthenticated visitors can write anonymous events (e.g. signup page view before account exists)
-      allow create: if request.resource.data.userId == 'anonymous';
+      allow create: if request.auth != null
+                    && request.resource.data.userId == request.auth.uid
+                    && isWellFormedAnalyticsEvent();
+
+      // Unauthenticated visitors, only for the two events that genuinely fire
+      // before an account exists — both from the signup flow in
+      // src/components/auth-forms.tsx. Everything else needs a signed-in uid.
+      allow create: if request.resource.data.userId == 'anonymous'
+                    && request.resource.data.event in ['signup_page_viewed', 'onboarding_step_completed']
+                    && isWellFormedAnalyticsEvent();
+
       // No client reads, updates, or deletes — admin SDK only
     }
 

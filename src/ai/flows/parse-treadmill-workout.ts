@@ -20,6 +20,8 @@
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
+import { assertUser } from '@/lib/api-auth';
+
 const ParsedTreadmillSegmentSchema = z.object({
   name: z
     .string()
@@ -82,6 +84,11 @@ export type ParseTreadmillWorkoutOutput = z.infer<typeof ParseTreadmillWorkoutOu
 export async function parseTreadmillWorkout(
   input: ParseTreadmillWorkoutInput,
 ): Promise<ParseTreadmillWorkoutOutput> {
+  // Exported from a `'use server'` module that client components import, so this
+  // is a public HTTP endpoint with its id in the browser bundle. Guarded because
+  // every call spends Gemini quota: unauthenticated, it was an open drain on
+  // GEMINI_API_KEY. Mirrors the per-bucket limits the /api/ai/* routes use.
+  await assertUser('ai:parse-treadmill', { max: 10 });
   return parseTreadmillWorkoutFlow(input);
 }
 

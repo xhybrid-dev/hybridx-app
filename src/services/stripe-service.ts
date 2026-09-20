@@ -6,8 +6,15 @@ import Stripe from 'stripe';
 import { headers } from 'next/headers';
 import { getUser, updateUserAdmin } from './user-service';
 import { getAdminDb } from '@/lib/firebase-admin';
+import { assertUser } from '@/lib/api-auth';
 import { getAuth } from 'firebase-admin/auth';
 import type { User } from '@/models/types';
+
+// These are Server Actions — public HTTP endpoints whose ids ship in the client
+// bundle (this module is imported by src/app/(app)/subscription/page.tsx). They
+// mutate billing, so they take no userId: the subscription acted on is always
+// the caller's own, resolved from the session cookie. Accepting a userId let
+// anyone pause or cancel any paying customer's plan.
 
 
 // Ensure environment variables are loaded
@@ -44,15 +51,14 @@ function resolvePriceId(plan: SubscriptionPlan): string {
 }
 
 /**
- * Creates a Stripe Checkout session for a user to subscribe.
- * @param userId - The ID of the user in Firebase.
+ * Creates a Stripe Checkout session for the signed-in athlete to subscribe.
  * @param plan - Which billing cadence to check out with (defaults to monthly).
  * @returns An object containing the URL to the checkout session.
  */
 export async function createCheckoutSession(
-    userId: string,
     plan: SubscriptionPlan = 'monthly',
 ): Promise<{ url: string | null }> {
+    const { uid: userId } = await assertUser('stripe:checkout', { max: 10 });
     try {
         const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
         const stripeKey = process.env.STRIPE_SECRET_KEY;
@@ -143,11 +149,9 @@ export async function createCheckoutSession(
     }
 }
 
-/**
- * Pauses a user's subscription.
- * @param userId - The ID of the user in Firebase.
- */
-export async function pauseSubscription(userId: string): Promise<void> {
+/** Pauses the signed-in athlete's own subscription. */
+export async function pauseSubscription(): Promise<void> {
+    const { uid: userId } = await assertUser('stripe:pause', { max: 10 });
     const user = await getUser(userId);
     if (!user || !user.subscriptionId) {
         throw new Error('User or subscription not found.');
@@ -165,11 +169,9 @@ export async function pauseSubscription(userId: string): Promise<void> {
     }
 }
 
-/**
- * Cancels a user's subscription at the end of the current billing period.
- * @param userId - The ID of the user in Firebase.
- */
-export async function cancelSubscription(userId: string): Promise<void> {
+/** Cancels the signed-in athlete's own subscription at period end. */
+export async function cancelSubscription(): Promise<void> {
+    const { uid: userId } = await assertUser('stripe:cancel', { max: 10 });
     const user = await getUser(userId);
     if (!user || !user.subscriptionId) {
         throw new Error('User or subscription not found.');

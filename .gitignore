@@ -1,7 +1,11 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies
-/node_modules
+# Unanchored, so nested installs are covered too: functions/node_modules was
+# tracked (20,987 files, 240MB) because the leading slash pinned this to the repo
+# root, which slowed every clone, status and search — and hid that directory's
+# dependencies from the tooling that scans package.json.
+node_modules/
 /.pnp
 .pnp.*
 .yarn/*
@@ -47,6 +51,14 @@ next-env.d.ts
 # firebase
 firebase-debug.log
 firestore-debug.log
+
+# next-pwa build output. Regenerated into public/ by every build (and by App
+# Hosting on deploy), so a tracked copy only ever dirties the working tree.
+public/sw.js
+public/sw.js.map
+public/workbox-*.js
+public/workbox-*.js.map
+public/worker-*.js
 
 # Capacitor
 /android/app/build/

@@ -1,12 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { checkRateLimit } from '@/lib/rate-limit';
+import { logger } from '@/lib/logger';
 import { mailer as transporter, getFromAddress, isEmailConfigured } from '@/lib/email-service';
 import { captureLead } from '@/lib/marketing/capture';
+import { isPlausibleEmail } from '@/lib/marketing/subscribers';
 import { promises as fs } from 'fs';
 import path from 'path';
 
+/** Escape a value for interpolation into HTML text content. */
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, c => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!
+  ));
+}
+
 /**
- * Reads an HTML template from the public folder and replaces placeholders
+ * Reads an HTML template from the public folder and replaces placeholders.
+ *
+ * Values are escaped, and substituted through a replacer FUNCTION rather than a
+ * replacement string. Both matter: `name` arrives from an unauthenticated public
+ * form and was interpolated raw into the confirmation email AND into the
+ * notification sent to training@hybridx.club, so a submitter controlled markup
+ * and links in a message that appears to come from our own system. The function
+ * form additionally stops `$&`, `` $` `` and `$'` in the value being interpreted
+ * by String.replace as capture-group references.
  */
 async function getEmailTemplate(templateName: string, replacements: Record<string, string>) {
   try {
@@ -16,7 +33,8 @@ async function getEmailTemplate(templateName: string, replacements: Record<strin
     // Replace all occurrences of placeholders
     Object.entries(replacements).forEach(([key, value]) => {
       const regex = new RegExp(`{{${key}}}`, 'g');
-      html = html.replace(regex, value);
+      const safe = escapeHtml(value);
+      html = html.replace(regex, () => safe);
     });
 
     return html;
@@ -38,11 +56,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { email, name } = await request.json();
+    const body = await request.json().catch(() => null);
+    const email = typeof body?.email === 'string' ? body.email.trim() : '';
+    // Capped: `name` is interpolated into two emails, one of which goes to our
+    // own inbox, and arrived unbounded from a public form.
+    const name = typeof body?.name === 'string' ? body.name.trim().slice(0, 80) : '';
 
-    if (!email) {
+    // Validated rather than merely present: `email` is used as a recipient, a
+    // reply-to and part of a subject line.
+    if (!email || !isPlausibleEmail(email)) {
       return NextResponse.json(
-        { error: 'Email is required' },
+        { error: 'A valid email is required' },
         { status: 400 }
       );
     }
@@ -67,7 +91,7 @@ export async function POST(request: NextRequest) {
         subject: 'Android Beta Testing Request Received',
         html: userTemplate,
       });
-      console.log(`Beta testing confirmation email sent to ${email}`);
+      logger.log(`Beta testing confirmation email sent to ${email}`);
     }
 
     // Send notification email to admin
@@ -88,7 +112,7 @@ export async function POST(request: NextRequest) {
         html: adminTemplate,
         replyTo: email,
       });
-      console.log(`Beta testing admin notification sent for ${email}`);
+      logger.log(`Beta testing admin notification sent for ${email}`);
     }
 
     // Persist the lead. Until now this endpoint emailed a confirmation and then
@@ -100,7 +124,7 @@ export async function POST(request: NextRequest) {
     // opts in.
     await captureLead({
       email,
-      name,
+      name: name || undefined,
       route: 'beta-android',
       consentMethod: 'beta-request-form',
     });

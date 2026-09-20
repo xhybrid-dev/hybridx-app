@@ -2,9 +2,32 @@
 'use server';
 
 import { Timestamp } from 'firebase-admin/firestore';
+import { addDays } from 'date-fns';
 import { getAdminDb } from '@/lib/firebase-admin';
+import { assertUser } from '@/lib/api-auth';
 import type { WorkoutSession, WorkoutDay, ProgramType } from '@/models/types';
 import { z } from 'zod';
+
+/** Firestore caps a write batch at 500 operations; leave headroom. */
+const DELETE_BATCH_SIZE = 450;
+
+/**
+ * How far ahead clearFutureProgramSessions looks. The longest program in the
+ * catalogue is 84 days, so a year is generous while still bounding the read.
+ */
+const CLEAR_HORIZON_DAYS = 365;
+
+/** Logged extra activity rather than schedule — never cleared or rearranged. */
+const AD_HOC_PROGRAM_IDS = ['one-off-ai', 'custom-workout'];
+
+// Every function exported from this module is a public HTTP endpoint: it is a
+// `'use server'` file imported by client components, so Next.js registers each
+// export as a Server Action and ships its id in the browser bundle. All of them
+// write to workoutSessions with the Admin SDK, which bypasses firestore.rules.
+//
+// So none of them may take a `userId` argument. They resolve the caller from
+// the session cookie via assertUser() and operate on that uid only — otherwise
+// a single unauthenticated POST rewrites or deletes a named athlete's schedule.
 
 function fromFirestore(doc: any): WorkoutSession {
     const data = doc.data();
@@ -37,7 +60,8 @@ function deriveSessionProgramType(workout: WorkoutDay): ProgramType {
     return 'hyrox';
 }
 
-export async function getOrCreateWorkoutSessionAdmin(userId: string, programId: string, workoutDate: Date, workout: WorkoutDay): Promise<WorkoutSession> {
+export async function getOrCreateWorkoutSessionAdmin(programId: string, workoutDate: Date, workout: WorkoutDay): Promise<WorkoutSession> {
+    const { uid: userId } = await assertUser('sessions:get-or-create');
     const adminDb = getAdminDb();
     const sessionsCollectionAdmin = adminDb.collection('workoutSessions');
     const q = sessionsCollectionAdmin
@@ -80,7 +104,6 @@ export async function getOrCreateWorkoutSessionAdmin(userId: string, programId: 
 
 
 const SwapWorkoutsInputSchema = z.object({
-  userId: z.string(),
   programId: z.string(),
   date1: z.date(),
   workout1: z.any(), // Using any because Zod struggles with recursive types in zod-to-json-schema
@@ -91,10 +114,11 @@ const SwapWorkoutsInputSchema = z.object({
 type SwapWorkoutsInput = z.infer<typeof SwapWorkoutsInputSchema>;
 
 export async function swapWorkouts(input: SwapWorkoutsInput): Promise<void> {
+    const { uid: userId } = await assertUser('sessions:swap');
     const adminDb = getAdminDb();
     const sessionsCollection = adminDb.collection('workoutSessions');
-  
-    const { userId, programId, date1, workout1, date2, workout2 } = SwapWorkoutsInputSchema.parse(input);
+
+    const { programId, date1, workout1, date2, workout2 } = SwapWorkoutsInputSchema.parse(input);
   
     const batch = adminDb.batch();
   
@@ -164,7 +188,6 @@ const DayChangeSchema = z.object({
 });
 
 const SaveScheduleChangesInputSchema = z.object({
-  userId: z.string(),
   programId: z.string(),
   days: z.array(DayChangeSchema),
 });
@@ -180,7 +203,8 @@ type SaveScheduleChangesInput = z.infer<typeof SaveScheduleChangesInputSchema>;
  * the calling UI should never include those since only future/incomplete days can be rearranged.
  */
 export async function saveScheduleChanges(input: SaveScheduleChangesInput): Promise<void> {
-    const { userId, programId, days } = SaveScheduleChangesInputSchema.parse(input);
+    const { uid: userId } = await assertUser('sessions:save-schedule');
+    const { programId, days } = SaveScheduleChangesInputSchema.parse(input);
     const adminDb = getAdminDb();
     const sessionsCollection = adminDb.collection('workoutSessions');
     const batch = adminDb.batch();
@@ -256,7 +280,6 @@ export async function saveScheduleChanges(input: SaveScheduleChangesInput): Prom
 }
 
 const ClearFutureProgramSessionsInputSchema = z.object({
-  userId: z.string(),
   fromDate: z.date(),
 });
 
@@ -276,7 +299,8 @@ type ClearFutureProgramSessionsInput = z.infer<typeof ClearFutureProgramSessions
  * finished sessions are always preserved as workout history.
  */
 export async function clearFutureProgramSessions(input: ClearFutureProgramSessionsInput): Promise<void> {
-    const { userId, fromDate } = ClearFutureProgramSessionsInputSchema.parse(input);
+    const { uid: userId } = await assertUser('sessions:clear-future');
+    const { fromDate } = ClearFutureProgramSessionsInputSchema.parse(input);
     const adminDb = getAdminDb();
     const sessionsCollection = adminDb.collection('workoutSessions');
 
@@ -284,22 +308,34 @@ export async function clearFutureProgramSessions(input: ClearFutureProgramSessio
     // (workoutDate >=) with a not-in filter on a different field (programId), so the
     // one-off/custom-workout and finished-session exclusions are applied after the fetch
     // instead of in the query itself.
+    //
+    // Bounded at the far end as well: the open-ended `>=` collected every future
+    // doc the account had ever accumulated, across previous programs and
+    // drag-and-drop markers, which is how the delete set grew past what one
+    // batch can carry. No program here is longer than a year.
     const snapshot = await sessionsCollection
         .where('userId', '==', userId)
         .where('workoutDate', '>=', Timestamp.fromDate(fromDate))
+        .where('workoutDate', '<=', Timestamp.fromDate(addDays(fromDate, CLEAR_HORIZON_DAYS)))
         .get();
 
-    const batch = adminDb.batch();
-    let deletedCount = 0;
-    snapshot.docs.forEach(doc => {
+    const toDelete = snapshot.docs.filter(doc => {
         const data = doc.data();
-        if (['one-off-ai', 'custom-workout'].includes(data.programId)) return; // logged extra activity, not schedule
-        if (data.finishedAt) return; // preserve completed workout history
-        batch.delete(doc.ref);
-        deletedCount++;
+        if (AD_HOC_PROGRAM_IDS.includes(data.programId)) return false; // logged extra activity, not schedule
+        if (data.finishedAt) return false; // preserve completed workout history
+        return true;
     });
 
-    if (deletedCount > 0) {
+    // Chunked, because a Firestore batch takes at most 500 writes and a batch is
+    // atomic: one oversized commit failed with INVALID_ARGUMENT and deleted
+    // NOTHING. Both callers swallowed that throw, so the athlete silently kept a
+    // full set of stale docs shadowing their new program — the "freshly
+    // scheduled program has no workouts" report this function exists to prevent.
+    for (let i = 0; i < toDelete.length; i += DELETE_BATCH_SIZE) {
+        const batch = adminDb.batch();
+        for (const doc of toDelete.slice(i, i + DELETE_BATCH_SIZE)) {
+            batch.delete(doc.ref);
+        }
         await batch.commit();
     }
 }
