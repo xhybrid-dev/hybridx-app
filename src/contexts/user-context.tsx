@@ -6,7 +6,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { getAuthInstance } from '@/lib/firebase';
 import { getUserClient } from '@/services/user-service-client';
 import { getProgramClient } from '@/services/program-service-client';
-import { getTodaysOneOffSession, getOrCreateProgramSessionsForDay, getAllUserSessions, type WorkoutSession } from '@/services/session-service-client';
+import { getTodaysOneOffSession, getOrCreateProgramSessionsForDay, getRecentUserSessions, type WorkoutSession } from '@/services/session-service-client';
 import { getWorkoutForDay } from '@/lib/workout-utils';
 import type { User, Program, Workout, RunningWorkout, WorkoutDay } from '@/models/types';
 import { calculateTrainingPaces } from '@/lib/pace-utils';
@@ -82,17 +82,22 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
                 setTrainingPaces(paces);
             }
 
-            // Sessions drive streaks and history only. A failure here (a Firestore
-            // index still building, a transient network drop) must not stop today's
-            // workout resolving below: the difference is a stale streak versus the
-            // app looking like the user has no program at all.
-            try {
-                const sessions = await getAllUserSessions(userId);
-                setAllSessions(sessions);
-                setStreakData(calculateStreakData(sessions));
-            } catch (error) {
-                logger.error('Failed to load workout sessions for streaks:', error);
-            }
+            // Sessions drive streaks and history only, so they are deliberately NOT
+            // awaited here: this read is the largest of the set, and awaiting it put
+            // it in front of the program resolution that decides what the dashboard
+            // actually shows. It now lands after the page is interactive.
+            //
+            // A failure (a Firestore index still building, a transient network drop)
+            // must not stop today's workout resolving below: the difference is a
+            // stale streak versus the app looking like the user has no program at all.
+            void getRecentUserSessions(userId)
+                .then(sessions => {
+                    setAllSessions(sessions);
+                    setStreakData(calculateStreakData(sessions));
+                })
+                .catch(error => {
+                    logger.error('Failed to load workout sessions for streaks:', error);
+                });
 
             // Update sync time
             OfflineCache.updateSyncTime();
@@ -103,14 +108,22 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
             const today = new Date();
             today.setHours(0, 0, 0, 0);
 
-            // Priority 1: Check for a one-off or custom workout for today
-            let oneOffSession: WorkoutSession | null = null;
-            try {
-                oneOffSession = await getTodaysOneOffSession(userId, today);
-            } catch (error) {
+            // The one-off check and the program fetch do not depend on each other, so
+            // they run together rather than as two serial round trips. A one-off wins
+            // if there is one, and the program is simply discarded in that case.
+            const [oneOffSession, fetchedProgram] = await Promise.all([
                 // Treated as "no one-off today" so the program schedule below still runs.
-                logger.error("Failed to check for today's one-off workout:", error);
-            }
+                getTodaysOneOffSession(userId, today).catch(error => {
+                    logger.error("Failed to check for today's one-off workout:", error);
+                    return null;
+                }),
+                currentUser.programId && currentUser.startDate && !currentUser.customProgram
+                    ? getProgramClient(currentUser.programId).catch(error => {
+                        logger.error('Failed to load the assigned program:', error);
+                        return null;
+                    })
+                    : Promise.resolve(null),
+            ]);
 
             if (oneOffSession) {
                 workoutSessions = [oneOffSession];
@@ -120,11 +133,11 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
                     sessions: oneOffSession.workoutDetails ? [oneOffSession.workoutDetails as Workout] : [],
                 };
             } else if (currentUser.programId && currentUser.startDate) {
-                if (currentUser.customProgram) {
-                    currentProgram = { id: currentUser.programId, workouts: currentUser.customProgram } as Program;
-                } else {
-                    currentProgram = await getProgramClient(currentUser.programId);
-                }
+                // A personalised customProgram overrides the stored plan, and is already
+                // on the user document — which is why the fetch above skips it entirely.
+                currentProgram = currentUser.customProgram
+                    ? ({ id: currentUser.programId, workouts: currentUser.customProgram } as Program)
+                    : fetchedProgram;
 
                 // Only proceed if a program was found
                 if (currentProgram) {

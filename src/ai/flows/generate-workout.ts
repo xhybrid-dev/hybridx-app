@@ -12,6 +12,8 @@ import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 import { ExerciseSchema } from '@/ai/schemas';
 
+import { assertUser } from '@/lib/api-auth';
+
 const GenerateWorkoutInputSchema = z.object({
   userName: z.string().describe("The user's first name."),
   experience: z.enum(['beginner', 'intermediate', 'advanced']).describe('The user fitness experience level.'),
@@ -27,6 +29,11 @@ const GenerateWorkoutOutputSchema = z.object({
 export type GenerateWorkoutOutput = z.infer<typeof GenerateWorkoutOutputSchema>;
 
 export async function generateWorkout(input: GenerateWorkoutInput): Promise<GenerateWorkoutOutput> {
+  // Exported from a `'use server'` module that client components import, so this
+  // is a public HTTP endpoint with its id in the browser bundle. Guarded because
+  // every call spends Gemini quota: unauthenticated, it was an open drain on
+  // GEMINI_API_KEY. Mirrors the per-bucket limits the /api/ai/* routes use.
+  await assertUser('ai:generate-workout', { max: 10 });
   return generateWorkoutFlow(input);
 }
 

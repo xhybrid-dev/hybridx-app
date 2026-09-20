@@ -8,6 +8,8 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 
+import { assertUser } from '@/lib/api-auth';
+
 const CardSummaryInputSchema = z.object({
   workoutTitle: z.string().describe('The title of the workout.'),
   workoutType: z.enum(['hyrox', 'running']).describe('The type of workout.'),
@@ -65,6 +67,11 @@ const cardSummaryFlow = ai.defineFlow(
 );
 
 export async function generateCardSummary(input: CardSummaryInput): Promise<string> {
+  // Exported from a `'use server'` module that client components import, so this
+  // is a public HTTP endpoint with its id in the browser bundle. Guarded because
+  // every call spends Gemini quota: unauthenticated, it was an open drain on
+  // GEMINI_API_KEY. Mirrors the per-bucket limits the /api/ai/* routes use.
+  await assertUser('ai:card-summary', { max: 20 });
   const result = await cardSummaryFlow(input);
   return result.summary;
 }

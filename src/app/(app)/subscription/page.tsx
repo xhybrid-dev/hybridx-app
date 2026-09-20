@@ -142,7 +142,7 @@ export default function SubscriptionPage() {
         }
         setIsRedirecting(true);
         try {
-            const { url } = await createCheckoutSession(firebaseUser.uid, plan);
+            const { url } = await createCheckoutSession(plan);
             if (url) {
                 window.location.href = url;
             } else {
@@ -159,7 +159,7 @@ export default function SubscriptionPage() {
         if (!user?.subscriptionId) return;
         setIsManaging(true);
         try {
-            await pauseSubscription(user.id);
+            await pauseSubscription();
             toast({ title: 'Success', description: 'Your subscription has been paused.'});
             if (firebaseUser) await fetchUserData(firebaseUser);
         } catch (error) {
@@ -173,7 +173,7 @@ export default function SubscriptionPage() {
         if (!user?.subscriptionId) return;
         setIsManaging(true);
         try {
-            await cancelSubscription(user.id);
+            await cancelSubscription();
             toast({ title: 'Success', description: 'Your subscription will be cancelled at the end of the current billing period.'});
             if (firebaseUser) await fetchUserData(firebaseUser);
         } catch (error) {

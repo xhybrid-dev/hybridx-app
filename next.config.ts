@@ -8,6 +8,36 @@ const withPWA = require('next-pwa')({
   disable: process.env.NODE_ENV === 'development',
   sw: 'sw.js',
   customWorkerDir: 'worker',
+  // Precache the app shell ONLY.
+  //
+  // next-pwa globs all of `public/` by default, and a Workbox precache is
+  // all-or-nothing: the service worker's install event does not resolve until
+  // every entry has downloaded. With no exclusions that came to 16.4MB on a
+  // first visit — 11.9MB of it from public/, including a 10MB Android APK, the
+  // 1.2MB hero image, an internal API PDF and three CSV fixtures. On a metered
+  // mobile connection that is most of a day's data for a page that renders in
+  // well under 1MB, and it re-downloaded on every deploy that touched them.
+  //
+  // next-pwa globs `['**/*', ...publicExcludes]` over public/, so each `!entry`
+  // below subtracts from "everything". What survives is the app shell: the two
+  // logos, the manifest, and the custom worker.
+  publicExcludes: [
+    // The Android beta build. Not part of the web app, and 10MB on its own.
+    // Still served at /hybridx.apk for anyone holding that link.
+    '!hybridx.apk',
+    // Landing-page hero. next/image requests the optimised /_next/image?url=…
+    // variant, never this original, so precaching it only ever wasted 1.2MB.
+    '!coverimage.jpg',
+    // Internal documentation and data fixtures — nothing in the app fetches these.
+    '!*.pdf',
+    '!*.csv',
+    '!*.md',
+    // Email templates. Read server-side with fs.readFile (see
+    // /api/beta-testing/request), so a browser never requests them.
+    '!*.html',
+  ],
+  // Source maps are for debugging, not for offline use.
+  buildExcludes: [/\.map$/],
   runtimeCaching: [
     {
       urlPattern: /^https:\/\/fonts\.(?:gstatic|googleapis)\.com\/.*/i,

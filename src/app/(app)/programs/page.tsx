@@ -106,7 +106,7 @@ export default function ProgramsPage() {
           const today = new Date();
           today.setHours(0, 0, 0, 0);
           try {
-              await clearFutureProgramSessions({ userId: user.id, fromDate: today });
+              await clearFutureProgramSessions({ fromDate: today });
           } catch (err) {
               console.error('Failed to clear stale program sessions:', err);
           }

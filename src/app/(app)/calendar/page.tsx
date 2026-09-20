@@ -319,7 +319,7 @@ function WeeklyScheduleView() {
         const slot = allSlots.find(d => d.dateKey === key)!;
         return { date: slot.date, workouts: slot.workouts };
       });
-      await saveScheduleChanges({ userId: firebaseUser.uid, programId: program.id, days });
+      await saveScheduleChanges({ programId: program.id, days });
       toast({ title: 'Schedule updated', description: 'Your training calendar has been saved.' });
       await loadCalendarData(firebaseUser);
     } catch (error) {
@@ -739,7 +739,6 @@ function MonthGridCalendarView() {
       const todaysOriginalWorkout = todaysEvent?.workouts[0] || null;
 
       await swapWorkouts({
-        userId: firebaseUser.uid,
         programId: program.id,
         date1: today,
         workout1: selectedWorkout,

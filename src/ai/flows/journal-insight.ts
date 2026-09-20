@@ -12,6 +12,8 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 
+import { assertUser } from '@/lib/api-auth';
+
 const JournalInsightInputSchema = z.object({
   journalContent: z.string().describe("The athlete's journal entry text."),
   mood: z.string().optional().describe("The athlete's self-reported mood (great/good/okay/tired/struggling)."),
@@ -30,6 +32,11 @@ const JournalInsightOutputSchema = z.object({
 export type JournalInsightOutput = z.infer<typeof JournalInsightOutputSchema>;
 
 export async function journalInsight(input: JournalInsightInput): Promise<JournalInsightOutput> {
+  // Exported from a `'use server'` module that client components import, so this
+  // is a public HTTP endpoint with its id in the browser bundle. Guarded because
+  // every call spends Gemini quota: unauthenticated, it was an open drain on
+  // GEMINI_API_KEY. Mirrors the per-bucket limits the /api/ai/* routes use.
+  await assertUser('ai:journal-insight', { max: 20 });
   return journalInsightFlow(input);
 }
 

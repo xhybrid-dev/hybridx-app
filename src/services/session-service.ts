@@ -3,8 +3,18 @@
 
 import { Timestamp } from 'firebase-admin/firestore';
 import { getAdminDb } from '@/lib/firebase-admin';
+import { assertUser } from '@/lib/api-auth';
 import type { WorkoutSession, WorkoutDay, ProgramType } from '@/models/types';
 import { z } from 'zod';
+
+// Every function exported from this module is a public HTTP endpoint: it is a
+// `'use server'` file imported by client components, so Next.js registers each
+// export as a Server Action and ships its id in the browser bundle. All of them
+// write to workoutSessions with the Admin SDK, which bypasses firestore.rules.
+//
+// So none of them may take a `userId` argument. They resolve the caller from
+// the session cookie via assertUser() and operate on that uid only — otherwise
+// a single unauthenticated POST rewrites or deletes a named athlete's schedule.
 
 function fromFirestore(doc: any): WorkoutSession {
     const data = doc.data();
@@ -37,7 +47,8 @@ function deriveSessionProgramType(workout: WorkoutDay): ProgramType {
     return 'hyrox';
 }
 
-export async function getOrCreateWorkoutSessionAdmin(userId: string, programId: string, workoutDate: Date, workout: WorkoutDay): Promise<WorkoutSession> {
+export async function getOrCreateWorkoutSessionAdmin(programId: string, workoutDate: Date, workout: WorkoutDay): Promise<WorkoutSession> {
+    const { uid: userId } = await assertUser('sessions:get-or-create');
     const adminDb = getAdminDb();
     const sessionsCollectionAdmin = adminDb.collection('workoutSessions');
     const q = sessionsCollectionAdmin
@@ -80,7 +91,6 @@ export async function getOrCreateWorkoutSessionAdmin(userId: string, programId: 
 
 
 const SwapWorkoutsInputSchema = z.object({
-  userId: z.string(),
   programId: z.string(),
   date1: z.date(),
   workout1: z.any(), // Using any because Zod struggles with recursive types in zod-to-json-schema
@@ -91,10 +101,11 @@ const SwapWorkoutsInputSchema = z.object({
 type SwapWorkoutsInput = z.infer<typeof SwapWorkoutsInputSchema>;
 
 export async function swapWorkouts(input: SwapWorkoutsInput): Promise<void> {
+    const { uid: userId } = await assertUser('sessions:swap');
     const adminDb = getAdminDb();
     const sessionsCollection = adminDb.collection('workoutSessions');
-  
-    const { userId, programId, date1, workout1, date2, workout2 } = SwapWorkoutsInputSchema.parse(input);
+
+    const { programId, date1, workout1, date2, workout2 } = SwapWorkoutsInputSchema.parse(input);
   
     const batch = adminDb.batch();
   
@@ -164,7 +175,6 @@ const DayChangeSchema = z.object({
 });
 
 const SaveScheduleChangesInputSchema = z.object({
-  userId: z.string(),
   programId: z.string(),
   days: z.array(DayChangeSchema),
 });
@@ -180,7 +190,8 @@ type SaveScheduleChangesInput = z.infer<typeof SaveScheduleChangesInputSchema>;
  * the calling UI should never include those since only future/incomplete days can be rearranged.
  */
 export async function saveScheduleChanges(input: SaveScheduleChangesInput): Promise<void> {
-    const { userId, programId, days } = SaveScheduleChangesInputSchema.parse(input);
+    const { uid: userId } = await assertUser('sessions:save-schedule');
+    const { programId, days } = SaveScheduleChangesInputSchema.parse(input);
     const adminDb = getAdminDb();
     const sessionsCollection = adminDb.collection('workoutSessions');
     const batch = adminDb.batch();
@@ -256,7 +267,6 @@ export async function saveScheduleChanges(input: SaveScheduleChangesInput): Prom
 }
 
 const ClearFutureProgramSessionsInputSchema = z.object({
-  userId: z.string(),
   fromDate: z.date(),
 });
 
@@ -276,7 +286,8 @@ type ClearFutureProgramSessionsInput = z.infer<typeof ClearFutureProgramSessions
  * finished sessions are always preserved as workout history.
  */
 export async function clearFutureProgramSessions(input: ClearFutureProgramSessionsInput): Promise<void> {
-    const { userId, fromDate } = ClearFutureProgramSessionsInputSchema.parse(input);
+    const { uid: userId } = await assertUser('sessions:clear-future');
+    const { fromDate } = ClearFutureProgramSessionsInputSchema.parse(input);
     const adminDb = getAdminDb();
     const sessionsCollection = adminDb.collection('workoutSessions');
 

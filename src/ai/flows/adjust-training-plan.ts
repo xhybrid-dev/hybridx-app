@@ -12,6 +12,8 @@ import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 import { WorkoutDaySchema } from '@/ai/schemas';
 
+import { assertUser } from '@/lib/api-auth';
+
 const AdjustTrainingPlanInputSchema = z.object({
   currentWorkouts: z.array(WorkoutDaySchema).describe('The original array of workout objects for a 5-day week.'),
   targetDays: z.enum(['3', '4']).describe('The target number of training days per week.'),
@@ -30,6 +32,11 @@ const AdjustTrainingPlanOutputSchema = z.object({
 export type AdjustTrainingPlanOutput = z.infer<typeof AdjustTrainingPlanOutputSchema>;
 
 export async function adjustTrainingPlan(input: AdjustTrainingPlanInput): Promise<AdjustTrainingPlanOutput> {
+  // Exported from a `'use server'` module that client components import, so this
+  // is a public HTTP endpoint with its id in the browser bundle. Guarded because
+  // every call spends Gemini quota: unauthenticated, it was an open drain on
+  // GEMINI_API_KEY. Mirrors the per-bucket limits the /api/ai/* routes use.
+  await assertUser('ai:adjust-plan', { max: 5 });
   return adjustTrainingPlanFlow(input);
 }
 

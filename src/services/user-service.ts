@@ -221,24 +221,22 @@ export async function deleteUser(userId: string): Promise<void> {
 }
 
 // SERVER-SIDE function to get all users (admin only)
+//
+// The completed-workout count is read from the stored `users/{uid}.completedWorkouts`
+// counter, not recomputed. This used to fetch EVERY finished document in
+// workoutSessions — the whole collection, each doc carrying its full embedded
+// workoutDetails — purely to produce one integer per user, on every load of the
+// admin user list. That cost grew with total product usage rather than with the
+// page, and with maxInstances: 1 it blocked the single instance while it ran.
+//
+// The counter is maintained server-side by the marketing activity reconciler and
+// is listed among the fields firestore.rules forbids a client from writing (see
+// `isWritingProtectedUserField`), so it is as trustworthy here as a recount was.
 export async function getAllUsers(): Promise<User[]> {
     const adminDb = getAdminDb();
-    
+
     // Fetch all users
     const usersSnapshot = await adminDb.collection('users').get();
-    
-    // Fetch all completed workout sessions in a single query
-    const sessionsSnapshot = await adminDb.collection('workoutSessions')
-      .where('finishedAt', '!=', null)
-      .get();
-
-    // Create a map of userId -> completed workout count
-    const workoutCounts = new Map<string, number>();
-    sessionsSnapshot.forEach(doc => {
-        const session = doc.data();
-        const userId = session.userId;
-        workoutCounts.set(userId, (workoutCounts.get(userId) || 0) + 1);
-    });
 
     return usersSnapshot.docs.map(doc => {
         const data = doc.data();
@@ -280,7 +278,7 @@ export async function getAllUsers(): Promise<User[]> {
             cancel_at_period_end: data.cancel_at_period_end,
             cancellation_effective_date: safeToDate(data.cancellation_effective_date),
             customProgram: data.customProgram || null,
-            completedWorkouts: workoutCounts.get(userId) || 0,
+            completedWorkouts: data.completedWorkouts ?? 0,
         };
         return user;
     });
