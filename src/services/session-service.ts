@@ -2,10 +2,23 @@
 'use server';
 
 import { Timestamp } from 'firebase-admin/firestore';
+import { addDays } from 'date-fns';
 import { getAdminDb } from '@/lib/firebase-admin';
 import { assertUser } from '@/lib/api-auth';
 import type { WorkoutSession, WorkoutDay, ProgramType } from '@/models/types';
 import { z } from 'zod';
+
+/** Firestore caps a write batch at 500 operations; leave headroom. */
+const DELETE_BATCH_SIZE = 450;
+
+/**
+ * How far ahead clearFutureProgramSessions looks. The longest program in the
+ * catalogue is 84 days, so a year is generous while still bounding the read.
+ */
+const CLEAR_HORIZON_DAYS = 365;
+
+/** Logged extra activity rather than schedule — never cleared or rearranged. */
+const AD_HOC_PROGRAM_IDS = ['one-off-ai', 'custom-workout'];
 
 // Every function exported from this module is a public HTTP endpoint: it is a
 // `'use server'` file imported by client components, so Next.js registers each
@@ -295,22 +308,34 @@ export async function clearFutureProgramSessions(input: ClearFutureProgramSessio
     // (workoutDate >=) with a not-in filter on a different field (programId), so the
     // one-off/custom-workout and finished-session exclusions are applied after the fetch
     // instead of in the query itself.
+    //
+    // Bounded at the far end as well: the open-ended `>=` collected every future
+    // doc the account had ever accumulated, across previous programs and
+    // drag-and-drop markers, which is how the delete set grew past what one
+    // batch can carry. No program here is longer than a year.
     const snapshot = await sessionsCollection
         .where('userId', '==', userId)
         .where('workoutDate', '>=', Timestamp.fromDate(fromDate))
+        .where('workoutDate', '<=', Timestamp.fromDate(addDays(fromDate, CLEAR_HORIZON_DAYS)))
         .get();
 
-    const batch = adminDb.batch();
-    let deletedCount = 0;
-    snapshot.docs.forEach(doc => {
+    const toDelete = snapshot.docs.filter(doc => {
         const data = doc.data();
-        if (['one-off-ai', 'custom-workout'].includes(data.programId)) return; // logged extra activity, not schedule
-        if (data.finishedAt) return; // preserve completed workout history
-        batch.delete(doc.ref);
-        deletedCount++;
+        if (AD_HOC_PROGRAM_IDS.includes(data.programId)) return false; // logged extra activity, not schedule
+        if (data.finishedAt) return false; // preserve completed workout history
+        return true;
     });
 
-    if (deletedCount > 0) {
+    // Chunked, because a Firestore batch takes at most 500 writes and a batch is
+    // atomic: one oversized commit failed with INVALID_ARGUMENT and deleted
+    // NOTHING. Both callers swallowed that throw, so the athlete silently kept a
+    // full set of stale docs shadowing their new program — the "freshly
+    // scheduled program has no workouts" report this function exists to prevent.
+    for (let i = 0; i < toDelete.length; i += DELETE_BATCH_SIZE) {
+        const batch = adminDb.batch();
+        for (const doc of toDelete.slice(i, i + DELETE_BATCH_SIZE)) {
+            batch.delete(doc.ref);
+        }
         await batch.commit();
     }
 }

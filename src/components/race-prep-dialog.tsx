@@ -35,6 +35,7 @@ import type { WorkoutDay } from '@/models/types';
 import { hasRuns, hasExercises } from '@/lib/type-guards';
 import { updateUser } from '@/services/user-service-client';
 import { clearFutureProgramSessions } from '@/services/session-service';
+import { logger } from '@/lib/logger';
 import { savePersonalProgram } from '@/services/program-service-client'; // IMPORTED
 import { useUser } from '@/contexts/user-context';
 
@@ -150,7 +151,16 @@ export function RacePrepDialog() {
           try {
               await clearFutureProgramSessions({ fromDate: today });
           } catch (err) {
-              console.error('Failed to clear stale program sessions:', err);
+              // Not fatal — the program itself is already assigned — but it is not
+              // cosmetic either: leftover docs shadow the new plan's workouts, so the
+              // calendar can look empty. Say so rather than failing silently, which is
+              // what made this hard to diagnose.
+              logger.error('Failed to clear stale program sessions:', err);
+              toast({
+                  title: 'Program started, but the calendar may be stale',
+                  description: 'Some entries from your previous plan could not be cleared. Reschedule the program if days look empty.',
+                  variant: 'destructive',
+              });
           }
 
           toast({

@@ -15,6 +15,7 @@ import type { Program, User, PaceZone, WorkoutDay } from '@/models/types';
 import { getProgramClient, getPersonalProgram } from '@/services/program-service-client'; // IMPORTED getPersonalProgram
 import { getUserClient, updateUser } from '@/services/user-service-client';
 import { clearFutureProgramSessions } from '@/services/session-service';
+import { logger } from '@/lib/logger';
 import { useToast } from '@/hooks/use-toast';
 import { calculateTrainingPaces, formatPace } from '@/lib/pace-utils';
 import { adjustTrainingPlan } from '@/ai/flows/adjust-training-plan';
@@ -352,7 +353,16 @@ export default function ProgramViewPage({ params }: { params: Promise<{ programI
         try {
             await clearFutureProgramSessions({ fromDate: today });
         } catch (err) {
-            console.error('Failed to clear stale program sessions:', err);
+            // Not fatal — the program itself is already scheduled — but it is not
+            // cosmetic either: leftover docs shadow the new plan's workouts, so the
+            // calendar can look empty. Say so rather than failing silently, which is
+            // what made this hard to diagnose.
+            logger.error('Failed to clear stale program sessions:', err);
+            toast({
+                title: 'Program scheduled, but the calendar may be stale',
+                description: 'Some entries from your previous plan could not be cleared. Reschedule the program if days look empty.',
+                variant: 'destructive',
+            });
         }
 
         // Refresh the UserContext to update Today's Workout on dashboard/workout pages
