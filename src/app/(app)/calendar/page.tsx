@@ -27,7 +27,7 @@ import { getAuthInstance } from '@/lib/firebase';
 import { getUserClient } from '@/services/user-service-client';
 import { getProgramClient } from '@/services/program-service-client';
 import { getWorkoutForDay, formatPlannedRun } from '@/lib/workout-utils';
-import { getAllUserSessions, getOrCreateWorkoutSession, updateWorkoutSession } from '@/services/session-service-client';
+import { getUserSessionsInRange, getRecentUserSessions, getOrCreateWorkoutSession, updateWorkoutSession } from '@/services/session-service-client';
 import { saveScheduleChanges, swapWorkouts } from '@/services/session-service';
 import type { Program, WorkoutDay, WorkoutSession, RunningWorkout, Workout, UnitSystem } from '@/models/types';
 import { hasRuns, hasExercises } from '@/lib/type-guards';
@@ -183,7 +183,10 @@ function WeeklyScheduleView() {
       // leaving the athlete with an empty calendar and no way to tell why.
       let sessions: WorkoutSession[] = [];
       try {
-        sessions = await getAllUserSessions(fbUser.uid);
+        // Exactly the window buildDaySlots walks. It keys sessions by workoutDate
+        // and iterates rangeStart..rangeEnd, so reading the whole history (which
+        // is what this did) transferred the rest only to discard it.
+        sessions = await getUserSessionsInRange(fbUser.uid, rangeStart, rangeEnd);
       } catch (error) {
         logger.error('Failed to load workout sessions for the calendar:', error);
       }
@@ -552,7 +555,13 @@ function MonthGridCalendarView() {
       // month grid rendering the assigned program.
       let sessions: WorkoutSession[] = [];
       try {
-        sessions = await getAllUserSessions(fbUser.uid);
+        // Bounded rather than date-ranged: generateWorkoutEvents has an orphan
+        // pass that surfaces any session NOT covered by the programme window
+        // (manual logs from before the plan started, for instance), so a date
+        // range would silently drop those. The cap narrows that to the most
+        // recent 400 sessions — over a year of daily training — instead of the
+        // entire history on every visit.
+        sessions = await getRecentUserSessions(fbUser.uid);
       } catch (error) {
         logger.error('Failed to load workout sessions for the month view:', error);
       }

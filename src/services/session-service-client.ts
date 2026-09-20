@@ -80,18 +80,24 @@ export async function getRecentUserSessions(
 }
 
 /**
- * @deprecated Unbounded. Use {@link getRecentUserSessions}, or a date-ranged
- * query when you need a specific window.
+ * The athlete's sessions whose workoutDate falls in [from, to], inclusive.
  *
- * The two remaining callers are both in the calendar (schedule view and month
- * view), which wants a ~200-day window and should query by date and reuse
- * UserContext rather than re-reading the whole history twice per visit.
+ * Preferred over {@link getRecentUserSessions} whenever the caller knows the
+ * window it will actually read — the calendar's schedule view walks exactly one
+ * date range, so anything outside it was transferred and discarded. Served by
+ * the userId + workoutDate composite index in firestore.indexes.json.
  */
-export async function getAllUserSessions(userId: string): Promise<WorkoutSession[]> {
+export async function getUserSessionsInRange(
+    userId: string,
+    from: Date,
+    to: Date,
+): Promise<WorkoutSession[]> {
     const q = query(
         sessionsCollection,
         where('userId', '==', userId),
-        orderBy('workoutDate', 'desc')
+        where('workoutDate', '>=', Timestamp.fromDate(from)),
+        where('workoutDate', '<=', Timestamp.fromDate(to)),
+        orderBy('workoutDate', 'desc'),
     );
     const snapshot = await getDocs(q);
     return snapshot.docs.map(fromFirestore);
