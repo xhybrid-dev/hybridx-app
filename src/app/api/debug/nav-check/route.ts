@@ -1,7 +1,7 @@
 // src/app/api/debug/nav-check/route.ts
 // DEBUG ENDPOINT - Never accessible in production.
 // Simple endpoint to verify navigation routes exist
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 
 const navRoutes = [
   '/dashboard',
@@ -11,7 +11,7 @@ const navRoutes = [
   '/profile'
 ];
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   if (process.env.NODE_ENV === 'production') {
     return NextResponse.json({ error: 'Not Found' }, { status: 404 });
   }

@@ -20,7 +20,9 @@ interface WorkoutCompleteModalProps {
     workout: Workout | RunningWorkout;
 }
 
-export default function WorkoutCompleteModal({ isOpen, onClose, session, userHasStrava, workout }: WorkoutCompleteModalProps) {
+export default function WorkoutCompleteModal({ isOpen, onClose, session, userHasStrava }: WorkoutCompleteModalProps) {
+    // `workout` is part of the public props (workout/active/page.tsx passes it)
+    // but unused here — session.workoutTitle already covers what this modal shows.
     const [duration, setDuration] = useState('');
 
     useEffect(() => {

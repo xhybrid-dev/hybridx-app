@@ -1,9 +1,9 @@
 // src/app/api/strava/connect/route.ts
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { getAdminAuth } from '@/lib/firebase-admin';
 import { cookies } from 'next/headers';
 
-export async function POST(req: NextRequest) {
+export async function POST() {
   try {
     const cookieStore = await cookies();
     const sessionCookie = cookieStore.get('__session')?.value;

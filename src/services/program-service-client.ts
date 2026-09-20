@@ -6,12 +6,36 @@
 //   customPrograms  — user-specific, readable only by assigned athletes
 // They share an id space, so a program keeps its id if an admin moves it
 // between the two. Anything that resolves a program by id has to check both.
-import { collection, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc, query, where } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc, query, where, limit } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Program } from '@/models/types';
 
 const programsCollectionClient = collection(db, 'programs');
 const customProgramsCollectionClient = collection(db, 'customPrograms');
+
+/**
+ * Ceiling on getAllPrograms(). The live catalogue is ~20 programs (14 per
+ * PROGRAM_COACHING_REVIEW.md, plus the ATHX 2027 batch), so this is invisible
+ * today — it exists as a bound, not a page size.
+ *
+ * This is a safety net, not the fix for the underlying cost: every Program
+ * document embeds its full `workouts` array (up to 84 days of exercises each),
+ * and getAllPrograms()/the /programs athlete-facing browse page render only
+ * name/description/type/count from it. Firestore has no field projection, so
+ * there is no way to fetch just those four fields without either (a) capping
+ * how many full documents get pulled — what this does — or (b) denormalising a
+ * summary alongside each program, which needs a schema decision and a backfill
+ * of existing documents and is a separate, larger change.
+ *
+ * True cursor pagination was the other option and was deliberately not built:
+ * the browse page splits programs into tabs by programType client-side ('hyrox'
+ * tab shows hyrox+hybrid, 'running' shows running), and a paginated query that
+ * tabs can rely on needs a per-tab `where('programType','in',[...])` filter,
+ * which very likely needs a new Firestore composite index — another manual
+ * `firebase deploy` step, and real UI work for a "load more" affordance. Not
+ * worth it at ~20 documents.
+ */
+const ALL_PROGRAMS_LIMIT = 200;
 
 export async function getProgramClient(programId: string): Promise<Program | null> {
     // 1. Try the public programs collection.
@@ -48,9 +72,9 @@ export async function getPersonalProgram(userId: string, programId: string): Pro
     return null;
 }
 
-/** All public programs. */
+/** All public programs, bounded — see {@link ALL_PROGRAMS_LIMIT}. */
 export async function getAllPrograms(): Promise<Program[]> {
-    const snapshot = await getDocs(programsCollectionClient);
+    const snapshot = await getDocs(query(programsCollectionClient, limit(ALL_PROGRAMS_LIMIT)));
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Program));
 }
 
@@ -59,7 +83,7 @@ export async function getAllPrograms(): Promise<Program[]> {
  * unfiltered listing of customPrograms for admins alone.
  */
 export async function getAllCustomPrograms(): Promise<Program[]> {
-    const snapshot = await getDocs(customProgramsCollectionClient);
+    const snapshot = await getDocs(query(customProgramsCollectionClient, limit(ALL_PROGRAMS_LIMIT)));
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Program));
 }
 

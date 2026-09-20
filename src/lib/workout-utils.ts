@@ -1,6 +1,5 @@
 // src/lib/workout-utils.ts
-import type { Program, WorkoutDay, Exercise, PlannedRun } from '@/models/types';
-import { subDays, isSameDay } from 'date-fns';
+import type { Program, WorkoutDay, PlannedRun } from '@/models/types';
 import { programDayFor } from '@/lib/program-day';
 import { db } from '@/lib/firebase';
 import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';

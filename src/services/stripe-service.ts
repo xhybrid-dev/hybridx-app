@@ -3,7 +3,6 @@
 
 import { logger } from '@/lib/logger';
 import Stripe from 'stripe';
-import { headers } from 'next/headers';
 import { getUser, updateUserAdmin } from './user-service';
 import { getAdminDb } from '@/lib/firebase-admin';
 import { assertUser } from '@/lib/api-auth';

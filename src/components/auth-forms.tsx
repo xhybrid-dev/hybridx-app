@@ -15,7 +15,7 @@ import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendEmailVe
 import { getAuthInstance } from '@/lib/firebase';
 import { authedFetch } from '@/lib/client-auth';
 import { createUser } from '@/services/user-service-client';
-import { getTopPrograms, type ProgramRecommendation } from '@/services/program-recommendation';
+import { getTopPrograms } from '@/services/program-recommendation';
 import { getProgramClient } from '@/services/program-service-client';
 import { adjustTrainingPlan } from '@/ai/flows/adjust-training-plan';
 import type { WorkoutDay } from '@/models/types';
@@ -39,7 +39,6 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
 
@@ -49,7 +48,6 @@ const loginSchema = z.object({
 });
 
 export function LoginForm() {
-  const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);

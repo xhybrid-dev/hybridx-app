@@ -18,13 +18,6 @@ type ToasterToast = ToastProps & {
   action?: ToastActionElement
 }
 
-const actionTypes = {
-  ADD_TOAST: "ADD_TOAST",
-  UPDATE_TOAST: "UPDATE_TOAST",
-  DISMISS_TOAST: "DISMISS_TOAST",
-  REMOVE_TOAST: "REMOVE_TOAST",
-} as const
-
 let count = 0
 
 function genId() {
@@ -32,7 +25,16 @@ function genId() {
   return count.toString()
 }
 
-type ActionType = typeof actionTypes
+// Every dispatched action below uses its bare string literal directly
+// (type: "ADD_TOAST", case "ADD_TOAST": …) — actionTypes as a value was never
+// read, only used to derive this type via `typeof`. A plain type does the same
+// job without allocating an object nothing reads.
+type ActionType = {
+  ADD_TOAST: "ADD_TOAST"
+  UPDATE_TOAST: "UPDATE_TOAST"
+  DISMISS_TOAST: "DISMISS_TOAST"
+  REMOVE_TOAST: "REMOVE_TOAST"
+}
 
 type Action =
   | {

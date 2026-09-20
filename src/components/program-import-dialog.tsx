@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import type { Program, Workout, Exercise, RunningProgram, RunningWorkout, PlannedRun, PaceZone, ProgramType, ProgramVisibility } from '@/models/types';
+import type { Program, Workout, Exercise, RunningProgram, RunningWorkout, PlannedRun, PaceZone, ProgramVisibility } from '@/models/types';
 import {
   createProgram,
   createCustomProgram,
@@ -56,9 +56,6 @@ interface RunningCsvRow {
   runDescription: string;
   runEffortLevel: string;
 }
-
-type CsvRow = HyroxCsvRow | RunningCsvRow;
-
 
 export function ProgramImportDialog({ isOpen, setIsOpen, onSuccess }: ProgramImportDialogProps) {
   const [file, setFile] = useState<File | null>(null);

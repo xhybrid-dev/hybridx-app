@@ -2,7 +2,7 @@
 // Returns the full PMC time-series (daily ATL/CTL/TSB) plus the standard
 // training summary for the Training Form page.
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { getUser } from '@/services/user-service';
 import { computeTrainingFormSummary } from '@/services/training-load-service';
 import { getAdminAuth } from '@/lib/firebase-admin';
@@ -11,7 +11,7 @@ import { fetchRecentActivities, mapStravaError, describeStravaError } from '@/li
 import { checkRateLimit } from '@/lib/rate-limit';
 import { cookies } from 'next/headers';
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   let userId: string | undefined;
 
   try {

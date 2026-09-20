@@ -23,7 +23,7 @@ import * as admin from 'firebase-admin';
 import { workoutToDays } from '@/lib/garmin/program-adapter';
 import { mapWorkoutDay, classifyWorkout } from '@/lib/garmin/workout-mapper';
 import { buildDesiredSessions } from '@/lib/garmin/plan-sync';
-import type { WorkoutDay, GarminWorkout, WorkoutStep } from '@/lib/garmin/workout-mapper';
+import type { WorkoutDay, GarminWorkout } from '@/lib/garmin/workout-mapper';
 import type { Program, Workout, RunningWorkout, Exercise, PlannedRun } from '@/models/types';
 
 const PROJECT_ID = process.env.FIREBASE_PROJECT_ID || 'hyroxedgeai';

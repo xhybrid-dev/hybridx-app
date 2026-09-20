@@ -7,7 +7,6 @@ import { getAdminDb } from '@/lib/firebase-admin';
 import { getProgram } from '@/services/program-service';
 import { getWorkoutForDay } from '@/lib/workout-utils';
 import { toCalendarDay } from '@/lib/program-day';
-import { Timestamp } from 'firebase-admin/firestore';
 import axios from 'axios';
 import type { StravaTokens } from '@/models/types';
 import { computeTrainingSummary, formatTrainingSummaryForAI } from '@/services/training-load-service';

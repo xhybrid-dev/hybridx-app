@@ -1,5 +1,5 @@
 
-import { differenceInWeeks, addWeeks, subWeeks, startOfWeek, endOfWeek } from 'date-fns';
+import { differenceInWeeks } from 'date-fns';
 import type { Program, Workout, RunningWorkout } from '@/models/types';
 
 export interface TrainingPhase {

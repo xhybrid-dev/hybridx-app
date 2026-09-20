@@ -25,12 +25,6 @@ function getDay(day) {
   return workouts.find(w => w.day === day);
 }
 
-function replaceExercise(w, name, newEntry) {
-  const idx = w.exercises.findIndex(e => e.name === name);
-  if (idx >= 0) w.exercises[idx] = newEntry;
-  else w.exercises.push(newEntry);
-}
-
 // ─── MOBILITY ROUTINE (used on all "Full Body Mobility" recovery days) ────────
 const MOBILITY_ROUTINE = `20-Minute Hyrox Mobility Routine — do this, don't skip it:
 
@@ -207,7 +201,6 @@ Keep the load to bodyweight only in this circuit — the goal is not additional 
 const lastDays = workouts.filter(w => w.day >= 77 && w.day <= 84);
 console.log('Last days:', lastDays.map(w => `Day ${w.day}: ${w.title}`).join('\n'));
 // Add What's Next to whichever the last entry is
-const lastWorkout = workouts[workouts.length - 1];
 const lastActiveDay = workouts.slice(-7).find(w => !(w.title||'').toLowerCase().includes('rest'));
 if (lastActiveDay) {
   lastActiveDay.exercises.push({

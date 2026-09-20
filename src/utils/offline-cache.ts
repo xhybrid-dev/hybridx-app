@@ -16,7 +16,6 @@ const CACHE_KEYS = {
 };
 
 const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
-const TODAYS_WORKOUT_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 days for today's workout (never expires while relevant)
 
 interface CacheEntry<T> {
   data: T;
