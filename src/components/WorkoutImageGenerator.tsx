@@ -1,7 +1,6 @@
 'use client';
 
 import { useRef, useState, useLayoutEffect } from 'react';
-import html2canvas from 'html2canvas';
 import { Button } from '@/components/ui/button';
 import { Download, Loader2 } from 'lucide-react';
 import { logger } from '@/lib/logger';
@@ -155,6 +154,10 @@ export function WorkoutImageGenerator({ workout }: WorkoutImageGeneratorProps) {
           return new Promise((res) => { img.onload = res; img.onerror = res; });
         })
       );
+
+      // Loaded here rather than at module scope: html2canvas is ~196KB and is
+      // only needed once someone actually generates an image.
+      const { default: html2canvas } = await import('html2canvas');
 
       // Capture the hidden off-screen element — no transforms, full 1080×1350
       const canvas = await html2canvas(captureRef.current, {

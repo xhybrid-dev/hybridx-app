@@ -7,8 +7,6 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { onAuthStateChanged } from 'firebase/auth';
 import { Loader2, ArrowLeft, Printer, CalendarPlus, AlertTriangle } from 'lucide-react';
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
 
 import { auth } from '@/lib/firebase';
 import type { Program, User, PaceZone, WorkoutDay } from '@/models/types';
@@ -109,6 +107,14 @@ export default function ProgramViewPage({ params }: { params: Promise<{ programI
     try {
         toast({ title: 'Generating PDF...', description: 'Please wait while we create your training calendar.' });
 
+        // Loaded on click, not on page load. Statically imported, jspdf and
+        // html2canvas put ~520KB of parse-and-execute in front of an athlete who
+        // only wanted to read a training plan; most visits never export a PDF.
+        const [{ default: jsPDF }, { default: html2canvas }] = await Promise.all([
+            import('jspdf'),
+            import('html2canvas'),
+        ]);
+
         const pdf = new jsPDF({
             orientation: 'landscape',
             unit: 'mm',
@@ -152,19 +158,28 @@ export default function ProgramViewPage({ params }: { params: Promise<{ programI
 
             // Add header only on first page
             if (pageIndex === 0) {
+                // Same reasoning as the exercise rows below: the static chrome is
+                // written as markup, but program.name / program.description come from
+                // Firestore and go in via textContent.
                 const header = document.createElement('div');
-                header.innerHTML = `
-                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px;">
-                    <div>
-                    <h1 style="font-size: 18px; margin: 0; font-weight: bold; color: #008080;">${program.name}</h1>
-                    <p style="font-size: 11px; margin: 4px 0 0 0; color: #666; max-width: 600px;">${program.description}</p>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                      <img src="/icon-logo.png" style="width: 24px; height: 24px;" />
-                      <div style="font-size: 14px; font-weight: bold; white-space: nowrap;">HYBRIDX.CLUB</div>
-                    </div>
-                </div>
-                `;
+                header.style.cssText = 'display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px;';
+
+                const headerText = document.createElement('div');
+                const headerTitle = document.createElement('h1');
+                headerTitle.style.cssText = 'font-size: 18px; margin: 0; font-weight: bold; color: #008080;';
+                headerTitle.textContent = program.name;
+                const headerDesc = document.createElement('p');
+                headerDesc.style.cssText = 'font-size: 11px; margin: 4px 0 0 0; color: #666; max-width: 600px;';
+                headerDesc.textContent = program.description ?? '';
+                headerText.append(headerTitle, headerDesc);
+
+                const headerBrand = document.createElement('div');
+                headerBrand.style.cssText = 'display: flex; align-items: center; gap: 8px;';
+                headerBrand.innerHTML =
+                    '<img src="/icon-logo.png" style="width: 24px; height: 24px;" />' +
+                    '<div style="font-size: 14px; font-weight: bold; white-space: nowrap;">HYBRIDX.CLUB</div>';
+
+                header.append(headerText, headerBrand);
                 pageContainer.appendChild(header);
             }
 
@@ -258,22 +273,24 @@ export default function ProgramViewPage({ params }: { params: Promise<{ programI
                                     padding: 0;
                                     list-style-position: inside;
                                 `;
-                                (hasRuns(workout) ? workout.runs : []).forEach(run => {
+                                // Built as nodes with textContent, not innerHTML. This element is
+                                // attached to the live document for html2canvas to capture it, so
+                                // markup in a program's exercise text (CSV import, AI adjustment)
+                                // would execute in the viewer's session.
+                                const appendListItem = (label: string, labelColour: string, rest: string) => {
                                     const item = document.createElement('li');
-                                    item.innerHTML = `<strong style="color: #2563eb;">${run.type}:</strong> ${run.distance}km`;
                                     item.style.cssText = `font-size: 8px; line-height: 1.3; margin-bottom: 2px; color: #52525b;`;
+                                    const strong = document.createElement('strong');
+                                    strong.style.color = labelColour;
+                                    strong.textContent = `${label}:`;
+                                    item.append(strong, document.createTextNode(` ${rest}`));
                                     exerciseList.appendChild(item);
+                                };
+                                (hasRuns(workout) ? workout.runs : []).forEach(run => {
+                                    appendListItem(String(run.type), '#2563eb', `${run.distance}km`);
                                 });
                                 (workout.exercises ?? []).forEach(exercise => {
-                                    const exerciseItem = document.createElement('li');
-                                    exerciseItem.innerHTML = `<strong style="color: #18181b;">${exercise.name}:</strong> ${exercise.details}`;
-                                    exerciseItem.style.cssText = `
-                                    font-size: 8px;
-                                    line-height: 1.3;
-                                    margin-bottom: 2px;
-                                    color: #52525b;
-                                    `;
-                                    exerciseList.appendChild(exerciseItem);
+                                    appendListItem(String(exercise.name), '#18181b', String(exercise.details ?? ''));
                                 });
                                 dayCell.appendChild(exerciseList);
                             });

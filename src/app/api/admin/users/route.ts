@@ -16,10 +16,8 @@ export async function GET(request: NextRequest) {
 
     } catch (error) {
         logger.error('[admin/users] GET failed:', error);
-        return NextResponse.json({
-            error: 'Internal server error',
-            details: error instanceof Error ? error.message : 'Unknown error'
-        }, { status: 500 });
+        // No `details`: internal error text names collections and index URLs.
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }
 
@@ -46,9 +44,7 @@ export async function DELETE(request: NextRequest) {
 
     } catch (error) {
         logger.error('[admin/users] DELETE failed:', error);
-        return NextResponse.json({
-            error: 'Internal server error',
-            details: error instanceof Error ? error.message : 'Unknown error'
-        }, { status: 500 });
+        // No `details`: internal error text names collections and index URLs.
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }

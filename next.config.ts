@@ -84,6 +84,35 @@ const withPWA = require('next-pwa')({
   ],
 });
 
+/**
+ * Candidate Content-Security-Policy, served report-only (see `headers()` below).
+ *
+ * Origins are the ones this app actually talks to:
+ *   *.googleapis.com / securetoken / identitytoolkit — Firebase Auth + Firestore
+ *   hyroxedgeai.firebaseapp.com                      — the configured authDomain
+ *   js.stripe.com / api.stripe.com                   — checkout
+ *   googletagmanager.com / google-analytics.com      — GA4 (see layout.tsx)
+ *   placehold.co / picsum.photos                     — images.remotePatterns above
+ *   fonts.googleapis.com / fonts.gstatic.com         — kept because the PWA
+ *     runtimeCaching rules expect runtime font requests, even though
+ *     next/font/google self-hosts at build time
+ */
+const CSP_REPORT_ONLY = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://apis.google.com https://js.stripe.com",
+  "connect-src 'self' https://*.googleapis.com https://securetoken.googleapis.com https://identitytoolkit.googleapis.com https://*.firebaseio.com https://hyroxedgeai.firebaseapp.com https://api.stripe.com https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com",
+  "img-src 'self' data: blob: https://placehold.co https://picsum.photos https://*.googleusercontent.com https://www.google-analytics.com",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "font-src 'self' data: https://fonts.gstatic.com",
+  "frame-src https://js.stripe.com https://hyroxedgeai.firebaseapp.com",
+  "worker-src 'self'",
+  "manifest-src 'self'",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "frame-ancestors 'self'",
+].join('; ');
+
 const nextConfig: NextConfig = {
   output: 'standalone',
   typescript: {
@@ -110,9 +139,6 @@ const nextConfig: NextConfig = {
     ],
   },
   // Baseline security headers applied to every response.
-  // NOTE: a strict Content-Security-Policy is intentionally omitted here — it
-  // needs to be validated against Firebase Auth, Stripe, Strava and Google AI
-  // origins before enabling, or it will break those integrations.
   async headers() {
     return [
       {
@@ -123,6 +149,18 @@ const nextConfig: NextConfig = {
           { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
           { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
+          // REPORT-ONLY, deliberately. A CSP was previously omitted altogether
+          // because it had not been validated against Firebase Auth, Stripe,
+          // Strava and Google AI — which is a fair reason not to *enforce* one,
+          // but not a reason to have none: report-only cannot break a single
+          // request, and it is the only way to find out what the real policy
+          // needs to allow. Watch the violation reports in the browser console,
+          // then switch the key to 'Content-Security-Policy' once it is quiet.
+          //
+          // 'unsafe-inline' in script-src is required by the inline gtag block in
+          // src/app/layout.tsx. Moving that to a nonce or an external file is
+          // what would let it be dropped.
+          { key: 'Content-Security-Policy-Report-Only', value: CSP_REPORT_ONLY },
         ],
       },
     ];

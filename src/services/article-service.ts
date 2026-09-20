@@ -17,6 +17,9 @@ import { Timestamp } from 'firebase-admin/firestore';
 // module-load crash.
 const articlesCollection = () => getAdminDb().collection('articles');
 
+/** Ceiling on the client-side-filter search scan (see searchArticles). */
+const SEARCH_SCAN_LIMIT = 500;
+
 /**
  * Creates a new article in Firestore.
  */
@@ -68,12 +71,21 @@ export async function searchArticles(query: string): Promise<Article[]> {
   }
 
   const lowerCaseQuery = query.toLowerCase();
-  
+
   // As Firestore doesn't support full-text search natively without extensions,
-  // we'll fetch all articles and filter them on the server.
-  // This is not scalable for a huge number of articles, but works well for hundreds/thousands.
-  // For larger scale, an external search service like Algolia or Elasticsearch would be needed.
-  const snapshot = await articlesCollection().orderBy('createdAt', 'desc').get();
+  // we'll fetch articles and filter them on the server.
+  //
+  // Capped rather than unbounded: this runs on a user-triggerable path, and
+  // createArticle can grow the collection, so "read everything" was a scan whose
+  // cost any caller could inflate. Newest-first, so the cap drops the oldest
+  // articles from the searchable window rather than returning an arbitrary slice.
+  // For real search at volume, a normalised `searchTerms` array field queried
+  // with array-contains keeps this in Firestore; an external index is only
+  // needed beyond that.
+  const snapshot = await articlesCollection()
+    .orderBy('createdAt', 'desc')
+    .limit(SEARCH_SCAN_LIMIT)
+    .get();
   
   const articles: Article[] = [];
   snapshot.forEach(doc => {

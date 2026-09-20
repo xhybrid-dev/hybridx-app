@@ -256,13 +256,27 @@ export function useUser() {
     return context;
 }
 
-// === PERFORMANCE OPTIMIZED SELECTOR HOOKS ===
-// Use these hooks to subscribe to specific parts of the context
-// This prevents unnecessary re-renders when unrelated state changes
+// === SELECTOR HOOKS ===
+//
+// These narrow what a component reads from the context, and give it a stable
+// object identity so passing the result as a prop, or into a dependency array,
+// does not churn.
+//
+// They do NOT prevent re-renders, which is what the comment here used to claim.
+// useContext re-renders every consumer whenever the provider's value changes,
+// regardless of which fields the consumer actually reads — so a component using
+// useUserProfile still re-renders when allSessions arrives. The useMemo only
+// stabilises the returned object, not the render.
+//
+// Getting the real behaviour means splitting UserProvider into separate contexts
+// (profile / today's workout / sessions) so unrelated updates cannot cross a
+// boundary. That is worth doing — allSessions and streakData update on every
+// refresh and currently re-render every useUserProfile consumer, the nav
+// included — but it is a change to the provider, not to these hooks.
 
 /**
- * Subscribe to user profile only
- * Re-renders only when user or trainingPaces change
+ * Subscribe to user profile only.
+ * Stable identity while user, trainingPaces and loading are unchanged.
  */
 export function useUserProfile() {
     const context = useContext(UserContext);
@@ -278,8 +292,8 @@ export function useUserProfile() {
 }
 
 /**
- * Subscribe to today's workout only
- * Re-renders only when todaysWorkout, todaysSession, or program change
+ * Subscribe to today's workout only.
+ * Stable identity while program, todaysWorkout and the day's sessions are unchanged.
  */
 export function useTodaysWorkout() {
     const context = useContext(UserContext);
@@ -297,8 +311,8 @@ export function useTodaysWorkout() {
 }
 
 /**
- * Subscribe to sessions and streaks only
- * Re-renders only when allSessions or streakData change
+ * Subscribe to sessions and streaks only.
+ * Stable identity while allSessions and streakData are unchanged.
  */
 export function useSessions() {
     const context = useContext(UserContext);
@@ -314,8 +328,8 @@ export function useSessions() {
 }
 
 /**
- * Subscribe to user and today's workout (common combination)
- * Re-renders only when user, program, todaysWorkout, or todaysSession change
+ * Subscribe to user and today's workout (common combination).
+ * Stable identity while those fields are unchanged.
  */
 export function useUserAndWorkout() {
     const context = useContext(UserContext);

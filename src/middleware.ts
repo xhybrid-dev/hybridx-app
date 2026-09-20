@@ -2,8 +2,35 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
+/**
+ * Does this look like a Firebase session cookie at all?
+ *
+ * The Admin SDK cannot run in the Edge runtime, so the middleware genuinely
+ * cannot verify the cookie — that check belongs to (and now happens in) the
+ * handlers: assertUser/assertAdmin on server actions, requireUser/requireAdmin
+ * on API routes, and the /admin layout. What the middleware CAN do is stop
+ * treating `__session=x` as a credential: previously any non-empty value
+ * satisfied the gate, so a one-line console command reached every protected
+ * route. A session cookie is a JWT, so require that shape.
+ *
+ * This is a filter, not authentication. Never rely on it for authorization.
+ */
+function looksLikeSessionJwt(value: string | undefined): boolean {
+  if (!value) return false;
+  const parts = value.split('.');
+  // header.payload.signature, each base64url and none of them empty. Real
+  // Firebase session cookies run to several hundred characters.
+  return (
+    parts.length === 3 &&
+    value.length >= 100 &&
+    parts.every(p => p.length > 0 && /^[A-Za-z0-9_-]+$/.test(p))
+  );
+}
+
 export async function middleware(request: NextRequest) {
-  const sessionCookie = request.cookies.get('__session');
+  const sessionCookie = looksLikeSessionJwt(request.cookies.get('__session')?.value)
+    ? request.cookies.get('__session')
+    : undefined;
   const { pathname } = request.nextUrl;
 
   // Public routes that don't require authentication
