@@ -20,7 +20,7 @@ export async function POST(request: Request) {
 
     // 1. Select the Best Template
     const db = getAdminDb();
-    let templateQuery = db.collection('programs');
+    const templateQuery = db.collection('programs');
     
     // Simple mapping logic
     let typeToSearch = 'hyrox';

@@ -9,7 +9,7 @@ export function formatTextWithBullets(text: string): string[] {
   if (!text) return [];
 
   // First, split by actual line breaks
-  let lines = text.split(/\n|\\n/);
+  const lines = text.split(/\n|\\n/);
 
   // Then, split each line by inline bullet symbols (• - *)
   // but preserve bullets at the start of lines

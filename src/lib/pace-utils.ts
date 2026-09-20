@@ -123,7 +123,7 @@ export function calculateTrainingPaces(user: User): Record<string, number> | nul
     
     if (bestVdot === 0) return null; // No valid benchmarks provided
 
-    let paces = getPacesFromVdot(bestVdot);
+    const paces = getPacesFromVdot(bestVdot);
     
     // Apply safety adjustments based on experience
     const adjustmentFactor = user.experience === 'beginner' ? 1.08 : user.experience === 'intermediate' ? 1.04 : 1.0;
