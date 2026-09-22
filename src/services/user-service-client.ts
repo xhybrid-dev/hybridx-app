@@ -83,6 +83,8 @@ export async function createUser(userId: string, data: Omit<User, 'id' | 'person
         subscriptionId: null,
         trialStartDate: Timestamp.fromDate(trialStartDate),
         onboardingSkipped: data.onboardingSkipped ?? false,
+        raceDate: data.raceDate ? Timestamp.fromDate(data.raceDate) : null,
+        raceName: data.raceName ?? null,
         acquisitionSource: data.acquisitionSource ?? null,
         acquisitionMedium: data.acquisitionMedium ?? null,
         acquisitionCampaign: data.acquisitionCampaign ?? null,

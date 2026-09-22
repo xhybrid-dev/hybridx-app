@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useNotificationPermission } from '@/hooks/use-notification-permission';
 import { subscribeUserToPush } from '@/lib/push-subscribe';
+import { useSessions } from '@/contexts/user-context';
 
 const NOTIFICATION_PROMPT_KEY = 'notification_prompt_dismissed';
 const NOTIFICATION_PROMPT_VERSION = '1'; // Increment this to re-show the prompt after updates
@@ -14,8 +15,13 @@ const NOTIFICATION_PROMPT_VERSION = '1'; // Increment this to re-show the prompt
 export function NotificationPermissionPrompt() {
   const [isVisible, setIsVisible] = useState(false);
   const { permission, isSupported, requestPermission } = useNotificationPermission();
+  // Asking before someone has trained once gets a reflexive "no" that can't be
+  // undone in the browser. Wait until they've done a session.
+  const { streakData } = useSessions();
+  const hasTrained = streakData.totalWorkouts > 0;
 
   useEffect(() => {
+    if (!hasTrained) return;
     // Only show if:
     // 1. Notifications are supported
     // 2. Permission hasn't been granted or denied yet
@@ -27,7 +33,7 @@ export function NotificationPermissionPrompt() {
       const timer = setTimeout(() => setIsVisible(true), 2000);
       return () => clearTimeout(timer);
     }
-  }, [isSupported, permission]);
+  }, [isSupported, permission, hasTrained]);
 
   const handleEnable = async () => {
     // Request permission + subscribe to web push in one step

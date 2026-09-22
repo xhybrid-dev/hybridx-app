@@ -7,7 +7,9 @@
 
 import { useEffect, useState } from 'react';
 import { differenceInMinutes, format } from 'date-fns';
-import { CalendarClock, CheckCircle2 } from 'lucide-react';
+import { Bell, CalendarClock, CheckCircle2 } from 'lucide-react';
+import { Capacitor } from '@capacitor/core';
+import { PushNotifications } from '@capacitor/push-notifications';
 import { useDebouncedCallback } from 'use-debounce';
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -20,6 +22,8 @@ import { ShareWorkoutDialog } from '@/components/share-workout-dialog';
 import { updateWorkoutSession } from '@/services/session-service-client';
 import { logger } from '@/lib/logger';
 import { cn } from '@/lib/utils';
+import { subscribeUserToPush } from '@/lib/push-subscribe';
+import { enableNativePush } from '@/lib/native-push';
 import type { WorkoutSession } from '@/models/types';
 
 interface WorkoutCompleteModalProps {
@@ -56,6 +60,30 @@ export default function WorkoutCompleteModal({
 }: WorkoutCompleteModalProps) {
   const [duration, setDuration] = useState('');
   const [rpe, setRpe] = useState<number | undefined>(session.rpe);
+  // Asked here, after a session, rather than at signup before any value.
+  const [reminder, setReminder] = useState<'hidden' | 'offer' | 'enabling' | 'on'>('hidden');
+
+  useEffect(() => {
+    if (!isOpen) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const undecided = Capacitor.isNativePlatform()
+          ? (await PushNotifications.checkPermissions()).receive === 'prompt'
+          : typeof Notification !== 'undefined' && 'serviceWorker' in navigator && Notification.permission === 'default';
+        if (!cancelled && undecided) setReminder('offer');
+      } catch {
+        /* no push available here */
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [isOpen]);
+
+  const enableReminders = async () => {
+    setReminder('enabling');
+    const ok = Capacitor.isNativePlatform() ? await enableNativePush() : await subscribeUserToPush();
+    setReminder(ok ? 'on' : 'hidden');
+  };
 
   useEffect(() => {
     if (isOpen) {
@@ -153,6 +181,24 @@ export default function WorkoutCompleteModal({
                 <p className="text-muted-foreground">Next up · {format(nextSession.date, 'EEEE')}</p>
                 <p className="font-semibold">{nextSession.title}</p>
               </div>
+            </div>
+          )}
+
+          {reminder !== 'hidden' && (
+            <div className="flex items-center justify-between gap-3 rounded-lg bg-primary/5 p-3 text-sm">
+              <span className="flex items-center gap-2">
+                <Bell className="h-4 w-4 shrink-0 text-primary" />
+                {reminder === 'on'
+                  ? "Done — we'll remind you before your next session."
+                  : nextSession
+                    ? `Want a nudge before ${format(nextSession.date, 'EEEE')}'s session?`
+                    : 'Want a nudge before your next session?'}
+              </span>
+              {reminder !== 'on' && (
+                <Button size="sm" onClick={enableReminders} disabled={reminder === 'enabling'}>
+                  Remind me
+                </Button>
+              )}
             </div>
           )}
 
