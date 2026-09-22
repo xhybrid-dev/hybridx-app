@@ -1,5 +1,5 @@
 
-import { differenceInWeeks, addWeeks, subWeeks, startOfWeek, endOfWeek } from 'date-fns';
+import { differenceInWeeks, addDays, differenceInCalendarDays, startOfDay } from 'date-fns';
 import type { Program, Workout, RunningWorkout } from '@/models/types';
 
 export interface TrainingPhase {
@@ -161,4 +161,33 @@ export function generateRaceProgram(template: Program, raceDate: Date): (Workout
   }
 
   return finalWorkouts;
+}
+
+/**
+ * Lines a race plan up so its last day is race day.
+ *
+ * Plans are built in whole weeks from today, so one could finish up to six
+ * days before the race and leave race week blank. A plan shorter than the
+ * time available starts later (so the taper lands on race day); one longer
+ * than the time available loses its opening days instead.
+ */
+export function alignPlanToRace<T extends { day: number }>(
+  workouts: T[],
+  raceDate: Date,
+  today: Date = new Date(),
+): { workouts: T[]; startDate: Date } {
+  const start = startOfDay(today);
+  const lastDay = Math.max(0, ...workouts.map(w => w.day));
+  const raceProgramDay = differenceInCalendarDays(startOfDay(raceDate), start) + 1;
+  if (lastDay === 0 || raceProgramDay < 1) return { workouts, startDate: start };
+
+  if (lastDay <= raceProgramDay) {
+    return { workouts, startDate: addDays(start, raceProgramDay - lastDay) };
+  }
+
+  const overshoot = lastDay - raceProgramDay;
+  return {
+    workouts: workouts.filter(w => w.day > overshoot).map(w => ({ ...w, day: w.day - overshoot })),
+    startDate: start,
+  };
 }

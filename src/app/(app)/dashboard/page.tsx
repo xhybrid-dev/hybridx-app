@@ -52,6 +52,8 @@ import { TrialBanner } from '@/components/trial-banner';
 import { RacePrepDialog } from '@/components/race-prep-dialog';
 import { PlanAdjustmentNotice } from '@/components/plan-adjustment-notice';
 import { PlanCatchUpCard } from '@/components/plan-catch-up-card';
+import { ProgramFinishCard } from '@/components/program-finish-card';
+import { programDayFor } from '@/lib/program-day';
 import type { StravaLoadError } from '@/components/today-strava-feed';
 
 // Lazy load heavy AI-powered components
@@ -649,6 +651,15 @@ export default function DashboardPage() {
           />
         )}
 
+        {user?.startDate && (
+          <ProgramFinishCard
+            user={user}
+            program={program}
+            todayProgramDay={programDayFor(user.startDate, startOfDay(new Date()))}
+            allSessions={allSessions}
+          />
+        )}
+
         {/* First-workout activation nudge — completing the first session is the
             strongest predictor of retention, so we surface it prominently until done. */}
         {!loading && !program && !user?.planPausedAt && (
@@ -818,7 +829,11 @@ export default function DashboardPage() {
                       ) : (
                           <>
                               <p>No workout scheduled for today.</p>
-                              <p className="text-sm">Assign a program in your profile, generate one with AI, or log a custom activity.</p>
+                              <p className="text-sm">
+                                {program
+                                  ? 'Rest day — or generate a session with AI, or log something you did.'
+                                  : <>Pick a plan from <Link href="/programs" className="underline">Programs</Link>, generate a session with AI, or log something you did.</>}
+                              </p>
                           </>
                       )}
                   </div>
