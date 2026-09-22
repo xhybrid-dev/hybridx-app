@@ -733,7 +733,7 @@ export default function DashboardPage() {
                       {workoutHasRuns && !workoutHasExercises ? <Route className="h-6 w-6" /> : <Target className="h-6 w-6" />}
                       {program && todaysWorkout?.workout && !programStartsInFuture ? `Today's Workout (Day ${todaysWorkout.day})` : "Today's Plan"}
                       {user?.customProgram && user.customProgram.length > 0 && (
-                        <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 ml-2">
+                        <Badge variant="outline" className="bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800 ml-2">
                           <Zap className="mr-1 h-3 w-3" />
                           Personalized
                         </Badge>
@@ -741,7 +741,7 @@ export default function DashboardPage() {
                     </CardTitle>
                   </div>
                   {isWorkoutCompleted && (
-                      <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">
+                      <Badge variant="outline" className="bg-green-100 dark:bg-green-950/40 text-green-800 dark:text-green-300 border-green-200 dark:border-green-800">
                           <CheckCircle className="mr-2 h-4 w-4" />
                           Completed
                       </Badge>
@@ -787,7 +787,7 @@ export default function DashboardPage() {
                                   {sessionWorkout.title}
                                 </p>
                                 {isSessionDone && (
-                                  <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200 shrink-0">
+                                  <Badge variant="outline" className="bg-green-100 dark:bg-green-950/40 text-green-800 dark:text-green-300 border-green-200 dark:border-green-800 shrink-0">
                                     <CheckCircle className="mr-1 h-3 w-3" />
                                     Done
                                   </Badge>
@@ -909,20 +909,20 @@ export default function DashboardPage() {
             )}
 
             {stravaLoadError === 'reconnect_required' && (
-              <Card className="bg-red-50 border-red-200">
+              <Card className="bg-red-50 dark:bg-red-950/40 border-red-200 dark:border-red-800">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-red-800">
+                  <CardTitle className="flex items-center gap-2 text-red-800 dark:text-red-300">
                     <LinkIcon className="h-5 w-5" />
                     Strava Disconnected
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm text-red-700">
+                  <p className="text-sm text-red-700 dark:text-red-300">
                     Your Strava connection has expired. Reconnect to resume activity syncing and personalised insights.
                   </p>
                 </CardContent>
                 <CardFooter>
-                  <Button asChild variant="outline" className="w-full border-red-300 text-red-800 hover:bg-red-100 hover:text-red-900">
+                  <Button asChild variant="outline" className="w-full border-red-300 dark:border-red-800 text-red-800 dark:text-red-300 hover:bg-red-100 hover:text-red-900 dark:hover:bg-red-950/70 dark:hover:text-red-200">
                     <Link href="/profile">Reconnect Strava</Link>
                   </Button>
                 </CardFooter>
@@ -930,20 +930,20 @@ export default function DashboardPage() {
             )}
 
             {!isStravaConnected && !stravaLoadError && (
-              <Card className="bg-orange-50 border-orange-200">
+              <Card className="bg-orange-50 dark:bg-orange-950/40 border-orange-200 dark:border-orange-800">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-orange-800">
+                  <CardTitle className="flex items-center gap-2 text-orange-800 dark:text-orange-300">
                     <LinkIcon className="h-5 w-5" />
                     Connect to Strava
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm text-orange-700">
+                  <p className="text-sm text-orange-700 dark:text-orange-300">
                     Automatically sync your activities to track progress and get personalized insights.
                   </p>
                 </CardContent>
                 <CardFooter>
-                  <Button asChild variant="outline" className="w-full border-orange-300 text-orange-800 hover:bg-orange-100 hover:text-orange-900">
+                  <Button asChild variant="outline" className="w-full border-orange-300 dark:border-orange-800 text-orange-800 dark:text-orange-300 hover:bg-orange-100 hover:text-orange-900 dark:hover:bg-orange-950/70 dark:hover:text-orange-200">
                     <Link href="/profile">Connect Account</Link>
                   </Button>
                 </CardFooter>

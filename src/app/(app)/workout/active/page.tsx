@@ -72,7 +72,7 @@ export default function ActiveWorkoutPage() {
   return (
     <div className="space-y-6 max-w-2xl mx-auto">
       {!isOnline && (
-        <div className="flex items-center gap-2 rounded-md border border-yellow-400 bg-yellow-50 px-4 py-2 text-sm text-yellow-800">
+        <div className="flex items-center gap-2 rounded-md border border-yellow-400 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-950/40 px-4 py-2 text-sm text-yellow-800 dark:text-yellow-300">
           <WifiOff className="h-4 w-4 shrink-0" />
           <span>You&apos;re offline — your progress is saved locally and will sync when reconnected.</span>
         </div>
@@ -399,12 +399,12 @@ function WorkoutSessionCard({ planned, initialSession, day, isMultiSession, sess
           </div>
 
           {isRunning && !trainingPaces && (
-            <div className="p-4 border border-yellow-400 bg-yellow-50 rounded-md text-yellow-800 flex items-start gap-3">
+            <div className="p-4 border border-yellow-400 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-950/40 rounded-md text-yellow-800 dark:text-yellow-300 flex items-start gap-3">
               <AlertTriangle className="h-5 w-5 mt-0.5" />
               <div>
                 <h4 className="font-semibold">Paces Not Calculated</h4>
                 <p className="text-sm">To see your personalized training paces, please add at least one benchmark race time to your profile.</p>
-                <Button variant="link" className="p-0 h-auto mt-1 text-sm text-yellow-800" asChild>
+                <Button variant="link" className="p-0 h-auto mt-1 text-sm text-yellow-800 dark:text-yellow-300" asChild>
                   <Link href="/profile">Update Your Profile</Link>
                 </Button>
               </div>

@@ -982,25 +982,25 @@ function MonthGridCalendarView() {
                         </CardTitle>
                       </div>
                       {isCompleted ? (
-                        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 shrink-0">Completed</Badge>
+                        <Badge variant="outline" className="bg-green-50 dark:bg-green-950/40 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800 shrink-0">Completed</Badge>
                       ) : session?.skipped ? (
-                        <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 shrink-0">Skipped</Badge>
+                        <Badge variant="outline" className="bg-orange-50 dark:bg-orange-950/40 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-800 shrink-0">Skipped</Badge>
                       ) : selectedEvent.isMissed ? (
-                        <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 shrink-0">Missed</Badge>
+                        <Badge variant="outline" className="bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800 shrink-0">Missed</Badge>
                       ) : (() => {
                         const hasR = hasRuns(workout);
                         const hasE = hasExercises(workout);
                         if (hasR && hasE) return <Badge variant="outline" className="bg-teal-50 text-teal-700 border-teal-200 shrink-0">Hybrid</Badge>;
                         if (hasR) {
                           const t = (workout as RunningWorkout).runs[0]?.type;
-                          if (t === 'intervals') return <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 shrink-0">Intervals</Badge>;
-                          if (t === 'tempo') return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200 shrink-0">Tempo Run</Badge>;
+                          if (t === 'intervals') return <Badge variant="outline" className="bg-orange-50 dark:bg-orange-950/40 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-800 shrink-0">Intervals</Badge>;
+                          if (t === 'tempo') return <Badge variant="outline" className="bg-yellow-50 dark:bg-yellow-950/40 text-yellow-700 dark:text-yellow-300 border-yellow-200 dark:border-yellow-800 shrink-0">Tempo Run</Badge>;
                           if (t === 'long') return <Badge variant="outline" className="bg-blue-50 text-blue-800 border-blue-200 shrink-0">Long Run</Badge>;
                           return <Badge variant="outline" className="bg-blue-50 text-blue-600 border-blue-200 shrink-0">Easy Run</Badge>;
                         }
                         const firstSessionType = hasE ? (workout as Workout).exercises[0]?.sessionType : undefined;
                         if (firstSessionType === 'cardio') return <Badge variant="outline" className="bg-pink-50 text-pink-700 border-pink-200 shrink-0">Conditioning</Badge>;
-                        return <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 shrink-0">Strength</Badge>;
+                        return <Badge variant="outline" className="bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800 shrink-0">Strength</Badge>;
                       })()}
                     </div>
 
@@ -1332,13 +1332,13 @@ function WorkoutCard({ dateKey, index, workout, unitSystem, isToday, isPast, fin
       </div>
       <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
         {isDone && (
-          <Badge variant="outline" className="bg-green-500/10 text-green-700 border-green-500/50">
+          <Badge variant="outline" className="bg-green-500/10 text-green-700 dark:text-green-300 border-green-500/50">
             <CheckCircle2 className="h-3 w-3 mr-1" />
             Done
           </Badge>
         )}
         {isSkipped && (
-          <Badge variant="outline" className="bg-orange-500/10 text-orange-700 border-orange-500/50">
+          <Badge variant="outline" className="bg-orange-500/10 text-orange-700 dark:text-orange-300 border-orange-500/50">
             <XCircle className="h-3 w-3 mr-1" />
             Skipped
           </Badge>
