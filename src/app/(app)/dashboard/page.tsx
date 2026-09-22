@@ -274,17 +274,21 @@ export default function DashboardPage() {
   const generateProgressData = (sessions: WorkoutSession[], stravaActivities: StravaActivity[] = []) => {
       const now = new Date();
       const weeklyData: { week: string, workouts: number }[] = [];
+      // A Strava activity linked to a session is the same workout — count it once.
+      const linkedStravaIds = new Set(sessions.map(s => s.stravaId).filter(Boolean).map(String));
+      const unlinkedActivities = stravaActivities.filter(a => !linkedStravaIds.has(String(a.id)));
 
       for (let i = 3; i >= 0; i--) {
           const weekStart = startOfWeek(subWeeks(now, i), { weekStartsOn: 1 });
           const weekEnd = new Date(weekStart);
           weekEnd.setDate(weekEnd.getDate() + 6);
+          weekEnd.setHours(23, 59, 59, 999); // include all of Sunday
 
           const appCount = sessions.filter(s =>
-              s.finishedAt && isWithinInterval(s.finishedAt, { start: weekStart, end: weekEnd })
+              s.finishedAt && !s.skipped && isWithinInterval(s.finishedAt, { start: weekStart, end: weekEnd })
           ).length;
 
-          const stravaCount = stravaActivities.filter(a => {
+          const stravaCount = unlinkedActivities.filter(a => {
               const d = new Date(a.start_date_local || a.start_date);
               return isWithinInterval(d, { start: weekStart, end: weekEnd });
           }).length;
