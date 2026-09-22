@@ -25,6 +25,7 @@ import { hasRuns, hasExercises } from '@/lib/type-guards';
 import { ExerciseHistory } from '@/components/exercise-history';
 import { convertDistanceInText, convertTextWithUnits } from '@/lib/unit-conversion';
 import { WorkoutTimer } from '@/components/workout-timer';
+import { trackEvent } from '@/lib/analytics';
 
 const WorkoutCompleteModal = lazy(() => import('@/components/workout-complete-modal'));
 
@@ -164,6 +165,20 @@ function WorkoutSessionCard({ planned, initialSession, day, isMultiSession, sess
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, planned, extendedExercises, summaryText, summaryLoading]);
 
+  // Once per session: opening an unfinished workout is the "started" signal.
+  useEffect(() => {
+    if (!user || initialSession.finishedAt) return;
+    const key = `workout_started:${initialSession.id}`;
+    try {
+      if (sessionStorage.getItem(key)) return;
+      sessionStorage.setItem(key, '1');
+    } catch {
+      /* storage unavailable — still record it */
+    }
+    trackEvent(user.id, 'workout_started', { sessionId: initialSession.id, title: planned.title, programId: initialSession.programId });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, initialSession.id]);
+
   useEffect(() => {
     if (user) {
       const timer = setTimeout(() => { loadWorkoutSummary(); }, 100);
@@ -221,6 +236,15 @@ function WorkoutSessionCard({ planned, initialSession, day, isMultiSession, sess
     const updatedSessionData = { ...session, finishedAt, notes, workoutTitle: planned.title, programType: planned.programType };
     setSession(updatedSessionData);
     await updateWorkoutSession(session.id, { finishedAt, notes, workoutTitle: planned.title, programType: planned.programType });
+    if (user) {
+      trackEvent(user.id, 'workout_completed', {
+        source: 'active_workout',
+        sessionId: session.id,
+        title: planned.title,
+        itemsChecked: checkedCount,
+        itemsTotal: totalCount,
+      });
+    }
     setIsCompleteModalOpen(true);
     refreshData();
   };
@@ -232,6 +256,7 @@ function WorkoutSessionCard({ planned, initialSession, day, isMultiSession, sess
     const updatedSessionData = { ...session, finishedAt, notes: skipNotes, workoutTitle: planned.title, programType: planned.programType, skipped: true };
     setSession(updatedSessionData);
     await updateWorkoutSession(session.id, { finishedAt, notes: skipNotes, workoutTitle: planned.title, programType: planned.programType, skipped: true });
+    if (user) trackEvent(user.id, 'workout_skipped', { sessionId: session.id, title: planned.title });
     setIsCompleteModalOpen(true);
     refreshData();
   };

@@ -89,7 +89,7 @@ export default function SetupPage() {
     const success = await subscribeUserToPush();
     if (success) {
       setNotifStatus('granted');
-      trackEvent(user?.uid ?? null, 'pwa_prompt_shown', { source: 'setup_notifications' });
+      trackEvent(user?.uid ?? null, 'notifications_enabled', { source: 'setup' });
     } else {
       setNotifStatus(
         typeof Notification !== 'undefined' && Notification.permission === 'denied'

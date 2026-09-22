@@ -31,6 +31,7 @@ import { getOrCreateWorkoutSession, getUserSessionsInRange, updateWorkoutSession
 import { saveScheduleChanges } from '@/services/session-service';
 import { getWorkoutForDay } from '@/lib/workout-utils';
 import { planPostpone } from '@/lib/postpone';
+import { trackEvent } from '@/lib/analytics';
 import type { WorkoutDay, RunningWorkout, Workout, PlannedRun } from '@/models/types';
 import type { StravaActivity } from '@/services/strava-service';
 import Link from 'next/link';
@@ -369,6 +370,7 @@ export default function DashboardPage() {
               user.notificationTime,
           ).catch(err => logger.error('Could not schedule the reminder:', err));
 
+          trackEvent(user.id, 'workout_postponed', { title: movedTitle, bumped: !!plan.bumpedTo });
           await refreshData();
           toast({
               title: `${movedTitle} is now tomorrow`,
@@ -395,6 +397,7 @@ export default function DashboardPage() {
               finishedAt: new Date(),
               workoutTitle: todaysWorkout.workout.title,
           });
+          trackEvent(user!.id, 'workout_completed', { source: 'dashboard_mark_done', sessionId: todaysSession.id, title: todaysWorkout.workout.title });
           await refreshData();
           toast({ title: 'Workout Completed!', description: 'Nice work. Keep the streak alive!' });
       } catch (error) {

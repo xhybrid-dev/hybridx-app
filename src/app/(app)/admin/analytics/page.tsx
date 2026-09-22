@@ -40,6 +40,8 @@ import {
 } from 'recharts';
 
 interface AnalyticsData {
+  activation: { signups: number; activated: number; rate: number };
+  cohorts: { weekStart: string; size: number; retained: (number | null)[] }[];
   retention: { dau: number; wau: number; mau: number };
   onboardingFunnel: { step: number; label: string; count: number }[];
   signupPageViews: number;
@@ -187,6 +189,56 @@ export default function AdminAnalyticsPage() {
               </CardContent>
             </Card>
           </div>
+
+          {/* Activation & cohort retention */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base sm:text-lg">Activation &amp; weekly retention</CardTitle>
+              <CardDescription>
+                From workout history. Activation: {data.activation.rate}% of {data.activation.signups} signups finished a
+                workout within 72 hours. Each cell is the share of a signup week that finished a workout in that week of
+                their membership.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="overflow-x-auto">
+              <table className="w-full min-w-[560px] text-sm tabular-nums">
+                <thead>
+                  <tr className="text-left text-xs text-muted-foreground">
+                    <th className="py-2 pr-3 font-medium">Signed up (week of)</th>
+                    <th className="py-2 pr-3 font-medium">Athletes</th>
+                    {Array.from({ length: 8 }, (_, k) => (
+                      <th key={k} className="py-2 px-1 text-center font-medium">W{k}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.cohorts.map((cohort) => (
+                    <tr key={cohort.weekStart} className="border-t">
+                      <td className="py-2 pr-3">{cohort.weekStart}</td>
+                      <td className="py-2 pr-3">{cohort.size}</td>
+                      {cohort.retained.map((pct, k) => (
+                        <td key={k} className="py-1 px-1 text-center">
+                          {pct === null ? (
+                            <span className="text-muted-foreground/50">—</span>
+                          ) : (
+                            <span
+                              className="inline-block min-w-[2.75rem] rounded px-1.5 py-0.5"
+                              style={{ backgroundColor: `hsl(var(--primary) / ${Math.max(0.06, pct / 100)})`, color: pct >= 50 ? 'hsl(var(--primary-foreground))' : undefined }}
+                            >
+                              {pct}%
+                            </span>
+                          )}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                  {data.cohorts.length === 0 && (
+                    <tr><td colSpan={10} className="py-6 text-center text-muted-foreground">No signups in the last 10 weeks.</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </CardContent>
+          </Card>
 
           {/* DAU chart */}
           {data.dauChart.length > 0 && (

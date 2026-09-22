@@ -3,6 +3,10 @@ import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin';
 import { getUser } from '@/services/user-service';
 import { cookies } from 'next/headers';
 import { Timestamp } from 'firebase-admin/firestore';
+import { computeRetention } from '@/lib/retention';
+
+/** Cohorts reported: signups in the last this-many weeks. */
+const COHORT_WEEKS = 10;
 
 export async function GET(request: NextRequest) {
   try {
@@ -175,7 +179,24 @@ export async function GET(request: NextRequest) {
       .slice(-30)
       .map(([date, users]) => ({ date, users: users.size }));
 
+    // ---- Activation & cohort retention (from workout history, not events) ----
+    const cohortCutoff = Timestamp.fromMillis(Date.now() - COHORT_WEEKS * 7 * 24 * 60 * 60 * 1000);
+    const [signupSnap, finishedSnap] = await Promise.all([
+      db.collection('users').where('trialStartDate', '>=', cohortCutoff).get(),
+      db.collection('workoutSessions').where('finishedAt', '>=', cohortCutoff).get(),
+    ]);
+    const signups = signupSnap.docs
+      .filter((d) => !adminUserIds.has(d.id) && !d.data().isAdmin)
+      .map((d) => ({ userId: d.id, signedUpAt: (d.data().trialStartDate as Timestamp).toDate() }));
+    const finished = finishedSnap.docs
+      .map((d) => d.data())
+      .filter((d) => !d.skipped && d.finishedAt && d.userId)
+      .map((d) => ({ userId: d.userId as string, finishedAt: (d.finishedAt as Timestamp).toDate() }));
+    const retentionReport = computeRetention(signups, finished, new Date(), 8);
+
     return NextResponse.json({
+      activation: retentionReport.activation,
+      cohorts: retentionReport.cohorts,
       retention: {
         dau: dau.size,
         wau: wau.size,

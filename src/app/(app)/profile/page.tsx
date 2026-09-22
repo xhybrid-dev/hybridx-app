@@ -31,6 +31,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { getAuthInstance } from '@/lib/firebase';
+import { trackEvent } from '@/lib/analytics';
 import { getUserClient, updateUser } from '@/services/user-service-client';
 import type { User, PersonalRecords, UserRunningProfile } from '@/models/types';
 import { timeStringToSeconds, secondsToTimeString } from '@/lib/pace-utils';
@@ -217,6 +218,7 @@ export default function ProfilePage() {
     const stravaError = urlParams.get('strava-error');
 
     if (stravaSuccess === 'success') {
+        void getAuthInstance().then(auth => trackEvent(auth.currentUser?.uid ?? null, 'strava_connected'));
         toast({ 
             title: 'Success!', 
             description: 'Your Strava account has been connected successfully.' 
@@ -242,6 +244,7 @@ export default function ProfilePage() {
     const garminSuccess = urlParams.get('garmin');
     const garminError = urlParams.get('garmin-error');
     if (garminSuccess === 'success') {
+        void getAuthInstance().then(auth => trackEvent(auth.currentUser?.uid ?? null, 'garmin_connected'));
         toast({ title: 'Garmin Connected!', description: 'Account linked. Click "Sync next 14 days" to push your training plan to your watch.' });
         fetchUserData();
         window.history.replaceState({}, '', '/profile');

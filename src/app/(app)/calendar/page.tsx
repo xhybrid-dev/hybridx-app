@@ -29,6 +29,7 @@ import { getProgramClient } from '@/services/program-service-client';
 import { getWorkoutForDay, formatPlannedRun } from '@/lib/workout-utils';
 import { getUserSessionsInRange, getRecentUserSessions, getOrCreateWorkoutSession, updateWorkoutSession } from '@/services/session-service-client';
 import { saveScheduleChanges, swapWorkouts } from '@/services/session-service';
+import { trackEvent } from '@/lib/analytics';
 import type { Program, WorkoutDay, WorkoutSession, RunningWorkout, Workout, UnitSystem } from '@/models/types';
 import { hasRuns, hasExercises } from '@/lib/type-guards';
 import { convertDistance, convertTextWithUnits } from '@/lib/unit-conversion';
@@ -839,6 +840,7 @@ function MonthGridCalendarView() {
         skipped: false,
       });
 
+      trackEvent(firebaseUser.uid, 'workout_completed', { source: 'calendar', title: workout.title });
       toast({ title: 'Marked as Completed', description: `${workout.title} logged.` });
       await fetchCalendarData(firebaseUser);
     } catch (error) {
