@@ -121,6 +121,8 @@ export interface User {
    */
   timeZone?: string;
   notificationTime?: { hour: number; minute: number };
+  /** "Do it tomorrow": the day (YYYY-MM-DD, athlete's calendar) they committed to train, for the reminder job. */
+  trainingCommitment?: { date: string; workoutTitle: string } | null;
   // Analytics fields
   lastSeenAt?: Date;
   lastLoginAt?: Date;

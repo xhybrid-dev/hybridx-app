@@ -4,7 +4,8 @@
 import { useEffect, useState, useRef, useCallback, lazy, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import { BarChart, Target, Loader2, Route, Zap, PlusSquare, Link as LinkIcon, CheckCircle, History, Calendar, Bell, CheckSquare, Sparkles, Trophy, ArrowRight, MessageCircle } from 'lucide-react';
-import { subWeeks, startOfWeek, isWithinInterval, isFuture } from 'date-fns';
+import { subWeeks, startOfWeek, isWithinInterval, isFuture, startOfDay, addDays, isSameDay, format } from 'date-fns';
+import { Capacitor } from '@capacitor/core';
 
 import { CoachPanel, useCoachNotes } from '@/components/coach-panel';
 import { CoachMarkdown } from '@/components/coach-markdown';
@@ -26,7 +27,10 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { ChartContainer, BarChart as RechartsBarChart, Bar, XAxis, ChartTooltip, CartesianGrid, ChartTooltipContent } from '@/components/ui/chart';
 import { Skeleton } from '@/components/ui/skeleton';
-import { getOrCreateWorkoutSession, updateWorkoutSession, type WorkoutSession } from '@/services/session-service-client';
+import { getOrCreateWorkoutSession, getUserSessionsInRange, updateWorkoutSession, type WorkoutSession } from '@/services/session-service-client';
+import { saveScheduleChanges } from '@/services/session-service';
+import { getWorkoutForDay } from '@/lib/workout-utils';
+import { planPostpone } from '@/lib/postpone';
 import type { WorkoutDay, RunningWorkout, Workout, PlannedRun } from '@/models/types';
 import type { StravaActivity } from '@/services/strava-service';
 import Link from 'next/link';
@@ -34,7 +38,7 @@ import { cn } from '@/lib/utils';
 import { formatPace } from '@/lib/pace-utils';
 import { formatPlannedRun } from '@/lib/workout-utils';
 import { useToast } from '@/hooks/use-toast';
-import { checkAndScheduleNotification } from '@/utils/notification-scheduler';
+import { checkAndScheduleNotification, scheduleDailyNotification } from '@/utils/notification-scheduler';
 import { useNotificationPermission } from '@/hooks/use-notification-permission';
 import { StatsWidget } from '@/components/stats-widget';
 import { Badge } from '@/components/ui/badge';
@@ -78,6 +82,7 @@ export default function DashboardPage() {
   const coachNotes = useCoachNotes(!!user);
   const [isGeneratingWorkout, setIsGeneratingWorkout] = useState(false);
   const [isMarkingDone, setIsMarkingDone] = useState(false);
+  const [isPostponing, setIsPostponing] = useState(false);
   const [isCustomWorkoutDialogOpen, setIsCustomWorkoutDialogOpen] = useState(false);
   const [isGeneratingStarterPlan, setIsGeneratingStarterPlan] = useState(false);
   const [showCompleteOnboarding, setShowCompleteOnboarding] = useState(false);
@@ -323,12 +328,63 @@ export default function DashboardPage() {
     }
   };
 
-  const handleCommitTomorrow = () => {
-      // In a real app, this would use the Notification API
-      toast({
-          title: "Session Committed!",
-          description: "We'll remind you tomorrow morning. Get your kit ready!",
-      });
+  // Moves today's session to tomorrow (tomorrow's goes to the next rest day),
+  // records the commitment for the morning reminder, and schedules a native
+  // reminder where there is one. This button used to show a toast promising a
+  // reminder and do nothing else.
+  const handleCommitTomorrow = async () => {
+      if (!user || !program || !user.startDate || !todaysWorkout?.sessions.length) return;
+      setIsPostponing(true);
+      try {
+          const today = startOfDay(new Date());
+          const lastDay = addDays(today, 6);
+          const persisted = await getUserSessionsInRange(user.id, today, lastDay);
+          if (persisted.some(s => isSameDay(s.workoutDate, today) && s.finishedAt)) {
+              toast({ title: 'Already done today', description: 'Nice work — nothing to move.' });
+              return;
+          }
+
+          const week = Array.from({ length: 7 }, (_, offset) => {
+              const date = addDays(today, offset);
+              const scheduled = persisted
+                  .filter(s => isSameDay(s.workoutDate, date) && !['one-off-ai', 'custom-workout'].includes(s.programId))
+                  .sort((a, b) => (a.sessionIndex ?? 0) - (b.sessionIndex ?? 0));
+              const workouts = scheduled.length > 0
+                  ? scheduled.map(s => s.workoutDetails).filter((w): w is WorkoutDay => !!w)
+                  : getWorkoutForDay(program, user.startDate!, date).sessions;
+              return { date, workouts };
+          });
+
+          const plan = planPostpone(week);
+          if (!plan) return;
+          await saveScheduleChanges({ programId: program.id, days: plan.changes });
+
+          const tomorrow = addDays(today, 1);
+          const movedTitle = week[0].workouts[0].title;
+          await updateUser(user.id, {
+              trainingCommitment: { date: format(tomorrow, 'yyyy-MM-dd'), workoutTitle: movedTitle },
+          });
+          void scheduleDailyNotification(
+              { workoutTitle: movedTitle, exercises: week[0].workouts.map(w => w.title).join(', ') },
+              user.notificationTime,
+          ).catch(err => logger.error('Could not schedule the reminder:', err));
+
+          await refreshData();
+          toast({
+              title: `${movedTitle} is now tomorrow`,
+              description: [
+                  plan.bumpedTo ? `Tomorrow's session moved to ${format(plan.bumpedTo, 'EEEE')}.` : null,
+                  isGranted || Capacitor.isNativePlatform()
+                      ? "We'll remind you in the morning."
+                      : 'Turn on notifications in Profile for a morning reminder.',
+              ].filter(Boolean).join(' '),
+          });
+      } catch (error) {
+          logger.error('Failed to move today to tomorrow:', error);
+          toast({ title: 'Could not move the session', description: 'Please try again.', variant: 'destructive' });
+      } finally {
+          setIsPostponing(false);
+      }
   };
 
   const handleMarkDone = async () => {
@@ -483,13 +539,14 @@ export default function DashboardPage() {
                             <Zap className="mr-2 h-5 w-5 fill-yellow-400 text-yellow-400" />
                             Start First Workout
                         </Button>
-                        <Button 
-                            variant="outline" 
-                            size="lg" 
+                        <Button
+                            variant="outline"
+                            size="lg"
                             className="w-full"
                             onClick={handleCommitTomorrow}
+                            disabled={!todaysWorkout?.workout || isPostponing || isWorkoutCompleted}
                         >
-                            <Calendar className="mr-2 h-4 w-4" />
+                            {isPostponing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Calendar className="mr-2 h-4 w-4" />}
                             Do It Tomorrow
                         </Button>
                     </CardFooter>

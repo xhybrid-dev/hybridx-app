@@ -15,6 +15,7 @@ import { notificationMessage } from '@/ai/flows/notification-message';
 import { mapWithLimit } from '@/lib/concurrency';
 import { Timestamp } from 'firebase-admin/firestore';
 import type { User, Workout, RunningWorkout } from '@/models/types';
+import { calendarDayKey, normaliseTimeZone } from '@/lib/program-day';
 
 export const maxDuration = 300;
 export const dynamic = 'force-dynamic';
@@ -179,8 +180,16 @@ export async function GET(request: Request) {
           .get();
 
         let messageBody: string;
+        const commitment = user.trainingCommitment;
+        const committedToday =
+          !!commitment && commitment.date === calendarDayKey(now, normaliseTimeZone(user.timeZone));
 
-        if (recentSessionSnap.empty) {
+        if (committedToday) {
+          // They pressed "Do it tomorrow" yesterday: hold them to it, by name.
+          messageBody = `You said today's the day — ${commitment!.workoutTitle} is ready when you are 💪`;
+          notifUrl = '/workout/active';
+          await db.collection('users').doc(userId).update({ trainingCommitment: null });
+        } else if (recentSessionSnap.empty) {
           // Re-engagement: pick a rotating message
           const idx = now.getDate() % RE_ENGAGEMENT_MESSAGES.length;
           messageBody = RE_ENGAGEMENT_MESSAGES[idx];
