@@ -21,6 +21,7 @@ import {
 import { subscribeUserToPush } from '@/lib/push-subscribe';
 import { Capacitor } from '@capacitor/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
+import { enableNativePush } from '@/lib/native-push';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -189,6 +190,8 @@ export default function ProfilePage() {
     setEnablingNotifs(true);
     try {
       if (isNative) {
+        // Server push through FCM, plus local permission for the on-device fallback.
+        await enableNativePush();
         const status = await LocalNotifications.requestPermissions();
         const mapped = nativeToWebPermission(status.display);
         setNotifPermission(mapped);

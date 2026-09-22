@@ -43,6 +43,7 @@ import { UserProvider, useUserProfile } from '@/contexts/user-context';
 import { Capacitor } from '@capacitor/core';
 import { StatusBar, Style } from '@capacitor/status-bar';
 import { LocalNotifications } from '@capacitor/local-notifications';
+import { resumeNativePush } from '@/lib/native-push';
 
 
 function NavMenu() {
@@ -208,6 +209,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       const url = action.notification.extra?.url;
       router.push(typeof url === 'string' && url.startsWith('/') ? url : '/dashboard');
     });
+    void resumeNativePush(url => router.push(url));
     return () => {
       void listener.then(handle => handle.remove());
     };

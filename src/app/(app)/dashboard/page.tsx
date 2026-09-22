@@ -39,7 +39,7 @@ import { cn } from '@/lib/utils';
 import { formatPace } from '@/lib/pace-utils';
 import { formatPlannedRun } from '@/lib/workout-utils';
 import { useToast } from '@/hooks/use-toast';
-import { checkAndScheduleNotification, scheduleDailyNotification } from '@/utils/notification-scheduler';
+import { cancelScheduledReminder, checkAndScheduleNotification, scheduleDailyNotification } from '@/utils/notification-scheduler';
 import { useNotificationPermission } from '@/hooks/use-notification-permission';
 import { StatsWidget } from '@/components/stats-widget';
 import { Badge } from '@/components/ui/badge';
@@ -250,23 +250,25 @@ export default function DashboardPage() {
     return () => clearTimeout(timer);
   }, [user, todaysWorkout, todaysSession]);
 
-  // Effect to schedule daily notifications
+  // Native apps schedule tomorrow's reminder on the device as a fallback for
+  // when a server push can't reach them. (Web gets the server push; the old
+  // web path was a 24-hour setTimeout that died with the tab.)
   useEffect(() => {
-    if (isGranted && todaysWorkout?.workout && user) {
-      const notifRunParts = hasRuns(todaysWorkout.workout) ? (todaysWorkout.workout).runs.map(r => r.type) : [];
-      const notifExParts = hasExercises(todaysWorkout.workout) ? todaysWorkout.workout.exercises.map(e => e.name) : [];
-      const exercisesForNotification = [...notifRunParts, ...notifExParts].join(', ');
-
-      checkAndScheduleNotification({
-        workoutTitle: todaysWorkout.workout.title,
-        exercises: exercisesForNotification,
-      }, user.notificationTime).catch(error => {
-        logger.error('Error scheduling notification:', error);
-      });
+    if (!Capacitor.isNativePlatform() || !user || !program || !user.startDate || user.planPausedAt) return;
+    const tomorrow = addDays(startOfDay(new Date()), 1);
+    const next = getWorkoutForDay(program, user.startDate, tomorrow).sessions;
+    if (next.length === 0) {
+      void cancelScheduledReminder();
+      return;
     }
-  }, [isGranted, todaysWorkout, user]);
+    const parts = next.flatMap(w => [
+      ...(hasRuns(w) ? w.runs.map(r => r.type) : []),
+      ...(hasExercises(w) ? w.exercises.map(e => e.name) : []),
+    ]);
+    checkAndScheduleNotification({ workoutTitle: next[0].title, exercises: parts.join(', ') }, user.notificationTime)
+      .catch(error => logger.error('Error scheduling notification:', error));
+  }, [user, program]);
 
-  
   const generateProgressData = (sessions: WorkoutSession[], stravaActivities: StravaActivity[] = []) => {
       const now = new Date();
       const weeklyData: { week: string, workouts: number }[] = [];

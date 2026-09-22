@@ -8,6 +8,7 @@
 import { getAuthInstance } from '@/lib/firebase';
 import { Capacitor } from '@capacitor/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
+import { isNativePushRegistered } from '@/lib/native-push';
 
 export interface WorkoutNotificationData {
   workoutTitle: string;
@@ -77,7 +78,7 @@ export async function scheduleDailyNotification(
                     attachments: undefined,
                     actionTypeId: "",
                     extra: {
-                        url: '/dashboard'
+                        url: '/workout/active'
                     }
                 }]
             });
@@ -86,32 +87,11 @@ export async function scheduleDailyNotification(
         }
         return false;
 
-    } else {
-        // === WEB IMPLEMENTATION (PWA) ===
-        // Check permissions
-        if (!('Notification' in window) || Notification.permission !== 'granted') {
-            return false;
-        }
-        
-        if (!('serviceWorker' in navigator)) {
-            return false;
-        }
-
-        const registration = await navigator.serviceWorker.ready;
-        const delay = scheduledTime.getTime() - now.getTime();
-
-        // This is still unreliable if tab closes, but best we can do without VAPID backend
-        setTimeout(() => {
-            registration.showNotification('HYBRIDX Workout', {
-                body: message,
-                icon: '/icon-maskable-192.png',
-                badge: '/icon-maskable-192.png',
-                data: { url: '/dashboard' }
-            });
-        }, delay);
-        
-        return true;
     }
+
+    // Web: the server sends the reminder (api/cron/push-notifications). A
+    // setTimeout here only fired if the tab stayed open for a day.
+    return false;
 
   } catch (error) {
     console.error('Error scheduling notification:', error);
@@ -127,12 +107,11 @@ export async function checkAndScheduleNotification(
   userPreferredTime?: { hour: number; minute: number }
 ): Promise<void> {
   
-  // For native, we check permission via plugin
-  if (Capacitor.isNativePlatform()) {
-      // Permission check happens inside scheduleDailyNotification for native usually, 
-      // or we can pre-check. Let's just run logic.
-  } else {
-      if (Notification.permission !== 'granted') return;
+  if (!Capacitor.isNativePlatform()) return;
+  // The server reminder reaches this device already; a local one would double up.
+  if (isNativePushRegistered()) {
+    await cancelScheduledReminder();
+    return;
   }
 
   const stored = localStorage.getItem('workout_notification_schedule');
@@ -198,5 +177,15 @@ export async function sendTestNotification(message: string): Promise<void> {
         body: message,
         icon: '/icon-maskable-192.png'
       });
+  }
+}
+
+/** Removes tomorrow's device reminder, e.g. when tomorrow is a rest day. */
+export async function cancelScheduledReminder(): Promise<void> {
+  if (!Capacitor.isNativePlatform()) return;
+  try {
+    await LocalNotifications.cancel({ notifications: [{ id: 1 }] });
+  } catch (error) {
+    console.error('Error cancelling reminder:', error);
   }
 }

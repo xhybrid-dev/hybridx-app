@@ -6,6 +6,8 @@ import { Download, Bell, CheckCircle2, ArrowRight, Share, ChevronRight } from 'l
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/icons';
 import { subscribeUserToPush } from '@/lib/push-subscribe';
+import { enableNativePush } from '@/lib/native-push';
+import { Capacitor } from '@capacitor/core';
 import { trackEvent } from '@/lib/analytics';
 import { useAuth } from '@/components/AuthProvider';
 import { cn } from '@/lib/utils';
@@ -39,7 +41,9 @@ export default function SetupPage() {
   }, [user, router]);
 
   useEffect(() => {
+    // Inside the iOS/Android app there is nothing to install.
     const standalone =
+      Capacitor.isNativePlatform() ||
       window.matchMedia('(display-mode: standalone)').matches ||
       (navigator as any).standalone === true;
     const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
@@ -86,13 +90,13 @@ export default function SetupPage() {
 
   const handleEnableNotifications = async () => {
     setNotifStatus('loading');
-    const success = await subscribeUserToPush();
+    const success = Capacitor.isNativePlatform() ? await enableNativePush() : await subscribeUserToPush();
     if (success) {
       setNotifStatus('granted');
       trackEvent(user?.uid ?? null, 'notifications_enabled', { source: 'setup' });
     } else {
       setNotifStatus(
-        typeof Notification !== 'undefined' && Notification.permission === 'denied'
+        !Capacitor.isNativePlatform() && typeof Notification !== 'undefined' && Notification.permission === 'denied'
           ? 'denied'
           : 'idle'
       );
@@ -276,11 +280,13 @@ export default function SetupPage() {
             </div>
 
             <div className="space-y-2 text-sm text-left bg-muted/40 rounded-xl p-4">
-              <StatusRow
-                label="PWA Installed"
-                done={pwaStatus === 'installed' || isStandalone}
-                skipped={pwaStatus === 'skipped'}
-              />
+              {!Capacitor.isNativePlatform() && (
+                <StatusRow
+                  label="App installed"
+                  done={pwaStatus === 'installed' || isStandalone}
+                  skipped={pwaStatus === 'skipped'}
+                />
+              )}
               <StatusRow
                 label="Notifications"
                 done={notifStatus === 'granted'}

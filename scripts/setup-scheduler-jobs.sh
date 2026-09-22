@@ -41,19 +41,19 @@ done
 
 # name|schedule|path
 #
-# Schedules are UTC. Ordering matters in one place: daily-coach writes the
-# notification rows that push-notifications then delivers, so it runs first.
+# Schedules are UTC.
 JOBS=(
   "marketing-send|* * * * *|/api/cron/marketing-send"
   "marketing-journeys|*/5 * * * *|/api/cron/marketing-journeys"
   "marketing-journeys-daily|0 3 * * *|/api/cron/marketing-journeys?derived=1"
   "marketing-sync|30 3 * * *|/api/cron/marketing-sync"
   "marketing-brief|0 8 * * 1|/api/cron/marketing-brief"
-  # Adaptive coaching. Judges "did they train yesterday", so it must run after
-  # yesterday has ended for as many athletes as possible, and before the
-  # morning push at 07:00 that surfaces what it decided.
+  # Adaptive coaching. Judges "did they train yesterday" in each athlete's own
+  # timezone, and pushes its own notice when it changes a session.
   "daily-coach|0 6 * * *|/api/cron/daily-coach"
-  "push-notifications|0 7 * * *|/api/cron/push-notifications"
+  # Workout reminders. Every 15 minutes: each athlete is reminded at the time
+  # they chose, in their own timezone, at most once a day.
+  "push-notifications|*/15 * * * *|/api/cron/push-notifications"
   # Safety net only — a program change triggers an immediate re-sync, and the
   # job itself skips anyone synced within the last 8 days.
   "garmin-sync|0 3 */10 * *|/api/cron/garmin-sync"
