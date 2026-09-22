@@ -10,6 +10,7 @@ import { Loader2, Link as LinkIcon, Bell, Settings, CheckCircle2, XCircle, Alert
 import { ThemeSwitcher } from '@/components/theme-switcher';
 import { GarminIntegrationCard } from '@/components/garmin-integration-card';
 import { MarketingPreferencesCard } from '@/components/marketing-preferences-card';
+import { AccountSettingsCard } from '@/components/account-settings-card';
 import {
   Dialog,
   DialogContent,
@@ -612,6 +613,12 @@ export default function ProfilePage() {
             <div className="lg:col-span-2">
               <ThemeSwitcher />
             </div>
+
+            {user?.email && (
+              <div className="lg:col-span-2">
+                <AccountSettingsCard email={user.email} />
+              </div>
+            )}
         </div>
       </div>
     </div>
