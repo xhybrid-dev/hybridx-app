@@ -272,6 +272,19 @@ export interface TimerRecord {
 
 export type SkipReason = 'time' | 'tired' | 'ill' | 'injured' | 'other';
 
+/** What the athlete actually did on one exercise. Every field is optional. */
+export interface ExerciseResult {
+  /** Display name as prescribed, e.g. "Sled Push". */
+  name: string;
+  /** Kilograms. */
+  load?: number;
+  reps?: number;
+  /** Seconds. */
+  timeSeconds?: number;
+  /** Metres. */
+  distance?: number;
+}
+
 export interface WorkoutSession {
     id: string;
     userId: string;
@@ -295,6 +308,8 @@ export interface WorkoutSession {
     rpe?: number;
     /** True once the athlete actually opened the session; startedAt is then the real start. */
     startedInApp?: boolean;
+    /** Logged results, keyed by normalised exercise name (lib/exercise-results). */
+    results?: Record<string, ExerciseResult>;
     workoutDetails?: Workout | RunningWorkout;
     exerciseChecklist?: Record<string, boolean>;
     timerRecord?: TimerRecord;

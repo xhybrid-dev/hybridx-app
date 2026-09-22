@@ -16,6 +16,7 @@ import type {
   WorkoutSession,
 } from '@/models/types';
 import { formatPlannedRun } from '@/lib/workout-utils';
+import { formatResult, hasAnyValue } from '@/lib/exercise-results';
 
 /** Program ids used for logged extra activity rather than the scheduled plan. */
 export const AD_HOC_PROGRAM_IDS = ['one-off-ai', 'custom-workout'];
@@ -134,6 +135,8 @@ export function summariseSession(session: WorkoutSession, options: SessionLineOp
   const duration = status === 'completed' ? sessionDuration(session) : null;
   parts.push(duration ? `${status} (${duration})` : status);
   if (status === 'completed' && session.rpe) parts.push(`felt ${session.rpe}/10`);
+  const logged = Object.values(session.results ?? {}).filter(hasAnyValue).map(r => `${r.name} ${formatResult(r)}`);
+  if (status === 'completed' && logged.length > 0) parts.push(`logged: ${logged.join('; ')}`);
   if (session.skipped && session.skipReason) parts.push(`skipped because: ${SKIP_REASON_TEXT[session.skipReason]}`);
 
   if (options.includeDetail) {

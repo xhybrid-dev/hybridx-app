@@ -35,6 +35,7 @@ function fromFirestore(doc: any): WorkoutSession {
         skipReason: data.skipReason,
         rpe: data.rpe,
         startedInApp: data.startedInApp,
+        results: data.results,
         exerciseChecklist: data.exerciseChecklist || {},
         workoutDetails: data.workoutDetails,
         timerRecord: data.timerRecord,

@@ -80,6 +80,7 @@ function sessionFromFirestore(
     skipReason: data.skipReason,
     rpe: data.rpe,
     startedInApp: data.startedInApp,
+    results: data.results,
     workoutDetails: data.workoutDetails ?? undefined,
     exerciseChecklist: data.exerciseChecklist || {},
     timerRecord: data.timerRecord,

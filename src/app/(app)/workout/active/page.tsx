@@ -14,7 +14,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { updateWorkoutSession, type WorkoutSession } from '@/services/session-service-client';
-import type { User, Workout, RunningWorkout, Exercise, PlannedRun, TimerRecord, WorkoutDay, SkipReason } from '@/models/types';
+import type { User, Workout, RunningWorkout, Exercise, ExerciseResult, PlannedRun, TimerRecord, WorkoutDay, SkipReason } from '@/models/types';
 import { formatPace } from '@/lib/pace-utils';
 import { formatPlannedRun, getWorkoutForDay } from '@/lib/workout-utils';
 import Link from 'next/link';
@@ -23,7 +23,8 @@ import { LinkStravaActivityDialog } from '@/components/link-strava-activity-dial
 import { useUser } from '@/contexts/user-context';
 import { useToast } from '@/hooks/use-toast';
 import { hasRuns, hasExercises } from '@/lib/type-guards';
-import { ExerciseHistory } from '@/components/exercise-history';
+import { ExerciseResultInput } from '@/components/exercise-result-input';
+import { lastResult, personalBests, resultKey } from '@/lib/exercise-results';
 import { convertDistanceInText, convertTextWithUnits } from '@/lib/unit-conversion';
 import { WorkoutTimer } from '@/components/workout-timer';
 import { WorkoutSkipDialog } from '@/components/workout-skip-dialog';
@@ -165,7 +166,32 @@ function WorkoutSessionCard({ planned, initialSession, day, isMultiSession, sess
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [isCompleteModalOpen, setIsCompleteModalOpen] = useState(false);
   const [isSkipOpen, setIsSkipOpen] = useState(false);
-  const { program, streakData } = useUser();
+  const { program, streakData, allSessions } = useUser();
+  const [results, setResults] = useState<Record<string, ExerciseResult>>(initialSession.results || {});
+
+  const debouncedSaveResults = useDebouncedCallback(async (next: Record<string, ExerciseResult>) => {
+    await updateWorkoutSession(session.id, { results: next });
+  }, 800);
+
+  const handleResultChange = (result: ExerciseResult) => {
+    setResults(prev => {
+      const next = { ...prev, [resultKey(result.name)]: result };
+      debouncedSaveResults(next);
+      return next;
+    });
+  };
+
+  const resultInput = (name: string, kind: 'strength' | 'run', defaultDistance?: number) => (
+    <ExerciseResultInput
+      name={name}
+      kind={kind}
+      value={results[resultKey(name)]}
+      last={lastResult(allSessions, name, session.id)}
+      defaultDistance={defaultDistance}
+      disabled={!!session.finishedAt}
+      onChange={handleResultChange}
+    />
+  );
   const weekProgress = { done: streakData.thisWeekWorkouts, target: streakData.weeklyTarget };
   const nextSession = useMemo(() => {
     if (!program || !user?.startDate || user.planPausedAt) return null;
@@ -284,6 +310,14 @@ function WorkoutSessionCard({ planned, initialSession, day, isMultiSession, sess
 
   const handleFinishWorkout = async () => {
     debouncedSaveNotes.flush();
+    debouncedSaveResults.flush();
+    const bests = personalBests({ ...session, results, finishedAt: new Date() }, allSessions);
+    if (bests.length > 0) {
+      toast({
+        title: bests.length === 1 ? `New best: ${bests[0].name} 🏆` : `${bests.length} new bests 🏆`,
+        description: bests.slice(0, 3).map(b => `${b.name} — ${b.label}`).join(' · '),
+      });
+    }
     const finishedAt = new Date();
     const updatedSessionData = { ...session, finishedAt, notes, workoutTitle: planned.title, programType: planned.programType };
     setSession(updatedSessionData);
@@ -295,6 +329,8 @@ function WorkoutSessionCard({ planned, initialSession, day, isMultiSession, sess
         title: planned.title,
         itemsChecked: checkedCount,
         itemsTotal: totalCount,
+        resultsLogged: Object.keys(results).length,
+        personalBests: bests.length,
       });
     }
     setIsCompleteModalOpen(true);
@@ -418,6 +454,7 @@ function WorkoutSessionCard({ planned, initialSession, day, isMultiSession, sess
                           {trainingPaces && (
                             <p className="text-sm text-muted-foreground">Target Pace: <span className="font-semibold text-primary">{formatPace(trainingPaces[run.paceZone])}</span> / km</p>
                           )}
+                          {user && resultInput(rawLabel, 'run', run.distance ? Math.round(run.distance * 1000) : undefined)}
                         </div>
                       </CardContent>
                     </Card>
@@ -443,7 +480,7 @@ function WorkoutSessionCard({ planned, initialSession, day, isMultiSession, sess
                         <div className="flex-1">
                           <p className={`font-semibold ${isDone ? 'line-through text-muted-foreground' : ''}`}>{ex.name}</p>
                           <p className="text-sm text-muted-foreground whitespace-pre-wrap">{details}</p>
-                          {user && <ExerciseHistory userId={user.id} exerciseName={ex.name} />}
+                          {user && resultInput(ex.name, 'strength')}
                         </div>
                       </CardContent>
                     </Card>
@@ -471,7 +508,7 @@ function WorkoutSessionCard({ planned, initialSession, day, isMultiSession, sess
                     <div className="flex-1">
                       <p className={`font-semibold ${isDone ? 'line-through text-muted-foreground' : ''}`}>{item.name}</p>
                       <p className="text-sm text-muted-foreground whitespace-pre-wrap">{details}</p>
-                      {user && <ExerciseHistory userId={user.id} exerciseName={item.name} />}
+                      {user && resultInput(item.name, 'strength')}
                     </div>
                   </CardContent>
                 </Card>
