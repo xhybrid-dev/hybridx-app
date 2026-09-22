@@ -1,106 +1,188 @@
 // src/components/workout-complete-modal.tsx
 'use client';
+//
+// The moment after a session: record how hard it felt, show where the week
+// stands, and say what's next — then offer sharing. It used to be sharing
+// only, with a duration box that was never saved.
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { differenceInMinutes, format } from 'date-fns';
+import { CalendarClock, CheckCircle2 } from 'lucide-react';
+import { useDebouncedCallback } from 'use-debounce';
+
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { StravaUploadButton } from '@/components/strava-upload-button';
 import { ShareWorkoutDialog } from '@/components/share-workout-dialog';
-import type { WorkoutSession, Workout, RunningWorkout } from '@/models/types';
-import { Label } from './ui/label';
-import { Input } from './ui/input';
-import { differenceInMinutes } from 'date-fns';
+import { updateWorkoutSession } from '@/services/session-service-client';
+import { logger } from '@/lib/logger';
+import { cn } from '@/lib/utils';
+import type { WorkoutSession } from '@/models/types';
 
 interface WorkoutCompleteModalProps {
-    isOpen: boolean;
-    onClose: () => void;
-    session: WorkoutSession;
-    userHasStrava?: boolean;
-    workout: Workout | RunningWorkout;
+  isOpen: boolean;
+  onClose: () => void;
+  session: WorkoutSession;
+  userHasStrava?: boolean;
+  weekProgress?: { done: number; target: number };
+  nextSession?: { title: string; date: Date } | null;
 }
 
-export default function WorkoutCompleteModal({ isOpen, onClose, session, userHasStrava, workout }: WorkoutCompleteModalProps) {
-    const [duration, setDuration] = useState('');
+const RPE_LABELS: Record<number, string> = {
+  1: 'Very easy', 3: 'Easy', 5: 'Moderate', 7: 'Hard', 9: 'Very hard', 10: 'Max effort',
+};
 
-    useEffect(() => {
-        if (isOpen) {
-            let initialDuration = '';
-            if (session.stravaActivity?.moving_time) {
-                const minutes = Math.floor(session.stravaActivity.moving_time / 60);
-                initialDuration = `${minutes} mins`;
-            } else if (session.duration) {
-                initialDuration = session.duration;
-            } else if (session.finishedAt) {
-                const minutes = differenceInMinutes(session.finishedAt, session.startedAt);
-                initialDuration = `${minutes} mins`;
-            }
-            setDuration(initialDuration);
-        }
-    }, [isOpen, session]);
-    
-    // Don't show the manual duration input if the activity was linked from Strava
-    const showDurationInput = !session.stravaActivity?.moving_time;
+/** A believable duration from the session's own timestamps, or ''. */
+function initialDuration(session: WorkoutSession): string {
+  if (session.stravaActivity?.moving_time) return `${Math.round(session.stravaActivity.moving_time / 60)} mins`;
+  if (session.duration) return session.duration;
+  if (session.startedInApp && session.finishedAt) {
+    const minutes = differenceInMinutes(session.finishedAt, session.startedAt);
+    if (minutes >= 5 && minutes <= 300) return `${minutes} mins`;
+  }
+  return '';
+}
 
-    return (
-        <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="sm:max-w-lg">
-                <DialogHeader>
-                    <DialogTitle>Workout Complete! 🎉</DialogTitle>
-                    <DialogDescription>
-                        Great job finishing your workout. Here's your summary and sharing options.
-                    </DialogDescription>
-                </DialogHeader>
-                
-                <div className="space-y-4">
-                    <div className="text-center p-4 bg-muted/50 rounded-lg">
-                        <h3 className="font-semibold text-lg">{session.workoutTitle}</h3>
-                        <p className="text-sm text-muted-foreground">Workout logged successfully.</p>
-                    </div>
+export default function WorkoutCompleteModal({
+  isOpen,
+  onClose,
+  session,
+  userHasStrava,
+  weekProgress,
+  nextSession,
+}: WorkoutCompleteModalProps) {
+  const [duration, setDuration] = useState('');
+  const [rpe, setRpe] = useState<number | undefined>(session.rpe);
 
-                    <div className="space-y-3">
-                         <Separator />
-                         <p className="text-sm font-medium text-center">
-                            Share your achievement
-                         </p>
-                        
-                        {showDurationInput && (
-                            <div className="space-y-2">
-                                <Label htmlFor="duration-input">Duration (Optional)</Label>
-                                <Input
-                                    id="duration-input"
-                                    value={duration}
-                                    onChange={(e) => setDuration(e.target.value)}
-                                    placeholder="e.g., 45 mins"
-                                />
-                            </div>
-                        )}
-                        
-                        {userHasStrava && (
-                            <StravaUploadButton
-                                sessionId={session.id}
-                                activityName={session.workoutTitle}
-                                isUploaded={session.uploadedToStrava}
-                                stravaId={session.stravaId}
-                                disabled={session.skipped}
-                            />
-                        )}
+  useEffect(() => {
+    if (isOpen) {
+      const value = initialDuration(session);
+      setDuration(value);
+      setRpe(session.rpe);
+      // Save the derived duration so history and sharing have it too.
+      if (value && !session.duration) {
+        updateWorkoutSession(session.id, { duration: value }).catch(err => logger.error('Saving duration failed:', err));
+      }
+    }
+  }, [isOpen, session]);
 
-                        <ShareWorkoutDialog
-                            session={session}
-                            trigger={
-                                <Button variant="outline" className="w-full">
-                                    Share Workout Image
-                                </Button>
-                            }
-                        />
-                    </div>
+  const saveDuration = useDebouncedCallback((value: string) => {
+    updateWorkoutSession(session.id, { duration: value.trim() }).catch(err => logger.error('Saving duration failed:', err));
+  }, 800);
 
-                    <Button onClick={onClose} className="w-full" variant="outline">
-                        Close
-                    </Button>
-                </div>
-            </DialogContent>
-        </Dialog>
-    );
+  const chooseRpe = (value: number) => {
+    setRpe(value);
+    updateWorkoutSession(session.id, { rpe: value }).catch(err => logger.error('Saving RPE failed:', err));
+  };
+
+  const showDurationInput = !session.stravaActivity?.moving_time;
+  const sessionWithEdits = { ...session, duration: duration || session.duration, rpe };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={() => { saveDuration.flush(); onClose(); }}>
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Session done 🎉</DialogTitle>
+          <DialogDescription>{session.workoutTitle} is logged.</DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-5">
+          {weekProgress && (
+            <div className="flex items-center gap-3 rounded-lg bg-muted/50 p-3">
+              <CheckCircle2 className="h-5 w-5 shrink-0 text-green-600" />
+              <div className="text-sm">
+                <p className="font-semibold">
+                  {weekProgress.done} of {weekProgress.target} this week
+                </p>
+                <p className="text-muted-foreground">
+                  {weekProgress.done >= weekProgress.target
+                    ? 'Week hit — that keeps your streak going.'
+                    : `${weekProgress.target - weekProgress.done} more to hit this week.`}
+                </p>
+              </div>
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <Label>How hard did that feel?</Label>
+            <div className="grid grid-cols-10 gap-1" role="radiogroup" aria-label="Session effort, 1 to 10">
+              {Array.from({ length: 10 }, (_, i) => i + 1).map(value => (
+                <button
+                  key={value}
+                  type="button"
+                  role="radio"
+                  aria-checked={rpe === value}
+                  aria-label={`${value}${RPE_LABELS[value] ? ` — ${RPE_LABELS[value]}` : ''}`}
+                  onClick={() => chooseRpe(value)}
+                  className={cn(
+                    'h-9 rounded-md border text-sm font-medium tabular-nums transition-colors',
+                    rpe === value ? 'border-primary bg-primary text-primary-foreground' : 'hover:bg-muted',
+                  )}
+                >
+                  {value}
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground h-4">
+              {rpe ? RPE_LABELS[rpe] ?? RPE_LABELS[rpe - 1] : 'Your coach uses this to judge the load.'}
+            </p>
+          </div>
+
+          {showDurationInput && (
+            <div className="space-y-2">
+              <Label htmlFor="duration-input">Duration</Label>
+              <Input
+                id="duration-input"
+                value={duration}
+                onChange={(e) => {
+                  setDuration(e.target.value);
+                  saveDuration(e.target.value);
+                }}
+                placeholder="e.g. 45 mins"
+              />
+            </div>
+          )}
+
+          {nextSession && (
+            <div className="flex items-start gap-3 rounded-lg border p-3">
+              <CalendarClock className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+              <div className="text-sm">
+                <p className="text-muted-foreground">Next up · {format(nextSession.date, 'EEEE')}</p>
+                <p className="font-semibold">{nextSession.title}</p>
+              </div>
+            </div>
+          )}
+
+          <Separator />
+
+          <div className="space-y-2">
+            {userHasStrava && (
+              <StravaUploadButton
+                sessionId={session.id}
+                activityName={session.workoutTitle}
+                isUploaded={session.uploadedToStrava}
+                stravaId={session.stravaId}
+                disabled={session.skipped}
+              />
+            )}
+            <ShareWorkoutDialog
+              session={sessionWithEdits}
+              trigger={
+                <Button variant="outline" className="w-full">
+                  Share workout image
+                </Button>
+              }
+            />
+          </div>
+
+          <Button onClick={() => { saveDuration.flush(); onClose(); }} className="w-full">
+            Done
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
 }

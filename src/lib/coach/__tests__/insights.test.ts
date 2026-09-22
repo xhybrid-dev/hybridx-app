@@ -40,6 +40,18 @@ describe('sessionStatus', () => {
     expect(sessionStatus(session({ workoutDate: subDays(TODAY, 2) }), TODAY)).toBe('missed');
   });
 
+  it('reports a skip as skipped even though skipping stamps finishedAt', () => {
+    const skipped = session({ workoutDate: subDays(TODAY, 1), finishedAt: subDays(TODAY, 1), skipped: true });
+    expect(sessionStatus(skipped, TODAY)).toBe('skipped');
+  });
+
+  it('tells the coach how a session felt and why one was skipped', () => {
+    const done = session({ workoutDate: subDays(TODAY, 2), finishedAt: subDays(TODAY, 2), rpe: 8 });
+    const skipped = session({ workoutDate: subDays(TODAY, 1), finishedAt: subDays(TODAY, 1), skipped: true, skipReason: 'injured' });
+    expect(summariseSession(done, { today: TODAY })).toContain('felt 8/10');
+    expect(summariseSession(skipped, { today: TODAY })).toContain('skipped because: a niggle or injury');
+  });
+
   it('respects an explicit skip', () => {
     expect(sessionStatus(session({ workoutDate: subDays(TODAY, 2), skipped: true }), TODAY)).toBe(
       'skipped',

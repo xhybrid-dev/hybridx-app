@@ -268,6 +268,8 @@ export interface TimerRecord {
 
 // ─────────────────────────────────────────────────────────────────────────────
 
+export type SkipReason = 'time' | 'tired' | 'ill' | 'injured' | 'other';
+
 export interface WorkoutSession {
     id: string;
     userId: string;
@@ -285,6 +287,12 @@ export interface WorkoutSession {
     sessionCount?: number;
     extendedExercises?: Exercise[];
     skipped?: boolean;
+    /** Why the athlete skipped, when they said — read by the coach. */
+    skipReason?: SkipReason;
+    /** Session RPE, 1–10, from the completion screen. */
+    rpe?: number;
+    /** True once the athlete actually opened the session; startedAt is then the real start. */
+    startedInApp?: boolean;
     workoutDetails?: Workout | RunningWorkout;
     exerciseChecklist?: Record<string, boolean>;
     timerRecord?: TimerRecord;

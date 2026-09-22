@@ -89,7 +89,8 @@ export function ShareWorkoutDialog({ session, trigger }: ShareWorkoutDialogProps
   }, [session, cardSummary]);
 
   const handleCopyText = () => {
-    const text = `Just crushed a ${session.workoutTitle} workout! 💪\nDuration: ${session.duration || 0} minutes\n\nGet your personalized HYROX training at HYBRIDX.CLUB`;
+    const durationLine = session.duration ? `\nDuration: ${session.duration}` : '';
+    const text = `Just crushed a ${session.workoutTitle} workout! 💪${durationLine}\n\nGet your personalized HYROX training at HYBRIDX.CLUB`;
     navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
