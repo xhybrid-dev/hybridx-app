@@ -153,13 +153,22 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 }
 
                 const appUser = await getUserClient(currentUser.uid);
-                if (appUser && !appUser.isAdmin && pathname !== '/subscription') {
+                // Without access, an athlete can still see their own history and
+                // account — locking them out of their data entirely was the old
+                // behaviour. Everything else goes to the subscription page.
+                const openWithoutAccess = ['/subscription', '/history', '/profile'];
+                if (appUser && !appUser.isAdmin && !openWithoutAccess.some(p => pathname.startsWith(p))) {
                     const status = appUser.subscriptionStatus || 'trial';
                     const trialEnded = isTrialExpired(appUser.trialStartDate);
+                    // Cancelled but still inside the paid period.
+                    const paidUntilLater =
+                        status === 'canceled' &&
+                        !!appUser.cancellation_effective_date &&
+                        appUser.cancellation_effective_date > new Date();
 
                     if (status === 'trial' && trialEnded) {
                         router.push('/subscription');
-                    } else if (!['trial', 'active', 'paused'].includes(status)) {
+                    } else if (!['trial', 'active', 'paused'].includes(status) && !paidUntilLater) {
                         router.push('/subscription');
                     }
                 }

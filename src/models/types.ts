@@ -101,7 +101,9 @@ export interface User {
   subscriptionId?: string | null;
   trialStartDate?: Date;
   cancel_at_period_end?: boolean;
-  cancellation_effective_date?: Date;
+  cancellation_effective_date?: Date | null;
+  /** Why they cancelled, from the cancel flow. */
+  cancellationReason?: string;
   /**
    * Finished workouts, maintained server-side by the marketing activity
    * reconciler (lib/marketing/activity.ts) from the workoutSessions stream.

@@ -169,8 +169,18 @@ export async function pauseSubscription(): Promise<void> {
     }
 }
 
-/** Cancels the signed-in athlete's own subscription at period end. */
-export async function cancelSubscription(): Promise<void> {
+const CANCEL_REASONS = ['too-expensive', 'not-training', 'race-done', 'missing-features', 'other-app', 'other'] as const;
+export type CancelReason = (typeof CANCEL_REASONS)[number];
+
+/**
+ * Cancels the signed-in athlete's own subscription at period end.
+ *
+ * The status stays 'active' until Stripe ends the subscription (its webhook
+ * then marks it expired). Writing 'canceled' here used to lock the athlete
+ * out immediately — the app's gate treats 'canceled' as no access — despite
+ * promising access until the end of the period they had paid for.
+ */
+export async function cancelSubscription(reason?: CancelReason): Promise<void> {
     const { uid: userId } = await assertUser('stripe:cancel', { max: 10 });
     const user = await getUser(userId);
     if (!user || !user.subscriptionId) {
@@ -179,16 +189,44 @@ export async function cancelSubscription(): Promise<void> {
     try {
         const subscription = await stripe.subscriptions.update(user.subscriptionId, {
             cancel_at_period_end: true,
+            ...(reason && CANCEL_REASONS.includes(reason) ? { metadata: { cancel_reason: reason } } : {}),
         });
 
         const cancelAt = subscription.cancel_at;
         await updateUserAdmin(userId, {
-            subscriptionStatus: 'canceled',
             cancel_at_period_end: true,
-            cancellation_effective_date: cancelAt ? new Date(cancelAt * 1000) : undefined
+            cancellation_effective_date: cancelAt ? new Date(cancelAt * 1000) : undefined,
+            ...(reason && CANCEL_REASONS.includes(reason) ? { cancellationReason: reason } : {}),
         });
     } catch (error) {
         logger.error(`Failed to cancel subscription for user ${userId}:`, error);
         throw new Error('Could not cancel subscription. Please try again.');
+    }
+}
+
+/**
+ * Undoes a pause or a pending cancellation on the signed-in athlete's own
+ * subscription. Paused members previously had no way back except buying a
+ * second subscription.
+ */
+export async function resumeSubscription(): Promise<void> {
+    const { uid: userId } = await assertUser('stripe:resume', { max: 10 });
+    const user = await getUser(userId);
+    if (!user || !user.subscriptionId) {
+        throw new Error('User or subscription not found.');
+    }
+    try {
+        await stripe.subscriptions.update(user.subscriptionId, {
+            pause_collection: '',
+            cancel_at_period_end: false,
+        });
+        await updateUserAdmin(userId, {
+            subscriptionStatus: 'active',
+            cancel_at_period_end: false,
+            cancellation_effective_date: null,
+        });
+    } catch (error) {
+        logger.error(`Failed to resume subscription for user ${userId}:`, error);
+        throw new Error('Could not resume your subscription. Please try again.');
     }
 }
