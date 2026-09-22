@@ -30,11 +30,12 @@ export function StatsWidget({ streakData, loading }: StatsWidgetProps) {
     );
   }
 
+  const weeks = (n: number) => (n === 1 ? 'week' : 'weeks');
   const stats = [
     {
       title: 'Current Streak',
       value: streakData.currentStreak,
-      suffix: streakData.currentStreak === 1 ? 'day' : 'days',
+      suffix: `${weeks(streakData.currentStreak)} hitting ${streakData.weeklyTarget} sessions`,
       icon: Flame,
       color: streakData.currentStreak > 0 ? 'text-orange-500' : 'text-muted-foreground',
       bgColor: streakData.currentStreak > 0 ? 'bg-orange-500/10' : 'bg-muted/10',
@@ -42,15 +43,18 @@ export function StatsWidget({ streakData, loading }: StatsWidgetProps) {
     {
       title: 'Total Workouts',
       value: streakData.totalWorkouts,
-      suffix: streakData.totalWorkouts === 1 ? 'completed' : 'completed',
+      suffix: 'completed',
       icon: Target,
       color: 'text-blue-500',
       bgColor: 'bg-blue-500/10',
     },
     {
       title: 'This Week',
-      value: streakData.thisWeekWorkouts,
-      suffix: streakData.thisWeekWorkouts === 1 ? 'workout' : 'workouts',
+      value: `${streakData.thisWeekWorkouts} / ${streakData.weeklyTarget}`,
+      suffix:
+        streakData.thisWeekWorkouts >= streakData.weeklyTarget
+          ? 'week hit — rest days are part of the plan'
+          : 'training days',
       icon: Calendar,
       color: 'text-green-500',
       bgColor: 'bg-green-500/10',
@@ -58,7 +62,7 @@ export function StatsWidget({ streakData, loading }: StatsWidgetProps) {
     {
       title: 'Longest Streak',
       value: streakData.longestStreak,
-      suffix: streakData.longestStreak === 1 ? 'day' : 'days',
+      suffix: weeks(streakData.longestStreak),
       icon: TrendingUp,
       color: 'text-purple-500',
       bgColor: 'bg-purple-500/10',

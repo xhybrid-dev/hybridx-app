@@ -10,7 +10,8 @@ import { getTodaysOneOffSession, getOrCreateProgramSessionsForDay, getRecentUser
 import { getWorkoutForDay } from '@/lib/workout-utils';
 import type { User, Program, Workout, RunningWorkout, WorkoutDay } from '@/models/types';
 import { calculateTrainingPaces } from '@/lib/pace-utils';
-import { calculateStreakData, type StreakData } from '@/utils/streak-calculator';
+import { calculateStreakData, DEFAULT_WEEKLY_TARGET, type StreakData } from '@/utils/streak-calculator';
+import { maxTrainingDaysPerWeek } from '@/lib/plan-condense';
 import { OfflineCache } from '@/utils/offline-cache';
 import { logger } from '@/lib/logger';
 
@@ -37,7 +38,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     const [todaysSession, setTodaysSession] = useState<WorkoutSession | null>(null);
     const [todaysWorkoutSessions, setTodaysWorkoutSessions] = useState<WorkoutSession[]>([]);
     const [allSessions, setAllSessions] = useState<WorkoutSession[]>([]);
-    const [streakData, setStreakData] = useState<StreakData>({ currentStreak: 0, longestStreak: 0, totalWorkouts: 0, thisWeekWorkouts: 0, thisMonthWorkouts: 0 });
     const [trainingPaces, setTrainingPaces] = useState<Record<string, number> | null>(null);
     const [loading, setLoading] = useState(true);
     // Prevent concurrent refreshes (e.g. rapid re-mounts or multiple callers)
@@ -93,7 +93,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
             void getRecentUserSessions(userId)
                 .then(sessions => {
                     setAllSessions(sessions);
-                    setStreakData(calculateStreakData(sessions));
                 })
                 .catch(error => {
                     logger.error('Failed to load workout sessions for streaks:', error);
@@ -210,7 +209,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
                     setTodaysSession(null);
                     setTodaysWorkoutSessions([]);
                     setAllSessions([]);
-                    setStreakData({ currentStreak: 0, longestStreak: 0, totalWorkouts: 0, thisWeekWorkouts: 0, thisMonthWorkouts: 0 });
                     setTrainingPaces(null);
                     setLoading(false);
                 }
@@ -227,6 +225,15 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
             }
         };
     }, []);
+
+    // The week counts as "hit" at the athlete's days per week, but never more
+    // than their plan actually schedules — a 3-day plan can't demand 5.
+    const streakData = useMemo<StreakData>(() => {
+        const frequency = user?.frequency === '5+' ? 5 : Number(user?.frequency) || DEFAULT_WEEKLY_TARGET;
+        const planDays = program ? maxTrainingDaysPerWeek(program.workouts) : 0;
+        const weeklyTarget = planDays > 0 ? Math.min(frequency, planDays) : frequency;
+        return calculateStreakData(allSessions, { weeklyTarget });
+    }, [allSessions, user?.frequency, program]);
 
     const value = useMemo(() => ({
         user,

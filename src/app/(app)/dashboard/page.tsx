@@ -399,7 +399,7 @@ export default function DashboardPage() {
           });
           trackEvent(user!.id, 'workout_completed', { source: 'dashboard_mark_done', sessionId: todaysSession.id, title: todaysWorkout.workout.title });
           await refreshData();
-          toast({ title: 'Workout Completed!', description: 'Nice work. Keep the streak alive!' });
+          toast({ title: 'Workout Completed!', description: 'Nice work — one more toward this week.' });
       } catch (error) {
           logger.error('Failed to mark workout done:', error);
           toast({ title: 'Error', description: 'Could not mark workout as done.', variant: 'destructive' });
@@ -640,7 +640,7 @@ export default function DashboardPage() {
                 Let&apos;s log your first workout
               </CardTitle>
               <CardDescription>
-                Completing your first session unlocks your streak and tailors your coaching. It only takes one to get started.
+                Completing your first session starts your weekly streak and tailors your coaching. It only takes one to get started.
               </CardDescription>
             </CardHeader>
             <CardFooter className="pt-0">
