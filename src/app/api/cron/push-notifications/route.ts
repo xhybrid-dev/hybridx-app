@@ -165,7 +165,7 @@ export async function GET(request: Request) {
             if (todayWorkout) {
               workoutTitle = todayWorkout.title;
               exerciseSummary = workoutSummary(todayWorkout);
-              notifUrl = '/workout';
+              notifUrl = '/workout/active';
             }
           }
         }

@@ -77,7 +77,7 @@ export async function scheduleDailyNotification(
                     attachments: undefined,
                     actionTypeId: "",
                     extra: {
-                        url: '/workout'
+                        url: '/dashboard'
                     }
                 }]
             });
@@ -104,9 +104,9 @@ export async function scheduleDailyNotification(
         setTimeout(() => {
             registration.showNotification('HYBRIDX Workout', {
                 body: message,
-                icon: '/icons/icon-192x192.png',
-                badge: '/icons/icon-192x192.png',
-                data: { url: '/workout' }
+                icon: '/icon-maskable-192.png',
+                badge: '/icon-maskable-192.png',
+                data: { url: '/dashboard' }
             });
         }, delay);
         
@@ -196,7 +196,7 @@ export async function sendTestNotification(message: string): Promise<void> {
       const registration = await navigator.serviceWorker.ready;
       await registration.showNotification('HYBRIDX Workout', {
         body: message,
-        icon: '/icons/icon-192x192.png'
+        icon: '/icon-maskable-192.png'
       });
   }
 }

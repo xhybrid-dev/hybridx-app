@@ -42,6 +42,7 @@ import { MobileNavBar, primaryNavItems, secondaryNavItems, adminNavItems } from 
 import { UserProvider, useUserProfile } from '@/contexts/user-context';
 import { Capacitor } from '@capacitor/core';
 import { StatusBar, Style } from '@capacitor/status-bar';
+import { LocalNotifications } from '@capacitor/local-notifications';
 
 
 function NavMenu() {
@@ -198,6 +199,19 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         }
     };
   }, [router, pathname]);
+
+  // Tapping a native reminder opens the app wherever it was last left; send
+  // the athlete to what the reminder was about instead.
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    const listener = LocalNotifications.addListener('localNotificationActionPerformed', (action) => {
+      const url = action.notification.extra?.url;
+      router.push(typeof url === 'string' && url.startsWith('/') ? url : '/dashboard');
+    });
+    return () => {
+      void listener.then(handle => handle.remove());
+    };
+  }, [router]);
 
   // Track page views on route change
   useEffect(() => {
