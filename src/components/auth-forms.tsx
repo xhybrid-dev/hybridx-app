@@ -143,7 +143,7 @@ export function LoginForm() {
       logger.error('Login error:', error);
       let description = 'An unexpected error occurred. Please try again.';
       if ((error as any).code === AuthErrorCodes.INVALID_LOGIN_CREDENTIALS) {
-        description = 'Invalid email or password. Please try again.';
+        description = 'That email and password don\'t match. Use "Forgot password?" to choose a new one.';
       }
       toast({
         title: 'Login Failed',
@@ -182,7 +182,15 @@ export function LoginForm() {
               name="password"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Password</FormLabel>
+                  <div className="flex items-center justify-between">
+                    <FormLabel>Password</FormLabel>
+                    <Link
+                      href={`/forgot-password${form.watch('email') ? `?email=${encodeURIComponent(form.watch('email'))}` : ''}`}
+                      className="text-sm font-medium text-primary hover:underline"
+                    >
+                      Forgot password?
+                    </Link>
+                  </div>
                   <FormControl>
                     <div className="relative">
                       <Input type={showPassword ? 'text' : 'password'} placeholder="••••••••" autoComplete="current-password" {...field} />
