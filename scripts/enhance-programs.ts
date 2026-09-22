@@ -316,7 +316,7 @@ async function enhanceProgram(programId: string, programName: string) {
   let enhancementCount = 0;
 
   // Enhance each workout
-  const enhancedWorkouts = workouts.map((workout: any, workoutIndex: number) => {
+  const enhancedWorkouts = workouts.map((workout: any) => {
     // Skip rest days
     if (workout.title.toLowerCase().includes('rest')) {
       return workout;

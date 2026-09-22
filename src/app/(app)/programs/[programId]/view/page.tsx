@@ -9,7 +9,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { Loader2, ArrowLeft, Printer, CalendarPlus, AlertTriangle } from 'lucide-react';
 
 import { auth } from '@/lib/firebase';
-import type { Program, User, PaceZone, WorkoutDay } from '@/models/types';
+import type { Program, User, WorkoutDay } from '@/models/types';
 import { getProgramClient, getPersonalProgram } from '@/services/program-service-client'; // IMPORTED getPersonalProgram
 import { getUserClient, updateUser } from '@/services/user-service-client';
 import { clearFutureProgramSessions } from '@/services/session-service';

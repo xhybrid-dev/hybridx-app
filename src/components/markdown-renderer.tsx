@@ -45,7 +45,7 @@ export function MarkdownRenderer({ content, className }: MarkdownRendererProps) 
                     // link does, not how it looks. Generated content can link
                     // anywhere, so it opens away from the app and never hands the
                     // opened page a usable window.opener.
-                    a: ({ node, ...props }) => (
+                    a: ({ node: _node, ...props }) => (
                         <a target="_blank" rel="noopener noreferrer nofollow" {...props} />
                     ),
                 }}

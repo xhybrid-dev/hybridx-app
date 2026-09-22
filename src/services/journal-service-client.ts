@@ -10,7 +10,6 @@ import {
   deleteDoc,
   query,
   where,
-  orderBy,
   limit,
   startAfter,
   getDoc,

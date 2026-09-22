@@ -12,7 +12,6 @@
 
 import { NextResponse } from 'next/server';
 import { timingSafeEqual } from 'crypto';
-import { FieldValue } from 'firebase-admin/firestore';
 import { getAdminDb } from '@/lib/firebase-admin';
 import { logger } from '@/lib/logger';
 import { CAMPAIGNS, sendDocId } from '@/lib/marketing/queue';

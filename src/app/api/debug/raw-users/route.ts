@@ -1,11 +1,11 @@
 // src/app/api/debug/raw-users/route.ts
 // DEBUG ENDPOINT - Never accessible in production.
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { getAllUsers } from '@/services/user-service';
 import { getAdminAuth } from '@/lib/firebase-admin';
 import { cookies } from 'next/headers';
 
-export async function GET(request: NextRequest) {
+export async function GET() {
     if (process.env.NODE_ENV === 'production') {
         return NextResponse.json({ error: 'Not Found' }, { status: 404 });
     }

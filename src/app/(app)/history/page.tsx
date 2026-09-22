@@ -7,7 +7,7 @@ import { format } from 'date-fns';
 import { Search, Filter, Calendar, CheckCircle2, XCircle, Clock, Trophy, Dumbbell, Route, ChevronDown, ChevronUp, Link as LinkIcon, Wrench, PlusSquare } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -15,7 +15,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { getAuthInstance } from '@/lib/firebase';
-import { getPaginatedUserSessions, type WorkoutSession, type PaginatedSessions } from '@/services/session-service-client';
+import { getPaginatedUserSessions, type WorkoutSession } from '@/services/session-service-client';
 import { cn } from '@/lib/utils';
 import type { QueryDocumentSnapshot, DocumentData } from 'firebase/firestore';
 import Link from 'next/link';

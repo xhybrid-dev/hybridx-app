@@ -10,7 +10,6 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
-import { ExerciseSchema } from '@/ai/schemas';
 
 const StravaDescriptionInputSchema = z.object({
   workoutTitle: z.string().describe('The title of the workout.'),

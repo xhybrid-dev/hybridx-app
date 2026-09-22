@@ -2,7 +2,7 @@
  * Adapt the app's Firestore program shapes (Workout / RunningWorkout) into
  * the WorkoutDay shape(s) the mapper expects. Pure functions, no I/O.
  */
-import type { Workout, RunningWorkout, PlannedRun, PersonalRecords, Exercise } from '@/models/types';
+import type { Workout, RunningWorkout, PlannedRun, Exercise } from '@/models/types';
 import type { WorkoutDay, WorkoutDayExercise, RunStepSpec } from './workout-mapper';
 import {
   parseStatedDuration,
@@ -10,7 +10,6 @@ import {
   parseStatedRecovery,
   rpeToHrZone,
 } from './workout-mapper';
-import { resolveWeightKg } from './program-enricher';
 
 const IS_WARMUP = /warm[- ]?up/i;
 const IS_COOLDOWN = /cool[- ]?down/i;

@@ -41,7 +41,7 @@ export async function GET(req: NextRequest) {
     }
 }
 
-export async function DELETE(req: NextRequest) {
+export async function DELETE() {
     try {
         const response = NextResponse.json({ success: true }, { status: 200 });
         response.cookies.delete('__session');

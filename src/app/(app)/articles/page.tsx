@@ -1,7 +1,7 @@
 // src/app/(app)/articles/page.tsx
 'use client';
 
-import { useState, useEffect, useTransition } from 'react';
+import { useState, useEffect } from 'react';
 import { Search, Loader2, AlertTriangle, FileText, Sparkles } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';

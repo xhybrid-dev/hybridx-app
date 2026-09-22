@@ -5,7 +5,6 @@ import { useState, useEffect, use } from 'react';
 import { getArticle } from '@/services/article-service';
 import type { Article } from '@/models/types';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeft, Tag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';

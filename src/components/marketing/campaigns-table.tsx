@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from 'react';
 import Link from 'next/link';
-import { Archive, MoreHorizontal, Pause, Pencil, Play, RefreshCw, Search, XCircle } from 'lucide-react';
+import { Archive, MoreHorizontal, Pause, Pencil, Play, Search, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
@@ -25,7 +25,6 @@ import { useToast } from '@/hooks/use-toast';
 import {
   cancelSchedule,
   pauseCampaign,
-  repairCampaignCounts,
   resumeCampaign,
   setCampaignArchived,
 } from '@/lib/marketing/actions';
