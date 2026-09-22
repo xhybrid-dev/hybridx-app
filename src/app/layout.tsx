@@ -47,8 +47,10 @@ export default function RootLayout({
         <meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)" />
         <meta name="theme-color" content="#0A0A0A" media="(prefers-color-scheme: dark)" />
 
-        {/* Apple Touch Icon */}
-        <link rel="apple-touch-icon" href="/icon-logo.png" />
+        {/* Apple Touch Icon — must be fully opaque: iOS fills any
+            transparent pixels with black on "Add to Home Screen",
+            which turned this into a black logo on a black tile. */}
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 
         {/* Google tag (gtag.js) — same GA4 property + linker config as
             hybridx.club, so a visitor who clicks through from the marketing
