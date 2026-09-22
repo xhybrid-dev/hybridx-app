@@ -30,6 +30,7 @@ import { WorkoutSkipDialog } from '@/components/workout-skip-dialog';
 import { trackEvent } from '@/lib/analytics';
 
 const WorkoutCompleteModal = lazy(() => import('@/components/workout-complete-modal'));
+const CustomWorkoutDialog = lazy(() => import('@/components/custom-workout-dialog').then(mod => ({ default: mod.CustomWorkoutDialog })));
 
 export default function ActiveWorkoutPage() {
   const { user, todaysWorkout, todaysWorkoutSessions, trainingPaces, loading, refreshData } = useUser();
@@ -62,14 +63,7 @@ export default function ActiveWorkoutPage() {
     : (todaysWorkout?.workout ? [todaysWorkout.workout] : []);
 
   if (daySessions.length === 0 || todaysWorkoutSessions.length === 0) {
-    return (
-      <div className="text-center max-w-2xl mx-auto">
-        <Card>
-          <CardHeader><CardTitle>No Workout Today</CardTitle></CardHeader>
-          <CardContent><p className="text-muted-foreground">Enjoy your rest day or check your program schedule.</p></CardContent>
-        </Card>
-      </div>
-    );
+    return <NoWorkoutToday />;
   }
 
   const isMultiSession = daySessions.length > 1;
@@ -100,6 +94,51 @@ export default function ActiveWorkoutPage() {
           />
         );
       })}
+    </div>
+  );
+}
+
+/** The centre "Workout" button on a day with nothing scheduled: somewhere useful to go, not a dead end. */
+function NoWorkoutToday() {
+  const { user, program, refreshData } = useUser();
+  const [isLogOpen, setIsLogOpen] = useState(false);
+  const paused = !!user?.planPausedAt;
+
+  const title = paused ? 'Your plan is paused' : program ? 'Rest day' : 'No plan yet';
+  const description = paused
+    ? 'Nothing is due while you are away. Resume from the dashboard whenever you are ready.'
+    : program
+      ? 'Recovery is when the training lands. If you did something anyway, log it — it all counts.'
+      : 'Pick a plan and a session will be waiting here every training day.';
+
+  return (
+    <div className="max-w-2xl mx-auto">
+      <Card>
+        <CardHeader>
+          <CardTitle>{title}</CardTitle>
+          <CardDescription>{description}</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-2 sm:grid-cols-3">
+          {program ? (
+            <Button asChild variant="outline"><Link href="/calendar"><CalendarDays className="mr-2 h-4 w-4" />See this week</Link></Button>
+          ) : (
+            <Button asChild><Link href="/programs">Choose a program</Link></Button>
+          )}
+          <Button variant="outline" onClick={() => setIsLogOpen(true)} disabled={!user}>
+            <Flag className="mr-2 h-4 w-4" />Log an activity
+          </Button>
+          <Button asChild variant="outline">
+            <Link href={`/assistant?q=${encodeURIComponent("It's a rest day — what should I do to recover well?")}`}>
+              <Sparkles className="mr-2 h-4 w-4" />Ask your coach
+            </Link>
+          </Button>
+        </CardContent>
+      </Card>
+      {user && (
+        <Suspense fallback={null}>
+          <CustomWorkoutDialog isOpen={isLogOpen} setIsOpen={setIsLogOpen} userId={user.id} onLogged={refreshData} />
+        </Suspense>
+      )}
     </div>
   );
 }
