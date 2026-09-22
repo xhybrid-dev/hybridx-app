@@ -17,7 +17,7 @@ import { authedFetch } from '@/lib/client-auth';
 import { createUser } from '@/services/user-service-client';
 import { getTopPrograms, type ProgramRecommendation } from '@/services/program-recommendation';
 import { getProgramClient } from '@/services/program-service-client';
-import { adjustTrainingPlan } from '@/ai/flows/adjust-training-plan';
+import { fitToSchedule } from '@/lib/plan-condense';
 import type { WorkoutDay } from '@/models/types';
 import { ProgramPreviewDialog } from '@/components/program-preview-dialog'; // IMPORTED
 
@@ -242,6 +242,9 @@ const signupSchema = z.object({
 
 type SignupData = z.infer<typeof signupSchema>;
 
+/** Quick start's plan: the best match for a beginner with no other answers (First Steps to Hyrox). */
+const QUICK_START_PROGRAM_ID = getTopPrograms({ experience: 'beginner', frequency: '3', goal: 'hybrid' }, 1)[0]?.program.id;
+
 const initialSignupData: Partial<SignupData> = {
   email: '',
   password: '',
@@ -284,13 +287,15 @@ export function SignupForm() {
   };
 
   const handleQuickStart = (stepData: Partial<SignupData>) => {
+    // A real plan from day one. This used to be three AI one-off workouts that
+    // ran out on day 4, leaving anyone who missed one with nothing at all.
     const quickData: Partial<SignupData> = {
       ...formData,
       ...stepData,
       experience: 'beginner',
       frequency: '3',
       goal: 'hybrid',
-      selectedProgramId: undefined,
+      selectedProgramId: QUICK_START_PROGRAM_ID,
     };
     setFormData(quickData);
     void handleSubmit(quickData, true);
@@ -352,37 +357,15 @@ export function SignupForm() {
       let customProgram: WorkoutDay[] | null = null;
       let adjustmentMessage = "";
 
-      // 3. If program selected, check if AI adjustment is needed
-      if (finalData.selectedProgramId) {
+      // 3. Fit the chosen program to the days a week they can train. Quick
+      // start skips the questions, so it takes the program as written.
+      if (finalData.selectedProgramId && !isQuickStart) {
         try {
           const selectedProgram = await getProgramClient(finalData.selectedProgramId);
-
-          if (selectedProgram && selectedProgram.programType === 'hyrox') {
-            // Count non-rest workouts in the program
-            const nonRestWorkouts = selectedProgram.workouts.filter(
-              w => !w.title.toLowerCase().includes('rest')
-            );
-
-            // Check if adjustment is needed based on user's frequency preference
-            const userFrequencyNumber = parseInt(finalData.frequency, 10);
-            const needsAdjustment = finalData.frequency !== '5+' &&
-                                   nonRestWorkouts.length > userFrequencyNumber;
-
-            if (needsAdjustment) {
-              toast({
-                title: 'Tailoring your program...',
-                description: 'Our AI coach is adjusting the program to fit your schedule.',
-              });
-
-              // Call AI to adjust the program
-              const result = await adjustTrainingPlan({
-                currentWorkouts: selectedProgram.workouts as any,
-                targetDays: finalData.frequency as '3' | '4',
-              });
-
-              customProgram = result.adjustedWorkouts as unknown as WorkoutDay[];
-              adjustmentMessage = ` We've intelligently adjusted it to fit your ${finalData.frequency}-day schedule!`;
-            }
+          const fitted = selectedProgram ? fitToSchedule(selectedProgram.workouts, finalData.frequency) : null;
+          if (fitted) {
+            customProgram = fitted;
+            adjustmentMessage = ` We've fitted it to your ${finalData.frequency}-day week.`;
           }
         } catch (adjustError) {
           logger.error('Program adjustment failed:', adjustError);
@@ -522,7 +505,7 @@ function Step2({ onNext, onPrev, onQuickStart, defaultValues, isLoading }: any) 
             Jump Straight In <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
           <p className="text-xs text-muted-foreground text-center">
-            We'll auto-generate Hyrox workouts for you. Take 2 mins to personalise below and get a matched program instead.
+            We'll start you on First Steps to Hyrox, our 12-week beginner plan. Or take 2 minutes to personalise and get a matched program.
           </p>
           <div className="flex items-center w-full gap-2">
             <div className="flex-1 h-px bg-border" />

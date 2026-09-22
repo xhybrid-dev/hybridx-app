@@ -13,7 +13,7 @@ import {
 import { cn } from '@/lib/utils';
 import { getTopPrograms } from '@/services/program-recommendation';
 import { getProgramClient } from '@/services/program-service-client';
-import { adjustTrainingPlan } from '@/ai/flows/adjust-training-plan';
+import { fitToSchedule } from '@/lib/plan-condense';
 import { updateUser } from '@/services/user-service-client';
 import { useToast } from '@/hooks/use-toast';
 import { trackEvent } from '@/lib/analytics';
@@ -65,21 +65,7 @@ export function CompleteOnboardingDialog({ open, onOpenChange, userId, userName,
       if (programId) {
         try {
           const selectedProgram = await getProgramClient(programId);
-          if (selectedProgram && selectedProgram.programType === 'hyrox') {
-            const nonRest = selectedProgram.workouts.filter(
-              (w) => !w.title.toLowerCase().includes('rest')
-            );
-            const userFreq = parseInt(profile.frequency, 10);
-            const needsAdjustment = profile.frequency !== '5+' && nonRest.length > userFreq;
-            if (needsAdjustment) {
-              toast({ title: 'Tailoring your program...', description: 'AI is fitting it to your schedule.' });
-              const result = await adjustTrainingPlan({
-                currentWorkouts: selectedProgram.workouts as any,
-                targetDays: profile.frequency as '3' | '4',
-              });
-              customProgram = result.adjustedWorkouts as unknown as WorkoutDay[];
-            }
-          }
+          customProgram = selectedProgram ? fitToSchedule(selectedProgram.workouts, profile.frequency) : null;
         } catch (err) {
           logger.error('Program adjustment failed:', err);
         }

@@ -16,7 +16,7 @@ import { clearFutureProgramSessions } from '@/services/session-service';
 import { logger } from '@/lib/logger';
 import { useToast } from '@/hooks/use-toast';
 import { calculateTrainingPaces, formatPace } from '@/lib/pace-utils';
-import { adjustTrainingPlan } from '@/ai/flows/adjust-training-plan';
+import { fitToSchedule } from '@/lib/plan-condense';
 import { hasRuns, hasExercises } from '@/lib/type-guards';
 
 
@@ -347,17 +347,9 @@ export default function ProgramViewPage({ params }: { params: Promise<{ programI
     setIsScheduling(true);
     try {
         const updateData: Partial<User> = { programId, startDate, customProgram: null };
-        const nonRestWorkouts = program.workouts.filter(w => !w.title.toLowerCase().includes('rest'));
-
-        // Check if adjustment is needed
-        if (user.frequency !== '5+' && nonRestWorkouts.length > parseInt(user.frequency, 10)) {
-            toast({ title: 'Adjusting your plan...', description: 'Our AI coach is tailoring this program to fit your schedule.' });
-            const result = await adjustTrainingPlan({
-                currentWorkouts: program.workouts as any,
-                targetDays: user.frequency as '3' | '4',
-            });
-            updateData.customProgram = result.adjustedWorkouts as unknown as WorkoutDay[];
-        }
+        // Fit the plan to the days a week they train, week by week.
+        const fitted = fitToSchedule(program.workouts, user.frequency);
+        if (fitted) updateData.customProgram = fitted;
 
         await updateUser(user.id, updateData);
 

@@ -363,8 +363,11 @@ export default function DashboardPage() {
   // wrapped up before the "Today's Workout" card switches to its completed state.
   const isWorkoutCompleted = todaysWorkoutSessions.length > 0 && todaysWorkoutSessions.every((s) => !!s.finishedAt);
   const completedWorkoutCount = allSessions.filter((s) => s.finishedAt && !s.skipped).length;
+  // The retired 3-session AI starter: anyone still on it has nothing after day 3.
+  const isStarterPlan = user?.programId === 'hyrox-starter';
+  const starterEnded = isStarterPlan && (todaysWorkout?.day ?? 0) > 3;
   const showProfilePrompt =
-    user?.onboardingSkipped && completedWorkoutCount >= 3 && !profileBannerDismissed;
+    !!user?.onboardingSkipped && (starterEnded || (completedWorkoutCount >= 3 && !profileBannerDismissed));
   
   if (loading) {
     return (
@@ -416,16 +419,16 @@ export default function DashboardPage() {
                 <Card className="border-2 border-primary/20 bg-gradient-to-br from-card to-primary/5 shadow-lg">
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2 text-xl">
-                            {user?.onboardingSkipped ? (
+                            {isStarterPlan ? (
                               <Sparkles className="h-6 w-6 text-primary" />
                             ) : (
                               <Target className="h-6 w-6 text-primary" />
                             )}
-                            {user?.onboardingSkipped ? 'Your Hyrox Starter Plan' : 'Your First Mission'}
+                            {isStarterPlan ? 'Your Hyrox Starter Plan' : 'Your First Mission'}
                         </CardTitle>
                         <CardDescription>
-                            {user?.onboardingSkipped
-                              ? 'AI-generated Hyrox workouts to get you moving — complete 3 and we\'ll match you to a full program.'
+                            {isStarterPlan
+                              ? 'AI-generated Hyrox workouts to get you moving — then we\'ll match you to a full program.'
                               : 'Complete just 1 workout this week to build momentum.'}
                         </CardDescription>
                     </CardHeader>
@@ -451,10 +454,21 @@ export default function DashboardPage() {
                             </div>
                         ) : (
                             <div className="text-center py-6">
-                                <p>No workout scheduled today.</p>
-                                <Button variant="link" onClick={handleGenerateWorkout}>
-                                    Generate a Quick Start Session
-                                </Button>
+                                {starterEnded ? (
+                                    <>
+                                        <p>Your starter sessions are done — let&apos;s get you on a full plan.</p>
+                                        <Button className="mt-3" onClick={() => setShowCompleteOnboarding(true)}>
+                                            Get My Program <ArrowRight className="ml-2 h-4 w-4" />
+                                        </Button>
+                                    </>
+                                ) : (
+                                    <>
+                                        <p>No workout scheduled today.</p>
+                                        <Button variant="link" onClick={handleGenerateWorkout}>
+                                            Generate a Quick Start Session
+                                        </Button>
+                                    </>
+                                )}
                             </div>
                         )}
                     </CardContent>
@@ -532,6 +546,15 @@ export default function DashboardPage() {
                     </Card>
                 </div>
             </div>
+            {user && (
+              <CompleteOnboardingDialog
+                open={showCompleteOnboarding}
+                onOpenChange={setShowCompleteOnboarding}
+                userId={user.id}
+                userName={user.firstName}
+                onComplete={refreshData}
+              />
+            )}
         </div>
       );
   }
@@ -575,26 +598,32 @@ export default function DashboardPage() {
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Trophy className="h-5 w-5 text-primary" />
-                You've smashed {completedWorkoutCount} workouts!
+                {starterEnded
+                  ? 'Your starter sessions are done'
+                  : `You've smashed ${completedWorkoutCount} workouts!`}
               </CardTitle>
               <CardDescription>
-                Complete your profile to get a structured program matched to your goals and unlock personalised coaching.
+                {starterEnded
+                  ? 'Answer three quick questions and we’ll put you on a full plan that fits your week.'
+                  : 'Answer three quick questions and we’ll match you to a plan built around your goal and schedule.'}
               </CardDescription>
             </CardHeader>
             <CardFooter className="gap-2 pt-0">
               <Button size="sm" onClick={() => setShowCompleteOnboarding(true)}>
                 Get My Program <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => {
-                  localStorage.setItem('profileBannerDismissed', 'true');
-                  setProfileBannerDismissed(true);
-                }}
-              >
-                Maybe Later
-              </Button>
+              {!starterEnded && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    localStorage.setItem('profileBannerDismissed', 'true');
+                    setProfileBannerDismissed(true);
+                  }}
+                >
+                  Maybe Later
+                </Button>
+              )}
             </CardFooter>
           </Card>
         )}
