@@ -573,7 +573,7 @@ export default function DashboardPage() {
                                 </div>
                                 <div>
                                     <p className="font-semibold">AI Adaptability</p>
-                                    <p className="text-muted-foreground">If you miss a day, just tell the AI. It re-plans your week instantly.</p>
+                                    <p className="text-muted-foreground">Busy week, sore legs, holiday coming? Tell your coach and it reworks what&apos;s ahead.</p>
                                 </div>
                             </div>
                             <div className="flex gap-3">
@@ -582,11 +582,13 @@ export default function DashboardPage() {
                                 </div>
                                 <div>
                                     <p className="font-semibold">Event Prep</p>
-                                    <p className="text-muted-foreground">Training for Hyrox or a Marathon? Use our "Train for an Event" tool.</p>
+                                    <p className="text-muted-foreground">Training for Hyrox or a Marathon? Give us the race date and we&apos;ll build the plan back from it.</p>
                                 </div>
                             </div>
                         </CardContent>
                     </Card>
+
+                    <RacePrepDialog />
 
                     {/* SETUP STEPS */}
                     <Card>

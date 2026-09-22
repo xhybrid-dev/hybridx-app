@@ -506,7 +506,7 @@ export function buildCoachTools(
           '[coach-tools] draftPlanChange failed:',
           error instanceof Error ? error.message : String(error),
         );
-        return 'Could not draft the plan change right now. Give the athlete the advice in words instead, and suggest they use Analyze My Week.';
+        return 'Could not draft the plan change right now. Give the athlete the advice in words instead, and suggest they move sessions on the Plan tab (calendar) or ask again shortly.';
       }
     },
   );

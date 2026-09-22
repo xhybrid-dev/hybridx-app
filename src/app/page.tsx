@@ -28,7 +28,7 @@ const FEATURES = [
   {
     icon: Activity,
     title: 'Adaptive Coaching',
-    description: 'Your plan adjusts to how you actually train. Weekly AI analysis reshapes upcoming sessions around your progress.',
+    description: 'Your plan adjusts to how you actually train. Tell your coach what’s going on and it reshapes upcoming sessions — you approve every change.',
   },
   {
     icon: Flag,
@@ -43,7 +43,7 @@ const FEATURES = [
   {
     icon: TrendingUp,
     title: 'Progress & Streaks',
-    description: 'Track every session, keep your streak alive, and watch your benchmarks improve with clear analytics.',
+    description: 'Track every session, keep your weekly streak going, and see your consistency and training load build over time.',
   },
   {
     icon: Dumbbell,
