@@ -108,7 +108,7 @@ export async function GET(request: Request) {
 
   const candidates = usersSnap.docs.filter(doc => {
     const user = doc.data() as User;
-    return !!user.startDate && hasAccess(user) && isRecentlyActive(toDate(user.lastSeenAt), now);
+    return !!user.startDate && !user.planPausedAt && hasAccess(user) && isRecentlyActive(toDate(user.lastSeenAt), now);
   });
 
   // Base programs, resolved once: public collection first, then customPrograms.

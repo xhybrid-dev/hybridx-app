@@ -143,6 +143,12 @@ export async function GET(request: Request) {
         return;
       }
 
+      // They paused their plan for a break: no reminders, no "come back" nags.
+      if (user.planPausedAt) {
+        results.skipped++;
+        return;
+      }
+
       try {
         // Determine today's workout
         let workoutTitle = "Today's Training";

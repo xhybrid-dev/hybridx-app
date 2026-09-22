@@ -30,6 +30,8 @@ import { getWorkoutForDay, formatPlannedRun } from '@/lib/workout-utils';
 import { getUserSessionsInRange, getRecentUserSessions, getOrCreateWorkoutSession, updateWorkoutSession } from '@/services/session-service-client';
 import { saveScheduleChanges, swapWorkouts } from '@/services/session-service';
 import { trackEvent } from '@/lib/analytics';
+import { useUser } from '@/contexts/user-context';
+import { PausePlanButton, PlanCatchUpCard } from '@/components/plan-catch-up-card';
 import type { Program, WorkoutDay, WorkoutSession, RunningWorkout, Workout, UnitSystem } from '@/models/types';
 import { hasRuns, hasExercises } from '@/lib/type-guards';
 import { convertDistance, convertTextWithUnits } from '@/lib/unit-conversion';
@@ -1402,6 +1404,13 @@ function WorkoutDetailDialog({ workout, unitSystem, onClose }: { workout: Workou
 
 export default function CalendarPage() {
   const [viewMode, setViewMode] = useState<'schedule' | 'month'>('schedule');
+  const { user, program, allSessions, sessionsLoaded, refreshData } = useUser();
+  // Bumped after the plan moves in time, so the views reload their dates.
+  const [reloadKey, setReloadKey] = useState(0);
+  const handlePlanMoved = async () => {
+    await refreshData();
+    setReloadKey(k => k + 1);
+  };
 
   return (
     <div className="space-y-6">
@@ -1414,15 +1423,28 @@ export default function CalendarPage() {
               : 'Visualize your active program and track your progress.'}
           </p>
         </div>
-        <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as 'schedule' | 'month')}>
-          <TabsList>
-            <TabsTrigger value="schedule" className="gap-1.5"><ListChecks className="h-4 w-4" />Schedule</TabsTrigger>
-            <TabsTrigger value="month" className="gap-1.5"><CalendarDays className="h-4 w-4" />Month</TabsTrigger>
-          </TabsList>
-        </Tabs>
+        <div className="flex flex-wrap items-center gap-2">
+          {user && <PausePlanButton user={user} onChanged={handlePlanMoved} />}
+          <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as 'schedule' | 'month')}>
+            <TabsList>
+              <TabsTrigger value="schedule" className="gap-1.5"><ListChecks className="h-4 w-4" />Schedule</TabsTrigger>
+              <TabsTrigger value="month" className="gap-1.5"><CalendarDays className="h-4 w-4" />Month</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
       </div>
 
-      {viewMode === 'schedule' ? <WeeklyScheduleView /> : <MonthGridCalendarView />}
+      {user && (
+        <PlanCatchUpCard
+          user={user}
+          program={program}
+          allSessions={allSessions}
+          sessionsLoaded={sessionsLoaded}
+          onChanged={handlePlanMoved}
+        />
+      )}
+
+      {viewMode === 'schedule' ? <WeeklyScheduleView key={reloadKey} /> : <MonthGridCalendarView key={reloadKey} />}
     </div>
   );
 }

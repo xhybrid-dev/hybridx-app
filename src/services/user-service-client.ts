@@ -50,6 +50,7 @@ export async function getUserClient(userId: string): Promise<User | null> {
             notificationTime: data.notificationTime ?? undefined,
             completedWorkouts: data.completedWorkouts ?? undefined,
             onboardingSkipped: data.onboardingSkipped ?? false,
+            planPausedAt: data.planPausedAt instanceof Timestamp ? data.planPausedAt.toDate() : null,
         };
         return user;
     }

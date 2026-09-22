@@ -121,6 +121,8 @@ export interface User {
    */
   timeZone?: string;
   notificationTime?: { hour: number; minute: number };
+  /** Set while the athlete has paused their plan (holiday, illness, injury). Resuming moves the start date on by the pause. */
+  planPausedAt?: Date | null;
   /** "Do it tomorrow": the day (YYYY-MM-DD, athlete's calendar) they committed to train, for the reminder job. */
   trainingCommitment?: { date: string; workoutTitle: string } | null;
   // Analytics fields

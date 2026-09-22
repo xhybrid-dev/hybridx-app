@@ -23,6 +23,8 @@ interface UserContextType {
     /** One persisted WorkoutSession per entry in todaysWorkout.sessions, so multi-type days (e.g. Run + Weight Training) can be started/finished/linked to Strava independently. */
     todaysWorkoutSessions: WorkoutSession[];
     allSessions: WorkoutSession[];
+    /** True once allSessions has actually loaded — it starts as an empty list. */
+    sessionsLoaded: boolean;
     streakData: StreakData;
     trainingPaces: Record<string, number> | null;
     loading: boolean;
@@ -38,6 +40,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     const [todaysSession, setTodaysSession] = useState<WorkoutSession | null>(null);
     const [todaysWorkoutSessions, setTodaysWorkoutSessions] = useState<WorkoutSession[]>([]);
     const [allSessions, setAllSessions] = useState<WorkoutSession[]>([]);
+    const [sessionsLoaded, setSessionsLoaded] = useState(false);
     const [trainingPaces, setTrainingPaces] = useState<Record<string, number> | null>(null);
     const [loading, setLoading] = useState(true);
     // Prevent concurrent refreshes (e.g. rapid re-mounts or multiple callers)
@@ -93,6 +96,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
             void getRecentUserSessions(userId)
                 .then(sessions => {
                     setAllSessions(sessions);
+                    setSessionsLoaded(true);
                 })
                 .catch(error => {
                     logger.error('Failed to load workout sessions for streaks:', error);
@@ -139,7 +143,11 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
                     : fetchedProgram;
 
                 // Only proceed if a program was found
-                if (currentProgram) {
+                if (currentProgram && currentUser.planPausedAt) {
+                    // Paused: nothing is due, and no session docs are created for the days away.
+                    setProgram(currentProgram);
+                    currentWorkoutInfo = { day: 0, workout: null, sessions: [] };
+                } else if (currentProgram) {
                     setProgram(currentProgram);
 
                     const scheduledWorkoutInfo = getWorkoutForDay(currentProgram, currentUser.startDate, today);
@@ -209,6 +217,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
                     setTodaysSession(null);
                     setTodaysWorkoutSessions([]);
                     setAllSessions([]);
+                    setSessionsLoaded(false);
                     setTrainingPaces(null);
                     setLoading(false);
                 }
@@ -242,11 +251,12 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         todaysSession,
         todaysWorkoutSessions,
         allSessions,
+        sessionsLoaded,
         streakData,
         trainingPaces,
         loading,
         refreshData
-    }), [user, program, todaysWorkout, todaysSession, todaysWorkoutSessions, allSessions, streakData, trainingPaces, loading]);
+    }), [user, program, todaysWorkout, todaysSession, todaysWorkoutSessions, allSessions, sessionsLoaded, streakData, trainingPaces, loading]);
 
     return (
         <UserContext.Provider value={value}>

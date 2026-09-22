@@ -51,6 +51,7 @@ import { AndroidBetaBanner } from '@/components/android-beta-banner';
 import { TrialBanner } from '@/components/trial-banner';
 import { RacePrepDialog } from '@/components/race-prep-dialog';
 import { PlanAdjustmentNotice } from '@/components/plan-adjustment-notice';
+import { PlanCatchUpCard } from '@/components/plan-catch-up-card';
 import type { StravaLoadError } from '@/components/today-strava-feed';
 
 // Lazy load heavy AI-powered components
@@ -67,7 +68,7 @@ const chartConfig = {
 };
 
 export default function DashboardPage() {
-  const { user, program, todaysWorkout, todaysSession, todaysWorkoutSessions, allSessions, streakData, trainingPaces, loading, refreshData } = useUser();
+  const { user, program, todaysWorkout, todaysSession, todaysWorkoutSessions, allSessions, sessionsLoaded, streakData, trainingPaces, loading, refreshData } = useUser();
   const [progressData, setProgressData] = useState<{ week: string, workouts: number }[]>([]);
   const [todayStravaSummary, setTodayStravaSummary] = useState<string | null>(null);
   const [stravaRecentActivities, setStravaRecentActivities] = useState<StravaActivity[]>([]);
@@ -628,6 +629,16 @@ export default function DashboardPage() {
 
         {user && (
           <PlanAdjustmentNotice userId={user.id} todaysSessions={todaysWorkoutSessions} onChanged={refreshData} />
+        )}
+
+        {user && (
+          <PlanCatchUpCard
+            user={user}
+            program={program}
+            allSessions={allSessions}
+            sessionsLoaded={sessionsLoaded}
+            onChanged={refreshData}
+          />
         )}
 
         {/* First-workout activation nudge — completing the first session is the
