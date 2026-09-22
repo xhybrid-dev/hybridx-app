@@ -626,8 +626,14 @@ export default function DashboardPage() {
   return (
     <>
       <div className="space-y-6">
-        {/* Trial countdown — drives trial→paid conversion (hidden for paid/admin users) */}
-        <TrialBanner />
+        {/* Today's session is the first thing on the page. Everything else —
+            coach, trial, integrations — comes after it. */}
+        <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
+          Welcome back, {user?.firstName || 'Athlete'}
+        </h1>
+
+        {/* Trial countdown: at the top only in its last few days. */}
+        <TrialBanner when="urgent" />
 
         {user && (
           <PlanAdjustmentNotice userId={user.id} todaysSessions={todaysWorkoutSessions} onChanged={refreshData} />
@@ -645,20 +651,20 @@ export default function DashboardPage() {
 
         {/* First-workout activation nudge — completing the first session is the
             strongest predictor of retention, so we surface it prominently until done. */}
-        {!loading && completedWorkoutCount === 0 && (
+        {!loading && !program && !user?.planPausedAt && (
           <Card className="border-accent/50 bg-gradient-to-r from-accent/10 to-primary/10">
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Zap className="h-5 w-5 text-accent" />
-                Let&apos;s log your first workout
+                Pick a plan to train with
               </CardTitle>
               <CardDescription>
-                Completing your first session starts your weekly streak and tailors your coaching. It only takes one to get started.
+                A plan puts a session here every training day, with reminders and a coach that knows what&apos;s next.
               </CardDescription>
             </CardHeader>
             <CardFooter className="pt-0">
-              <Button size="sm" onClick={() => router.push(todaysWorkout?.workout ? '/workout/active' : '/programs')}>
-                {todaysWorkout?.workout ? "Start today's workout" : 'Choose a program'}
+              <Button size="sm" onClick={() => router.push('/programs')}>
+                Choose a program
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </CardFooter>
@@ -700,35 +706,6 @@ export default function DashboardPage() {
             </CardFooter>
           </Card>
         )}
-
-        <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
-                Welcome back, {user?.firstName || 'Athlete'}
-              </h1>
-            </div>
-            <CoachPanel
-              summary={summary}
-              summaryLoading={summaryLoading}
-              notes={coachNotes.notes}
-              onDismissNote={coachNotes.dismiss}
-              onNotesMayHaveChanged={coachNotes.refresh}
-            />
-
-            {/* Hiding Weekly Analysis for now 
-            {user && (
-              <Suspense fallback={null}>
-                <WeeklyAnalysisDialog userId={user.id} />
-              </Suspense>
-            )}
-            */}
-        </div>
-
-        {/* Android Beta Testing Banner */}
-        <AndroidBetaBanner
-          userEmail={user?.email}
-          userName={user?.firstName}
-        />
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           <Card className={cn("lg:col-span-2", isWorkoutCompleted && "bg-muted/30")}>
@@ -992,6 +969,22 @@ export default function DashboardPage() {
             </Card>
           </div>
         </div>
+
+        <CoachPanel
+          summary={summary}
+          summaryLoading={summaryLoading}
+          notes={coachNotes.notes}
+          onDismissNote={coachNotes.dismiss}
+          onNotesMayHaveChanged={coachNotes.refresh}
+        />
+
+        <TrialBanner when="calm" />
+
+        {/* Android Beta Testing Banner */}
+        <AndroidBetaBanner
+          userEmail={user?.email}
+          userName={user?.firstName}
+        />
 
         {/* Today's Strava Activity Feed — only rendered when Strava is connected */}
         {isStravaConnected && user && (

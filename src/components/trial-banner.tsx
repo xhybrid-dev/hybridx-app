@@ -16,7 +16,7 @@ import { cn } from '@/lib/utils';
  * (with rising urgency in the final stretch) on the dashboard is the highest-ROI
  * nudge for trial→paid conversion.
  */
-export function TrialBanner() {
+export function TrialBanner({ when }: { when?: 'urgent' | 'calm' } = {}) {
   const { user, loading } = useUserProfile();
 
   if (loading || !user) return null;
@@ -25,6 +25,9 @@ export function TrialBanner() {
 
   const daysLeft = getTrialDaysLeft(user.trialStartDate);
   const urgent = daysLeft <= 3;
+  // The dashboard shows it above today's workout only in the last few days.
+  if (when === 'urgent' && !urgent) return null;
+  if (when === 'calm' && urgent) return null;
 
   return (
     <div

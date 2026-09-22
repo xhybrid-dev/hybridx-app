@@ -13,7 +13,22 @@ interface AndroidBetaBannerProps {
 }
 
 export function AndroidBetaBanner({ userEmail, userName }: AndroidBetaBannerProps) {
-  const [isDismissed, setIsDismissed] = useState(false);
+  // Remembered: the banner used to come back on every visit.
+  const [isDismissed, setIsDismissedState] = useState(() => {
+    try {
+      return typeof window !== 'undefined' && localStorage.getItem('android-beta-banner-dismissed') === 'true';
+    } catch {
+      return false;
+    }
+  });
+  const setIsDismissed = (value: boolean) => {
+    setIsDismissedState(value);
+    try {
+      if (value) localStorage.setItem('android-beta-banner-dismissed', 'true');
+    } catch {
+      /* ignore */
+    }
+  };
   const [isRequesting, setIsRequesting] = useState(false);
   const [hasRequested, setHasRequested] = useState(false);
   const { toast } = useToast();
