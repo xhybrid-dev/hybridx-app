@@ -29,6 +29,7 @@ import { convertDistanceInText, convertTextWithUnits } from '@/lib/unit-conversi
 import { WorkoutTimer } from '@/components/workout-timer';
 import { WorkoutSkipDialog } from '@/components/workout-skip-dialog';
 import { trackEvent } from '@/lib/analytics';
+import { aiCopyKey, readAiCopy, writeAiCopy } from '@/lib/ai-copy-cache';
 
 const WorkoutCompleteModal = lazy(() => import('@/components/workout-complete-modal'));
 const CustomWorkoutDialog = lazy(() => import('@/components/custom-workout-dialog').then(mod => ({ default: mod.CustomWorkoutDialog })));
@@ -232,10 +233,19 @@ function WorkoutSessionCard({ planned, initialSession, day, isMultiSession, sess
         ...(hasRuns(planned) ? (planned as RunningWorkout).runs.map(r => r.type) : []),
         ...(hasExercises(planned) ? [...(planned as Workout).exercises, ...extendedExercises].map(e => e.name) : []),
       ].join(', ');
+      // Day-stable copy: cached like the dashboard's, so reopening the session
+      // doesn't wait on (and pay for) the model again.
+      const cacheKey = aiCopyKey('active-workout', user.id, planned.title, exercisesForSummary);
+      const cached = readAiCopy(cacheKey);
+      if (cached) {
+        setSummaryText(cached);
+        return;
+      }
       const summaryPromise = workoutSummary({ userName: user.firstName, workoutTitle: planned.title, exercises: exercisesForSummary });
       const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('AI summary timeout')), 15000));
       const summaryResult = await Promise.race([summaryPromise, timeoutPromise]) as any;
       setSummaryText(summaryResult.summary);
+      writeAiCopy(cacheKey, summaryResult.summary);
     } catch (error) {
       console.error('Failed to generate AI workout summary:', error);
       setSummaryText(planned.title);
