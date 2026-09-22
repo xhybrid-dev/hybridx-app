@@ -145,6 +145,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     updateUserMeta(currentUser.uid, {
                         lastLoginAt: new Date(),
                         platform: getPlatform(),
+                        // Server jobs run in UTC; this is how they know the athlete's day.
+                        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
                     });
                 }
 

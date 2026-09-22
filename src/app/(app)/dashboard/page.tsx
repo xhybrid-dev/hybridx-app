@@ -45,6 +45,7 @@ import { hasRuns, hasExercises } from '@/lib/type-guards';
 import { AndroidBetaBanner } from '@/components/android-beta-banner';
 import { TrialBanner } from '@/components/trial-banner';
 import { RacePrepDialog } from '@/components/race-prep-dialog';
+import { PlanAdjustmentNotice } from '@/components/plan-adjustment-notice';
 import type { StravaLoadError } from '@/components/today-strava-feed';
 
 // Lazy load heavy AI-powered components
@@ -404,6 +405,10 @@ export default function DashboardPage() {
                 </p>
             </div>
 
+            {user && (
+              <PlanAdjustmentNotice userId={user.id} todaysSessions={todaysWorkoutSessions} onChanged={refreshData} />
+            )}
+
             <AndroidBetaBanner userEmail={user?.email} userName={user?.firstName} />
 
             <div className="grid gap-6 md:grid-cols-2">
@@ -537,6 +542,10 @@ export default function DashboardPage() {
       <div className="space-y-6">
         {/* Trial countdown — drives trial→paid conversion (hidden for paid/admin users) */}
         <TrialBanner />
+
+        {user && (
+          <PlanAdjustmentNotice userId={user.id} todaysSessions={todaysWorkoutSessions} onChanged={refreshData} />
+        )}
 
         {/* First-workout activation nudge — completing the first session is the
             strongest predictor of retention, so we surface it prominently until done. */}
