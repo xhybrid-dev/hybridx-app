@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2, Calendar, Dumbbell, Clock } from 'lucide-react';
+import { Loader2, Calendar } from 'lucide-react';
 import { getProgramClient } from '@/services/program-service-client';
 import type { Program, WorkoutDay } from '@/models/types';
 import { hasRuns, hasExercises } from '@/lib/type-guards';

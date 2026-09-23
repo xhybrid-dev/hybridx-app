@@ -435,7 +435,7 @@ export default function AdminAnalyticsPage() {
                 {data.topPages.length === 0 && (
                   <p className="text-sm text-muted-foreground">No page views recorded yet.</p>
                 )}
-                {data.topPages.map(({ path, count }, i) => {
+                {data.topPages.map(({ path, count }) => {
                   const maxCount = data.topPages[0]?.count ?? 1;
                   const pct = Math.round((count / maxCount) * 100);
                   return (

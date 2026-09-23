@@ -37,7 +37,7 @@ import { hasRuns, hasExercises } from '@/lib/type-guards';
 import { convertDistance, convertTextWithUnits } from '@/lib/unit-conversion';
 import { formatTextWithBullets } from '@/utils/text-formatter';
 import { addDays, format, isSameDay, parseISO, isValid, isToday, isPast, startOfDay, startOfWeek, endOfWeek } from 'date-fns';
-import { RotateCcw, Loader2, CheckCircle2, XCircle, GripVertical, Link as LinkIcon, Clock, Forward, Edit, CheckCircle, CalendarDays, ListChecks, Wrench } from 'lucide-react';
+import { RotateCcw, Loader2, CheckCircle2, XCircle, GripVertical, Link as LinkIcon, Forward, Edit, CheckCircle, CalendarDays, ListChecks, Wrench } from 'lucide-react';
 import { canFixTreadmill } from '@/lib/treadmill';
 import { useToast } from '@/hooks/use-toast';
 import { useDebouncedCallback } from 'use-debounce';
@@ -732,7 +732,10 @@ function MonthGridCalendarView() {
     }
   }, 1000);
 
-  const handleSaveNotes = (index: number) => {
+  const handleSaveNotes = () => {
+    // No index needed: editingNotesIndex is a single nullable value, so only
+    // one row is ever in edit mode, and flush() always targets that row's
+    // pending debounced call.
     debouncedSaveNotes.flush();
     setEditingNotesIndex(null);
     toast({ title: 'Notes Saved', description: 'Your workout notes have been updated.' });
@@ -1081,7 +1084,7 @@ function MonthGridCalendarView() {
                               placeholder="Add notes about your workout..."
                               rows={3}
                             />
-                            <Button size="sm" onClick={() => handleSaveNotes(index)}>Save Notes</Button>
+                            <Button size="sm" onClick={handleSaveNotes}>Save Notes</Button>
                           </div>
                         ) : (
                           <p className="text-sm text-muted-foreground border-l-2 pl-4 italic min-h-[32px]">

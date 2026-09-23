@@ -32,7 +32,7 @@ export function AuthDiagnostics() {
     // Set up a listener for auth state changes
     const setupListener = async () => {
         const auth = await getAuthInstance();
-        const unsubscribe = onAuthStateChanged(auth, (user) => {
+        const unsubscribe = onAuthStateChanged(auth, () => {
             logger.log('🔄 Auth state changed, re-running diagnosis...');
             runDiagnosis();
         });

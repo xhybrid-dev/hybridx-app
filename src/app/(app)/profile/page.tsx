@@ -1,12 +1,12 @@
 // src/app/(app)/profile/page.tsx
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
-import { Loader2, Link as LinkIcon, Bell, Settings, CheckCircle2, XCircle, AlertTriangle, ExternalLink } from 'lucide-react';
+import { Loader2, Link as LinkIcon, Bell, CheckCircle2, XCircle, AlertTriangle, ExternalLink } from 'lucide-react';
 import { ThemeSwitcher } from '@/components/theme-switcher';
 import { GarminIntegrationCard } from '@/components/garmin-integration-card';
 import { MarketingPreferencesCard } from '@/components/marketing-preferences-card';
@@ -35,9 +35,8 @@ import { useToast } from '@/hooks/use-toast';
 import { getAuthInstance } from '@/lib/firebase';
 import { trackEvent } from '@/lib/analytics';
 import { getUserClient, updateUser } from '@/services/user-service-client';
-import type { User, PersonalRecords, UserRunningProfile } from '@/models/types';
+import type { User, UserRunningProfile } from '@/models/types';
 import { timeStringToSeconds, secondsToTimeString } from '@/lib/pace-utils';
-import { Label } from '@/components/ui/label';
 
 const profileFormSchema = z.object({
   firstName: z.string().min(1, 'First name is required.'),

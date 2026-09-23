@@ -3,7 +3,7 @@
 
 import { useEffect, useState, useRef, useCallback, lazy, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
-import { BarChart, Target, Loader2, Route, Zap, PlusSquare, Link as LinkIcon, CheckCircle, History, Calendar, Bell, CheckSquare, Sparkles, Trophy, ArrowRight, MessageCircle } from 'lucide-react';
+import { BarChart, Target, Loader2, Route, Zap, PlusSquare, Link as LinkIcon, CheckCircle, History, Calendar, CheckSquare, Sparkles, Trophy, ArrowRight, MessageCircle } from 'lucide-react';
 import { subWeeks, startOfWeek, isWithinInterval, isFuture, startOfDay, addDays, isSameDay, format } from 'date-fns';
 import { Capacitor } from '@capacitor/core';
 

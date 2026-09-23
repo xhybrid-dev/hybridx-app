@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  calendarDayIndex,
   calendarDayKey,
   normaliseTimeZone,
   programDayFor,

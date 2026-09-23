@@ -1,5 +1,4 @@
 'use client';
-import { logger } from '@/lib/logger';
 
 import { useEffect, useState } from 'react';
 import { Bell, X } from 'lucide-react';

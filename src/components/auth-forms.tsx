@@ -15,7 +15,7 @@ import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendEmailVe
 import { getAuthInstance } from '@/lib/firebase';
 import { authedFetch } from '@/lib/client-auth';
 import { createUser } from '@/services/user-service-client';
-import { getTopPrograms, type ProgramRecommendation } from '@/services/program-recommendation';
+import { getTopPrograms } from '@/services/program-recommendation';
 import { getProgramClient } from '@/services/program-service-client';
 import { fitToSchedule } from '@/lib/plan-condense';
 import { alignPlanToRace } from '@/services/race-scheduler';
@@ -51,7 +51,6 @@ const loginSchema = z.object({
 });
 
 export function LoginForm() {
-  const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);

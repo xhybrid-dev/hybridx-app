@@ -13,7 +13,6 @@ import {
   indexedDBLocalPersistence,
   initializeAuth as initializeFirebaseAuth,
   Auth,
-  onAuthStateChanged,
   setPersistence
 } from "firebase/auth";
 import { Capacitor } from '@capacitor/core';
@@ -68,7 +67,9 @@ const getAuthInstance = (): Promise<Auth> => {
     return authInstancePromise;
   }
 
-  authInstancePromise = new Promise(async (resolve, reject) => {
+  authInstancePromise = new Promise(async (resolve) => {
+    // No reject: every path below resolves, even on failure (falls back to a
+    // bare getAuth(app)) — a caller awaiting this must never be left hanging.
     try {
       if (typeof window !== 'undefined') {
         const isNative = Capacitor.isNativePlatform();

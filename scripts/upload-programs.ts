@@ -56,7 +56,7 @@ async function uploadPrograms() {
             console.log(`Uploading program: ${program.name} (ID: ${program.id})`);
             const programRef = doc(db, 'programs', program.id);
             // We remove the id from the object itself as it's used as the document ID
-            const { id, ...programData } = program;
+            const { id: _id, ...programData } = program;
             await setDoc(programRef, programData);
             console.log(`Successfully uploaded ${program.name}.`);
         }

@@ -16,9 +16,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Loader2, Sparkles, CheckCircle, ArrowRight } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { updateUser } from '@/services/user-service-client'; // Need to expose this or similar
 import { authedFetch } from '@/lib/client-auth';
-import type { User, Workout, RunningWorkout } from '@/models/types';
 import { Badge } from './ui/badge';
 import { Card, CardContent } from './ui/card';
 
@@ -27,7 +25,10 @@ interface WeeklyAnalysisDialogProps {
   trigger?: React.ReactNode;
 }
 
-export function WeeklyAnalysisDialog({ userId, trigger }: WeeklyAnalysisDialogProps) {
+export function WeeklyAnalysisDialog({ trigger }: WeeklyAnalysisDialogProps) {
+  // userId is part of the public props (still supplied by every caller) but
+  // unused here: /api/ai/analyze-week resolves the caller from the auth token
+  // via requireUser(), not from a client-supplied id.
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any | null>(null);

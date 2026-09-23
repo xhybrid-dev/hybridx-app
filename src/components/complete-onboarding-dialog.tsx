@@ -39,7 +39,9 @@ interface Props {
   onComplete: () => void;
 }
 
-export function CompleteOnboardingDialog({ open, onOpenChange, userId, userName, onComplete }: Props) {
+export function CompleteOnboardingDialog({ open, onOpenChange, userId, onComplete }: Props) {
+  // userName is part of the public props but unused here — nothing in this
+  // dialog currently renders a greeting.
   const { toast } = useToast();
   const [step, setStep] = useState<'profile' | 'program'>('profile');
   const [isLoading, setIsLoading] = useState(false);
