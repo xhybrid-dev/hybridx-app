@@ -17,7 +17,9 @@ import { authedFetch } from '@/lib/client-auth';
 import { createUser } from '@/services/user-service-client';
 import { getTopPrograms } from '@/services/program-recommendation';
 import { getProgramClient } from '@/services/program-service-client';
-import { adjustTrainingPlan } from '@/ai/flows/adjust-training-plan';
+import { fitToSchedule } from '@/lib/plan-condense';
+import { alignPlanToRace } from '@/services/race-scheduler';
+import { addDays, format, nextMonday, startOfDay } from 'date-fns';
 import type { WorkoutDay } from '@/models/types';
 import { ProgramPreviewDialog } from '@/components/program-preview-dialog'; // IMPORTED
 
@@ -39,6 +41,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
 
@@ -141,7 +144,7 @@ export function LoginForm() {
       logger.error('Login error:', error);
       let description = 'An unexpected error occurred. Please try again.';
       if ((error as any).code === AuthErrorCodes.INVALID_LOGIN_CREDENTIALS) {
-        description = 'Invalid email or password. Please try again.';
+        description = 'That email and password don\'t match. Use "Forgot password?" to choose a new one.';
       }
       toast({
         title: 'Login Failed',
@@ -180,7 +183,15 @@ export function LoginForm() {
               name="password"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Password</FormLabel>
+                  <div className="flex items-center justify-between">
+                    <FormLabel>Password</FormLabel>
+                    <Link
+                      href={`/forgot-password${form.watch('email') ? `?email=${encodeURIComponent(form.watch('email'))}` : ''}`}
+                      className="text-sm font-medium text-primary hover:underline"
+                    >
+                      Forgot password?
+                    </Link>
+                  </div>
                   <FormControl>
                     <div className="relative">
                       <Input type={showPassword ? 'text' : 'password'} placeholder="••••••••" autoComplete="current-password" {...field} />
@@ -228,9 +239,23 @@ const signupSchema = z.object({
   frequency: z.enum(['3', '4', '5+']),
   goal: z.enum(['strength', 'endurance', 'hybrid']),
   selectedProgramId: z.string().optional(),
+  /** YYYY-MM-DD, when they have a race booked. */
+  raceDate: z.string().optional(),
+  startWhen: z.enum(['today', 'tomorrow', 'monday']).optional(),
 });
 
 type SignupData = z.infer<typeof signupSchema>;
+
+/** Day 1 of the plan for the start the athlete picked. */
+function resolveStartDate(when: SignupData['startWhen']): Date {
+  const today = startOfDay(new Date());
+  if (when === 'tomorrow') return addDays(today, 1);
+  if (when === 'monday') return nextMonday(today);
+  return new Date();
+}
+
+/** Quick start's plan: the best match for a beginner with no other answers (First Steps to Hyrox). */
+const QUICK_START_PROGRAM_ID = getTopPrograms({ experience: 'beginner', frequency: '3', goal: 'hybrid' }, 1)[0]?.program.id;
 
 const initialSignupData: Partial<SignupData> = {
   email: '',
@@ -274,13 +299,15 @@ export function SignupForm() {
   };
 
   const handleQuickStart = (stepData: Partial<SignupData>) => {
+    // A real plan from day one. This used to be three AI one-off workouts that
+    // ran out on day 4, leaving anyone who missed one with nothing at all.
     const quickData: Partial<SignupData> = {
       ...formData,
       ...stepData,
       experience: 'beginner',
       frequency: '3',
       goal: 'hybrid',
-      selectedProgramId: undefined,
+      selectedProgramId: QUICK_START_PROGRAM_ID,
     };
     setFormData(quickData);
     void handleSubmit(quickData, true);
@@ -338,45 +365,33 @@ export function SignupForm() {
       }
 
 
-      // 2. Prepare user data
+      // 2. Prepare the plan: fit it to their week, then line it up with their
+      // race if they have one; otherwise start on the day they chose.
       let customProgram: WorkoutDay[] | null = null;
       let adjustmentMessage = "";
+      const raceDate = finalData.raceDate ? new Date(`${finalData.raceDate}T12:00:00`) : null;
+      let startDate = isQuickStart ? new Date() : resolveStartDate(finalData.startWhen);
 
-      // 3. If program selected, check if AI adjustment is needed
       if (finalData.selectedProgramId) {
         try {
           const selectedProgram = await getProgramClient(finalData.selectedProgramId);
-
-          if (selectedProgram && selectedProgram.programType === 'hyrox') {
-            // Count non-rest workouts in the program
-            const nonRestWorkouts = selectedProgram.workouts.filter(
-              w => !w.title.toLowerCase().includes('rest')
-            );
-
-            // Check if adjustment is needed based on user's frequency preference
-            const userFrequencyNumber = parseInt(finalData.frequency, 10);
-            const needsAdjustment = finalData.frequency !== '5+' &&
-                                   nonRestWorkouts.length > userFrequencyNumber;
-
-            if (needsAdjustment) {
-              toast({
-                title: 'Tailoring your program...',
-                description: 'Our AI coach is adjusting the program to fit your schedule.',
-              });
-
-              // Call AI to adjust the program
-              const result = await adjustTrainingPlan({
-                currentWorkouts: selectedProgram.workouts as any,
-                targetDays: finalData.frequency as '3' | '4',
-              });
-
-              customProgram = result.adjustedWorkouts as unknown as WorkoutDay[];
-              adjustmentMessage = ` We've intelligently adjusted it to fit your ${finalData.frequency}-day schedule!`;
+          if (selectedProgram) {
+            // Quick start skips the questions, so it takes the program as written.
+            const fitted = isQuickStart ? null : fitToSchedule(selectedProgram.workouts, finalData.frequency);
+            if (fitted) {
+              customProgram = fitted;
+              adjustmentMessage = ` We've fitted it to your ${finalData.frequency}-day week.`;
+            }
+            if (raceDate && raceDate > new Date()) {
+              const aligned = alignPlanToRace(customProgram ?? selectedProgram.workouts, raceDate);
+              customProgram = aligned.workouts;
+              startDate = aligned.startDate;
+              adjustmentMessage += ' It finishes on race day.';
             }
           }
         } catch (adjustError) {
           logger.error('Program adjustment failed:', adjustError);
-          // Continue without adjustment if it fails
+          // Continue with the program as written if this fails
         }
       }
 
@@ -390,7 +405,8 @@ export function SignupForm() {
         frequency: finalData.frequency,
         goal: finalData.goal,
         programId: finalData.selectedProgramId || null,
-        startDate: finalData.selectedProgramId ? new Date() : undefined,
+        startDate: finalData.selectedProgramId ? startDate : undefined,
+        raceDate: raceDate ?? undefined,
         customProgram: customProgram,
         onboardingSkipped: isQuickStart,
         acquisitionSource: attribution?.utmSource,
@@ -447,7 +463,8 @@ export function SignupForm() {
       {step === 3 && <Step3 onNext={handleNext} onPrev={handlePrev} onSkip={handleSkipAssessmentStep} defaultValues={formData} />}
       {step === 4 && <Step4 onNext={handleNext} onPrev={handlePrev} onSkip={handleSkipAssessmentStep} defaultValues={formData} />}
       {step === 5 && <Step5 onNext={handleNext} onPrev={handlePrev} onSkip={handleSkipAssessmentStep} defaultValues={formData} />}
-      {step === 6 && <Step6 onSubmit={handleSubmit} onPrev={handlePrev} defaultValues={formData} isLoading={isLoading} />}
+      {step === 6 && <RaceStep onNext={handleNext} onPrev={handlePrev} defaultValues={formData} />}
+      {step === 7 && <Step6 onSubmit={handleSubmit} onPrev={handlePrev} defaultValues={formData} isLoading={isLoading} />}
     </Card>
   );
 }
@@ -512,7 +529,7 @@ function Step2({ onNext, onPrev, onQuickStart, defaultValues, isLoading }: any) 
             Jump Straight In <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
           <p className="text-xs text-muted-foreground text-center">
-            We'll auto-generate Hyrox workouts for you. Take 2 mins to personalise below and get a matched program instead.
+            We'll start you on First Steps to Hyrox, our 12-week beginner plan. Or take 2 minutes to personalise and get a matched program.
           </p>
           <div className="flex items-center w-full gap-2">
             <div className="flex-1 h-px bg-border" />
@@ -538,7 +555,7 @@ function Step3({ onNext, onPrev, onSkip, defaultValues }: any) {
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onNext)}>
         <CardHeader>
-          <CardTitle>Your Training Level <span className="text-sm font-normal text-muted-foreground ml-2">1 of 3</span></CardTitle>
+          <CardTitle>Your Training Level <span className="text-sm font-normal text-muted-foreground ml-2">1 of 4</span></CardTitle>
           <CardDescription>Helps us match you to the right program intensity.</CardDescription>
         </CardHeader>
         <CardContent>
@@ -573,7 +590,7 @@ function Step4({ onNext, onPrev, onSkip, defaultValues }: any) {
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onNext)}>
         <CardHeader>
-          <CardTitle>Your Schedule <span className="text-sm font-normal text-muted-foreground ml-2">2 of 3</span></CardTitle>
+          <CardTitle>Your Schedule <span className="text-sm font-normal text-muted-foreground ml-2">2 of 4</span></CardTitle>
           <CardDescription>How many days per week can you train?</CardDescription>
         </CardHeader>
         <CardContent>
@@ -608,7 +625,7 @@ function Step5({ onNext, onPrev, onSkip, defaultValues }: any) {
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onNext)}>
         <CardHeader>
-          <CardTitle>Your Goal <span className="text-sm font-normal text-muted-foreground ml-2">3 of 3</span></CardTitle>
+          <CardTitle>Your Goal <span className="text-sm font-normal text-muted-foreground ml-2">3 of 4</span></CardTitle>
           <CardDescription>What brings you to HYBRIDX?</CardDescription>
         </CardHeader>
         <CardContent>
@@ -634,6 +651,50 @@ function Step5({ onNext, onPrev, onSkip, defaultValues }: any) {
   );
 }
 
+/** HYROX athletes train towards a date; a plan that knows it can peak on race day. */
+function RaceStep({ onNext, onPrev, defaultValues }: any) {
+  const [hasRace, setHasRace] = useState<boolean>(!!defaultValues.raceDate);
+  const [raceDate, setRaceDate] = useState<string>(defaultValues.raceDate ?? '');
+  const minDate = format(addDays(new Date(), 7), 'yyyy-MM-dd');
+  const valid = !hasRace || (raceDate && raceDate >= minDate);
+
+  return (
+    <>
+      <CardHeader>
+        <CardTitle>Got a race booked? <span className="text-sm font-normal text-muted-foreground ml-2">4 of 4</span></CardTitle>
+        <CardDescription>With a date, your plan builds towards it and finishes on race day.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <RadioGroup value={hasRace ? 'yes' : 'no'} onValueChange={v => setHasRace(v === 'yes')} className="space-y-2">
+          <div className="flex items-center space-x-3">
+            <RadioGroupItem value="yes" id="race-yes" />
+            <Label htmlFor="race-yes" className="font-normal">Yes — I have a date</Label>
+          </div>
+          <div className="flex items-center space-x-3">
+            <RadioGroupItem value="no" id="race-no" />
+            <Label htmlFor="race-no" className="font-normal">Not yet — I&apos;m training generally</Label>
+          </div>
+        </RadioGroup>
+        {hasRace && (
+          <div className="space-y-2">
+            <Label htmlFor="race-date">Race date</Label>
+            <Input id="race-date" type="date" min={minDate} value={raceDate} onChange={e => setRaceDate(e.target.value)} />
+            {raceDate && raceDate < minDate && (
+              <p className="text-sm text-destructive">Pick a date at least a week away.</p>
+            )}
+          </div>
+        )}
+      </CardContent>
+      <CardFooter className="flex justify-between">
+        <Button type="button" variant="ghost" onClick={onPrev}><ArrowLeft className="mr-2 h-4 w-4" /> Back</Button>
+        <Button type="button" disabled={!valid} onClick={() => onNext({ raceDate: hasRace && raceDate ? raceDate : undefined })}>
+          Next <ArrowRight className="ml-2 h-4 w-4" />
+        </Button>
+      </CardFooter>
+    </>
+  );
+}
+
 function Step6({ onSubmit, onPrev, defaultValues, isLoading }: any) {
   // Get top 3 program recommendations based on user preferences
   const recommendations = getTopPrograms({
@@ -649,11 +710,16 @@ function Step6({ onSubmit, onPrev, defaultValues, isLoading }: any) {
   });
 
   const selectedProgramId = form.watch('selectedProgramId');
+  // Signing up late in the evening shouldn't make day 1 a day already gone.
+  const [startWhen, setStartWhen] = useState<'today' | 'tomorrow' | 'monday'>(
+    new Date().getHours() >= 18 ? 'tomorrow' : 'today',
+  );
 
   const handleStartNow = () => {
     const dataWithProgram = {
       ...defaultValues,
-      selectedProgramId: form.getValues('selectedProgramId')
+      selectedProgramId: form.getValues('selectedProgramId'),
+      startWhen,
     };
     onSubmit(dataWithProgram);
   };
@@ -767,6 +833,24 @@ function Step6({ onSubmit, onPrev, defaultValues, isLoading }: any) {
             </FormItem>
           )}
         />
+
+        {defaultValues.raceDate ? (
+          <p className="text-sm text-muted-foreground">
+            Your plan will be lined up to finish on race day, {format(new Date(`${defaultValues.raceDate}T12:00:00`), 'EEEE d MMMM')}.
+          </p>
+        ) : (
+          <div className="space-y-2">
+            <Label>When do you want to start?</Label>
+            <RadioGroup value={startWhen} onValueChange={v => setStartWhen(v as typeof startWhen)} className="flex flex-wrap gap-4">
+              {(['today', 'tomorrow', 'monday'] as const).map(option => (
+                <div key={option} className="flex items-center space-x-2">
+                  <RadioGroupItem value={option} id={`start-${option}`} />
+                  <Label htmlFor={`start-${option}`} className="font-normal capitalize">{option === 'monday' ? 'Next Monday' : option}</Label>
+                </div>
+              ))}
+            </RadioGroup>
+          </div>
+        )}
 
         <div className="bg-muted/50 rounded-lg p-4 text-sm">
           <p className="font-medium mb-1">Not sure yet?</p>

@@ -39,8 +39,8 @@ self.addEventListener('push', (event) => {
   let data = {
     title: 'HYBRIDX Workout',
     body: 'Time to train!',
-    icon: '/icons/icon-192x192.png',
-    badge: '/icons/icon-192x192.png',
+    icon: '/icon-maskable-192.png',
+    badge: '/icon-maskable-192.png',
   };
 
   if (event.data) {
@@ -53,11 +53,11 @@ self.addEventListener('push', (event) => {
 
   const options = {
     body: data.body,
-    icon: data.icon || '/icons/icon-192x192.png',
-    badge: data.badge || '/icons/icon-192x192.png',
+    icon: data.icon || '/icon-maskable-192.png',
+    badge: data.badge || '/icon-maskable-192.png',
     vibrate: [200, 100, 200],
     data: {
-      url: data.url || '/workout',
+      url: data.url || '/dashboard',
       dateOfArrival: Date.now(),
     },
     actions: [
@@ -84,7 +84,7 @@ self.addEventListener('notificationclick', (event) => {
   event.notification.close();
 
   if (event.action === 'view' || !event.action) {
-    const urlToOpen = event.notification.data?.url || '/workout';
+    const urlToOpen = event.notification.data?.url || '/dashboard';
 
     event.waitUntil(
       self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {

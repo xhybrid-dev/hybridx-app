@@ -1,6 +1,6 @@
 // Server-side web push sender — never import from client code
 import webpush from 'web-push';
-import { getAdminDb } from '@/lib/firebase-admin';
+import { getAdminDb, getAdminMessaging } from '@/lib/firebase-admin';
 
 const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!;
 const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY!;
@@ -29,11 +29,15 @@ export interface PushSubscriptionRecord {
   platform?: string;
 }
 
-/** Send a push notification to a single subscription. Returns true on success. */
+/**
+ * Send a push notification to a single subscription. 'gone' means the
+ * browser has dropped it (404/410) and it should be deleted; any other failure
+ * is reported as 'error' and the subscription is kept for next time.
+ */
 export async function sendPushToSubscription(
   subscription: webpush.PushSubscription,
   payload: PushPayload
-): Promise<boolean> {
+): Promise<'ok' | 'gone' | 'error'> {
   ensureInit();
   try {
     await webpush.sendNotification(
@@ -42,49 +46,89 @@ export async function sendPushToSubscription(
         title: payload.title,
         body: payload.body,
         url: payload.url ?? '/dashboard',
-        icon: payload.icon ?? '/icons/icon-192x192.png',
-        badge: payload.badge ?? '/icons/icon-192x192.png',
+        icon: payload.icon ?? '/icon-maskable-192.png',
+        badge: payload.badge ?? '/icon-maskable-192.png',
       })
     );
-    return true;
+    return 'ok';
   } catch (err) {
-    // 410 Gone = subscription expired/unsubscribed
-    if ((err as any)?.statusCode === 410 || (err as any)?.statusCode === 404) {
-      return false; // caller should clean up the subscription
-    }
-    console.error('Push send error:', (err as any)?.statusCode, (err as any)?.body);
-    return false;
+    const status = (err as { statusCode?: number })?.statusCode;
+    if (status === 410 || status === 404) return 'gone';
+    console.error('Push send error:', status, (err as { body?: unknown })?.body);
+    return 'error';
   }
 }
 
-/** Send to all subscriptions for a user. Cleans up expired ones. */
+/** FCM error codes meaning the device token is gone for good. */
+const DEAD_TOKEN_CODES = new Set([
+  'messaging/registration-token-not-registered',
+  'messaging/invalid-registration-token',
+  'messaging/invalid-argument',
+]);
+
+/** Native app devices (iOS/Android) via Firebase Cloud Messaging. */
+async function sendNativePush(userId: string, payload: PushPayload): Promise<{ sent: number; cleaned: number }> {
+  const db = getAdminDb();
+  const snap = await db.collection('pushTokens').where('userId', '==', userId).get();
+  if (snap.empty) return { sent: 0, cleaned: 0 };
+
+  const docs = snap.docs;
+  const response = await getAdminMessaging().sendEachForMulticast({
+    tokens: docs.map(d => d.get('token') as string),
+    notification: { title: payload.title, body: payload.body },
+    data: { url: payload.url ?? '/dashboard' },
+    apns: { payload: { aps: { sound: 'default' } } },
+  });
+
+  const batch = db.batch();
+  let cleaned = 0;
+  response.responses.forEach((result, index) => {
+    if (!result.success && result.error && DEAD_TOKEN_CODES.has(result.error.code)) {
+      batch.delete(docs[index].ref);
+      cleaned++;
+    }
+  });
+  if (cleaned > 0) await batch.commit();
+  return { sent: response.successCount, cleaned };
+}
+
+/** Send to every device a user has: web push subscriptions and native app tokens. Cleans up dead ones. */
 export async function sendPushToUser(
   userId: string,
   payload: PushPayload
 ): Promise<{ sent: number; cleaned: number }> {
-  ensureInit();
   const db = getAdminDb();
+  let sent = 0;
+  let cleaned = 0;
+
+  try {
+    const native = await sendNativePush(userId, payload);
+    sent += native.sent;
+    cleaned += native.cleaned;
+  } catch (err) {
+    console.error('Native push send error:', err instanceof Error ? err.message : err);
+  }
+
   const snap = await db
     .collection('pushSubscriptions')
     .where('userId', '==', userId)
     .get();
 
-  if (snap.empty) return { sent: 0, cleaned: 0 };
+  if (snap.empty) return { sent, cleaned };
+  ensureInit();
 
-  let sent = 0;
-  let cleaned = 0;
   const cleanupBatch = db.batch();
   let needsCleanup = false;
 
   for (const doc of snap.docs) {
     const sub = doc.data() as PushSubscriptionRecord;
-    const success = await sendPushToSubscription(
+    const result = await sendPushToSubscription(
       { endpoint: sub.endpoint, keys: sub.keys },
       payload
     );
-    if (success) {
+    if (result === 'ok') {
       sent++;
-    } else {
+    } else if (result === 'gone') {
       cleanupBatch.delete(doc.ref);
       needsCleanup = true;
       cleaned++;

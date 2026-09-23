@@ -1,221 +1,218 @@
 /**
- * Daily push notification cron job.
- * Runs every morning, finds today's workout for each subscribed user,
- * generates an AI message, and sends a push notification.
+ * Workout reminders. Runs every 15 minutes and sends to athletes whose chosen
+ * reminder time (Profile → Daily Workout Notifications) falls in the current
+ * quarter-hour of their own timezone — at most once per athlete per day.
  *
- * Secure with CRON_SECRET header. In Vercel: set as a cron job at e.g. 0 7 * * *
+ * What gets sent is decided in lib/reminders.ts: today's session on a
+ * training day, nothing on a rest day or a paused plan, the session they
+ * committed to with "Do it tomorrow", and a few spaced-out nudges (then
+ * silence) for athletes who have stopped opening the app.
+ *
+ * Previously this fired once at 07:00 UTC for everyone, worked out "today"
+ * with UTC arithmetic, ignored customised plans (so quick-start athletes
+ * always got a generic line), nagged lapsed athletes daily for ever, and only
+ * ever read the first 500 subscriptions.
  */
 
 import { NextResponse } from 'next/server';
+import { differenceInCalendarDays } from 'date-fns';
+import { FieldPath, Timestamp } from 'firebase-admin/firestore';
 import { requireCronAuth } from '@/lib/cron-auth';
 import { logger } from '@/lib/logger';
 import { getAdminDb } from '@/lib/firebase-admin';
 import { sendPushToUser } from '@/lib/web-push';
 import { notificationMessage } from '@/ai/flows/notification-message';
 import { mapWithLimit } from '@/lib/concurrency';
-import { Timestamp } from 'firebase-admin/firestore';
-import type { User, Workout, RunningWorkout } from '@/models/types';
+import { calendarDayKey, normaliseTimeZone } from '@/lib/program-day';
+import { plannedFor, type DaySessionLite } from '@/lib/coach/daily-adjust';
+import { isTrialExpired } from '@/lib/trial';
+import {
+  DEFAULT_REMINDER_TIME,
+  DEFAULT_TIME_ZONE,
+  decideReminder,
+  isReminderDue,
+  localClock,
+  reengageMessage,
+} from '@/lib/reminders';
+import type { User, WorkoutDay } from '@/models/types';
 
 export const maxDuration = 300;
 export const dynamic = 'force-dynamic';
 
-/**
- * Same ceiling daily-coach uses. This route previously fanned out with a bare
- * Promise.all over every subscriber, which is the shape src/lib/concurrency.ts
- * exists to prevent: at two thousand subscribers that was two thousand
- * simultaneous Gemini calls plus ~6000 concurrent Firestore operations from one
- * App Hosting instance, and the failure arrives all at once, at 3am.
- */
 const AI_CONCURRENCY = 4;
-
-/** Leave headroom under maxDuration so the handler always returns a summary. */
 const TIME_BUDGET_MS = 150_000;
+const PAGE_SIZE = 1000;
+const NON_PROGRAM_IDS = new Set(['one-off-ai', 'custom-workout']);
 
-/** One run's ceiling on subscribers; the rest are picked up next run. */
-const MAX_SUBSCRIBERS_PER_RUN = 500;
-
-function getTodayWorkout(
-  workouts: (Workout | RunningWorkout)[],
-  startDate: Date
-): Workout | RunningWorkout | null {
-  const now = new Date();
-  const diffMs = now.getTime() - startDate.getTime();
-  const dayNumber = Math.floor(diffMs / (1000 * 60 * 60 * 24)) + 1;
-  return workouts.find((w) => w.day === dayNumber) ?? null;
+function toDate(value: unknown): Date | null {
+  if (!value) return null;
+  if (value instanceof Timestamp) return value.toDate();
+  if (value instanceof Date) return value;
+  const maybe = value as { toDate?: () => Date };
+  if (typeof maybe.toDate === 'function') return maybe.toDate();
+  const parsed = new Date(value as string);
+  return isNaN(parsed.getTime()) ? null : parsed;
 }
 
-function workoutSummary(workout: Workout | RunningWorkout): string {
-  if ('runs' in workout && workout.runs?.length) {
-    return workout.runs
-      .slice(0, 3)
-      .map((r) => `${r.type} ${r.distance}km`)
-      .join(', ');
-  }
-  if ('exercises' in workout && workout.exercises?.length) {
-    return workout.exercises
-      .slice(0, 3)
-      .map((e: any) => e.name)
-      .join(', ');
-  }
-  return workout.title;
+function hasAccess(user: User): boolean {
+  if (user.isAdmin) return true;
+  const status = user.subscriptionStatus ?? 'trial';
+  if (status === 'trial') return !isTrialExpired(toDate(user.trialStartDate));
+  return status === 'active' || status === 'paused';
 }
 
-/** Re-engagement message for users who haven't opened the app in 3+ days */
-const RE_ENGAGEMENT_MESSAGES = [
-  "Your training program is waiting — pick up where you left off 💪",
-  "3 days since your last session. Time to get back on track!",
-  "Your HYROX goals haven't changed. Have you? Come train 🔥",
-  "The hardest part is showing up. Open the app and get moving.",
-  "Don't lose your progress — your next workout is ready 🏋️",
-];
+function summarise(workout: WorkoutDay): string {
+  const runs = ('runs' in workout && workout.runs?.length)
+    ? workout.runs.slice(0, 3).map(r => `${r.type} ${r.distance}km`)
+    : [];
+  const exercises = (workout.exercises ?? []).slice(0, 3).map(e => e.name);
+  return [...runs, ...exercises].join(', ') || workout.title;
+}
+
+/** Every user id with at least one push destination, paged so nobody past the first page is dropped. */
+async function subscribedUserIds(db: FirebaseFirestore.Firestore): Promise<string[]> {
+  const ids = new Set<string>();
+  for (const collection of ['pushSubscriptions', 'pushTokens']) {
+    let last: FirebaseFirestore.QueryDocumentSnapshot | null = null;
+    for (;;) {
+      let query = db.collection(collection).orderBy(FieldPath.documentId()).select('userId').limit(PAGE_SIZE);
+      if (last) query = query.startAfter(last);
+      const page = await query.get();
+      page.docs.forEach(doc => {
+        const userId = doc.get('userId');
+        if (typeof userId === 'string') ids.add(userId);
+      });
+      if (page.size < PAGE_SIZE) break;
+      last = page.docs[page.docs.length - 1];
+    }
+  }
+  return [...ids];
+}
 
 export async function GET(request: Request) {
   const denied = requireCronAuth(request, 'push-notifications');
   if (denied) return denied;
 
   const db = getAdminDb();
-
-  // Bounded: an unbounded scan grows with the subscriber list until the run no
-  // longer fits in maxDuration.
-  const subsSnap = await db.collection('pushSubscriptions').limit(MAX_SUBSCRIBERS_PER_RUN).get();
-  if (subsSnap.empty) {
-    return NextResponse.json({ message: 'No push subscribers' });
-  }
-
-  // Build unique userId list from subscriptions
-  const userIds = [...new Set(subsSnap.docs.map((d) => d.data().userId as string))];
-
-  // Batch fetch users
-  const userDocs = await Promise.all(
-    userIds.map((id) => db.collection('users').doc(id).get())
-  );
-
-  // Resolve every distinct programme once, rather than 1-2 document reads per
-  // subscriber inside the loop below. Programmes are shared across athletes, so
-  // that per-user lookup was almost entirely redundant. Same approach as
-  // daily-coach: check the public collection first, then only the ids it did not
-  // resolve against customPrograms.
-  const programIds = [...new Set(
-    userDocs.filter(d => d.exists).map(d => (d.data() as User).programId).filter((id): id is string => !!id)
-  )];
-  const programCache = new Map<string, Record<string, unknown> | undefined>();
-  if (programIds.length > 0) {
-    const publicSnaps = await Promise.all(
-      programIds.map(id => db.collection('programs').doc(id).get())
-    );
-    for (const snap of publicSnaps) {
-      if (snap.exists) programCache.set(snap.id, snap.data());
-    }
-    const unresolvedIds = programIds.filter(id => !programCache.has(id));
-    if (unresolvedIds.length > 0) {
-      const customSnaps = await Promise.all(
-        unresolvedIds.map(id => db.collection('customPrograms').doc(id).get())
-      );
-      for (const snap of customSnaps) {
-        if (snap.exists) programCache.set(snap.id, snap.data());
-      }
-    }
-  }
-
   const now = new Date();
-  const threeDaysAgo = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
-
-  const results = { sent: 0, skipped: 0, errors: 0 };
   const startedAt = Date.now();
-  let skippedForTime = 0;
 
-  await mapWithLimit(userDocs, AI_CONCURRENCY, async (userDoc) => {
-      if (!userDoc.exists) return;
+  const userIds = await subscribedUserIds(db);
+  if (userIds.length === 0) return NextResponse.json({ message: 'No push subscribers' });
 
-      if (Date.now() - startedAt > TIME_BUDGET_MS) {
-        skippedForTime++;
-        return;
-      }
+  // Only athletes whose reminder slot is now, and who haven't had today's yet.
+  const due: { id: string; user: User; timeZone: string; dateKey: string }[] = [];
+  for (let i = 0; i < userIds.length; i += 300) {
+    const refs = userIds.slice(i, i + 300).map(id => db.collection('users').doc(id));
+    const snaps = await db.getAll(...refs);
+    for (const snap of snaps) {
+      if (!snap.exists) continue;
+      const user = snap.data() as User & { lastReminderDate?: string };
+      const timeZone = normaliseTimeZone(user.timeZone) ?? DEFAULT_TIME_ZONE;
+      const clock = localClock(now, timeZone);
+      if (!isReminderDue(clock, user.notificationTime ?? DEFAULT_REMINDER_TIME)) continue;
+      if (user.lastReminderDate === clock.dateKey) continue;
+      if (!hasAccess(user) || user.planPausedAt) continue;
+      due.push({ id: snap.id, user, timeZone, dateKey: clock.dateKey });
+    }
+  }
 
-      const user = userDoc.data() as User;
-      const userId = userDoc.id;
+  // Base programs for the due athletes only.
+  const programIds = [...new Set(due.map(d => d.user.programId).filter((id): id is string => !!id))];
+  const programCache = new Map<string, WorkoutDay[]>();
+  for (const collection of ['programs', 'customPrograms']) {
+    const missing = programIds.filter(id => !programCache.has(id));
+    if (missing.length === 0) break;
+    const snaps = await Promise.all(missing.map(id => db.collection(collection).doc(id).get()));
+    snaps.forEach(snap => {
+      if (snap.exists) programCache.set(snap.id, (snap.data()?.workouts ?? []) as WorkoutDay[]);
+    });
+  }
 
-      // Skip if trial ended / canceled
-      const status = user.subscriptionStatus ?? 'trial';
-      if (!['trial', 'active', 'paused'].includes(status)) {
-        results.skipped++;
-        return;
-      }
+  const results = { due: due.length, sent: 0, silent: 0, errors: 0, skippedForTime: 0 };
 
-      try {
-        // Determine today's workout
-        let workoutTitle = "Today's Training";
-        let exerciseSummary = 'Keep up the great work!';
-        let notifUrl = '/dashboard';
+  await mapWithLimit(due, AI_CONCURRENCY, async ({ id: userId, user, timeZone, dateKey }) => {
+    if (Date.now() - startedAt > TIME_BUDGET_MS) {
+      results.skippedForTime++;
+      return;
+    }
+    try {
+      // "Today" as a runtime-local midnight whose Y/M/D is the athlete's date.
+      const [y, m, d] = dateKey.split('-').map(Number);
+      const today = new Date(y, m - 1, d);
 
-        if (user.programId && user.startDate) {
-          const startDate =
-            user.startDate instanceof Timestamp
-              ? user.startDate.toDate()
-              : new Date(user.startDate as any);
-
-          // Resolved once above, across both collections.
-          const programData = programCache.get(user.programId);
-          if (programData) {
-            const workouts = programData.workouts as (Workout | RunningWorkout)[];
-            const customWorkouts = user.customProgram;
-            const allWorkouts = customWorkouts?.length ? customWorkouts : workouts;
-            const todayWorkout = getTodayWorkout(allWorkouts ?? [], startDate);
-
-            if (todayWorkout) {
-              workoutTitle = todayWorkout.title;
-              exerciseSummary = workoutSummary(todayWorkout);
-              notifUrl = '/workout';
-            }
-          }
-        }
-
-        // Check if this is a re-engagement scenario (no recent session)
-        const recentSessionSnap = await db
-          .collection('workoutSessions')
+      let todaysWorkout: WorkoutDay | null = null;
+      const startDate = toDate(user.startDate);
+      const custom = (user.customProgram ?? []) as WorkoutDay[];
+      const workouts = custom.length > 0 ? custom : programCache.get(user.programId ?? '') ?? [];
+      if (startDate && workouts.length > 0) {
+        // The athlete may have moved sessions between days; their docs win.
+        const around = await db.collection('workoutSessions')
           .where('userId', '==', userId)
-          .where('startedAt', '>=', Timestamp.fromDate(threeDaysAgo))
-          .limit(1)
+          .where('workoutDate', '>=', Timestamp.fromMillis(today.getTime() - 2 * 86_400_000))
+          .where('workoutDate', '<=', Timestamp.fromMillis(today.getTime() + 2 * 86_400_000))
           .get();
-
-        let messageBody: string;
-
-        if (recentSessionSnap.empty) {
-          // Re-engagement: pick a rotating message
-          const idx = now.getDate() % RE_ENGAGEMENT_MESSAGES.length;
-          messageBody = RE_ENGAGEMENT_MESSAGES[idx];
-        } else {
-          // Daily workout reminder: use AI
-          try {
-            const aiResult = await notificationMessage({
-              userName: user.firstName || 'Athlete',
-              workoutTitle,
-              exercises: exerciseSummary,
-            });
-            messageBody = aiResult.message;
-          } catch {
-            messageBody = `${workoutTitle} is scheduled for today. Let's go! 💪`;
-          }
+        const todaySessions: DaySessionLite[] = around.docs
+          .map(doc => doc.data())
+          .filter(s => !NON_PROGRAM_IDS.has(s.programId) && calendarDayKey(toDate(s.workoutDate)!, timeZone) === dateKey)
+          .map(s => ({ workoutDate: toDate(s.workoutDate)!, finishedAt: toDate(s.finishedAt), skipped: !!s.skipped, workoutDetails: s.workoutDetails ?? null }));
+        if (!todaySessions.some(s => s.finishedAt)) {
+          todaysWorkout = plannedFor({ workouts }, startDate, today, todaySessions, timeZone)[0] ?? null;
         }
-
-        const { sent } = await sendPushToUser(userId, {
-          title: 'HYBRIDX Training',
-          body: messageBody,
-          url: notifUrl,
-        });
-
-        if (sent > 0) results.sent++;
-        else results.skipped++;
-      } catch (err) {
-        logger.error(`Push failed for user ${userId}:`, err);
-        results.errors++;
       }
+
+      const lastSeen = toDate(user.lastSeenAt);
+      const daysSinceSeen = lastSeen ? differenceInCalendarDays(today, new Date(`${calendarDayKey(lastSeen, timeZone)}T00:00:00`)) : null;
+      const commitment = user.trainingCommitment?.date === dateKey ? user.trainingCommitment.workoutTitle : null;
+
+      const reminder = decideReminder({
+        todaysWorkout: todaysWorkout ? { title: todaysWorkout.title, exercises: summarise(todaysWorkout) } : null,
+        commitmentTitle: commitment,
+        daysSinceSeen,
+      });
+
+      const userRef = db.collection('users').doc(userId);
+      if (reminder.kind === 'none') {
+        await userRef.update({ lastReminderDate: dateKey });
+        results.silent++;
+        return;
+      }
+
+      let body: string;
+      let url = '/workout/active';
+      if (reminder.kind === 'commitment') {
+        body = `You said today's the day — ${reminder.workoutTitle} is ready when you are 💪`;
+      } else if (reminder.kind === 'reengage') {
+        body = reengageMessage(daysSinceSeen ?? 0, reminder.workoutTitle);
+        url = '/dashboard';
+      } else {
+        try {
+          const ai = await notificationMessage({
+            userName: user.firstName || 'Athlete',
+            workoutTitle: reminder.workoutTitle,
+            exercises: reminder.exercises,
+          });
+          body = ai.message;
+        } catch {
+          body = `${reminder.workoutTitle} is on today. Let's go! 💪`;
+        }
+      }
+
+      const { sent } = await sendPushToUser(userId, { title: 'HYBRIDX Training', body, url });
+      await userRef.update({
+        lastReminderDate: dateKey,
+        ...(reminder.kind === 'commitment' ? { trainingCommitment: null } : {}),
+      });
+      if (sent > 0) results.sent++;
+      else results.silent++;
+    } catch (err) {
+      logger.error(`[cron/push-notifications] user ${userId} failed:`, err instanceof Error ? err.message : String(err));
+      results.errors++;
+    }
   });
 
-  return NextResponse.json({
-    success: true,
-    results,
-    subscribers: userIds.length,
-    skippedForTime,
-  });
+  if (results.skippedForTime) {
+    logger.error(`[cron/push-notifications] time budget reached; ${results.skippedForTime} reminders not sent`);
+  }
+  return NextResponse.json({ success: true, results, subscribers: userIds.length });
 }

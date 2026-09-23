@@ -16,6 +16,9 @@ import { useToast } from '@/hooks/use-toast';
  * emails meaningfully improve deliverability of the re-engagement / coaching
  * emails that drive retention.
  */
+const DISMISS_KEY = 'verifyEmailDismissedUntil';
+const DISMISS_MS = 7 * 24 * 60 * 60 * 1000;
+
 export function VerifyEmailBanner() {
   const [fbUser, setFbUser] = useState<FirebaseUser | null>(null);
   const [dismissed, setDismissed] = useState(false);
@@ -31,10 +34,13 @@ export function VerifyEmailBanner() {
     return () => unsub?.();
   }, []);
 
-  // Honour a per-session dismissal so it doesn't nag on every navigation.
+  // A dismissal holds for a week; per-session meant it came back every visit.
   useEffect(() => {
-    if (typeof window !== 'undefined' && sessionStorage.getItem('verifyEmailDismissed') === 'true') {
-      setDismissed(true);
+    try {
+      const until = Number(localStorage.getItem(DISMISS_KEY) ?? 0);
+      if (until > Date.now()) setDismissed(true);
+    } catch {
+      /* storage unavailable: show it */
     }
   }, []);
 
@@ -62,7 +68,11 @@ export function VerifyEmailBanner() {
   };
 
   const handleDismiss = () => {
-    sessionStorage.setItem('verifyEmailDismissed', 'true');
+    try {
+      localStorage.setItem(DISMISS_KEY, String(Date.now() + DISMISS_MS));
+    } catch {
+      /* dismiss for this view only */
+    }
     setDismissed(true);
   };
 

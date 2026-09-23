@@ -138,6 +138,11 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  // Workout reminders used to link to /workout, which has never had a page.
+  // Notifications already delivered with that link still need somewhere to land.
+  async redirects() {
+    return [{ source: '/workout', destination: '/workout/active', permanent: false }];
+  },
   // Baseline security headers applied to every response.
   async headers() {
     return [

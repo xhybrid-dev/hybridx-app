@@ -4,7 +4,8 @@
 import { useEffect, useState, useRef, useCallback, lazy, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import { BarChart, Target, Loader2, Route, Zap, PlusSquare, Link as LinkIcon, CheckCircle, History, Calendar, CheckSquare, Sparkles, Trophy, ArrowRight, MessageCircle } from 'lucide-react';
-import { subWeeks, startOfWeek, isWithinInterval, isFuture } from 'date-fns';
+import { subWeeks, startOfWeek, isWithinInterval, isFuture, startOfDay, addDays, isSameDay, format } from 'date-fns';
+import { Capacitor } from '@capacitor/core';
 
 import { CoachPanel, useCoachNotes } from '@/components/coach-panel';
 import { CoachMarkdown } from '@/components/coach-markdown';
@@ -26,7 +27,11 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { ChartContainer, BarChart as RechartsBarChart, Bar, XAxis, ChartTooltip, CartesianGrid, ChartTooltipContent } from '@/components/ui/chart';
 import { Skeleton } from '@/components/ui/skeleton';
-import { getOrCreateWorkoutSession, updateWorkoutSession, type WorkoutSession } from '@/services/session-service-client';
+import { getOrCreateWorkoutSession, getUserSessionsInRange, updateWorkoutSession, type WorkoutSession } from '@/services/session-service-client';
+import { saveScheduleChanges } from '@/services/session-service';
+import { getWorkoutForDay } from '@/lib/workout-utils';
+import { planPostpone } from '@/lib/postpone';
+import { trackEvent } from '@/lib/analytics';
 import type { WorkoutDay, RunningWorkout, Workout, PlannedRun } from '@/models/types';
 import type { StravaActivity } from '@/services/strava-service';
 import Link from 'next/link';
@@ -34,7 +39,7 @@ import { cn } from '@/lib/utils';
 import { formatPace } from '@/lib/pace-utils';
 import { formatPlannedRun } from '@/lib/workout-utils';
 import { useToast } from '@/hooks/use-toast';
-import { checkAndScheduleNotification } from '@/utils/notification-scheduler';
+import { cancelScheduledReminder, checkAndScheduleNotification, scheduleDailyNotification } from '@/utils/notification-scheduler';
 import { useNotificationPermission } from '@/hooks/use-notification-permission';
 import { StatsWidget } from '@/components/stats-widget';
 import { Badge } from '@/components/ui/badge';
@@ -45,6 +50,10 @@ import { hasRuns, hasExercises } from '@/lib/type-guards';
 import { AndroidBetaBanner } from '@/components/android-beta-banner';
 import { TrialBanner } from '@/components/trial-banner';
 import { RacePrepDialog } from '@/components/race-prep-dialog';
+import { PlanAdjustmentNotice } from '@/components/plan-adjustment-notice';
+import { PlanCatchUpCard } from '@/components/plan-catch-up-card';
+import { ProgramFinishCard } from '@/components/program-finish-card';
+import { programDayFor } from '@/lib/program-day';
 import type { StravaLoadError } from '@/components/today-strava-feed';
 
 // Lazy load heavy AI-powered components
@@ -61,7 +70,7 @@ const chartConfig = {
 };
 
 export default function DashboardPage() {
-  const { user, program, todaysWorkout, todaysSession, todaysWorkoutSessions, allSessions, streakData, trainingPaces, loading, refreshData } = useUser();
+  const { user, program, todaysWorkout, todaysSession, todaysWorkoutSessions, allSessions, sessionsLoaded, streakData, trainingPaces, loading, refreshData } = useUser();
   const [progressData, setProgressData] = useState<{ week: string, workouts: number }[]>([]);
   const [todayStravaSummary, setTodayStravaSummary] = useState<string | null>(null);
   const [stravaRecentActivities, setStravaRecentActivities] = useState<StravaActivity[]>([]);
@@ -77,6 +86,7 @@ export default function DashboardPage() {
   const coachNotes = useCoachNotes(!!user);
   const [isGeneratingWorkout, setIsGeneratingWorkout] = useState(false);
   const [isMarkingDone, setIsMarkingDone] = useState(false);
+  const [isPostponing, setIsPostponing] = useState(false);
   const [isCustomWorkoutDialogOpen, setIsCustomWorkoutDialogOpen] = useState(false);
   const [isGeneratingStarterPlan, setIsGeneratingStarterPlan] = useState(false);
   const [showCompleteOnboarding, setShowCompleteOnboarding] = useState(false);
@@ -242,37 +252,43 @@ export default function DashboardPage() {
     return () => clearTimeout(timer);
   }, [user, todaysWorkout, todaysSession]);
 
-  // Effect to schedule daily notifications
+  // Native apps schedule tomorrow's reminder on the device as a fallback for
+  // when a server push can't reach them. (Web gets the server push; the old
+  // web path was a 24-hour setTimeout that died with the tab.)
   useEffect(() => {
-    if (isGranted && todaysWorkout?.workout && user) {
-      const notifRunParts = hasRuns(todaysWorkout.workout) ? (todaysWorkout.workout).runs.map(r => r.type) : [];
-      const notifExParts = hasExercises(todaysWorkout.workout) ? todaysWorkout.workout.exercises.map(e => e.name) : [];
-      const exercisesForNotification = [...notifRunParts, ...notifExParts].join(', ');
-
-      checkAndScheduleNotification({
-        workoutTitle: todaysWorkout.workout.title,
-        exercises: exercisesForNotification,
-      }, user.notificationTime).catch(error => {
-        logger.error('Error scheduling notification:', error);
-      });
+    if (!Capacitor.isNativePlatform() || !user || !program || !user.startDate || user.planPausedAt) return;
+    const tomorrow = addDays(startOfDay(new Date()), 1);
+    const next = getWorkoutForDay(program, user.startDate, tomorrow).sessions;
+    if (next.length === 0) {
+      void cancelScheduledReminder();
+      return;
     }
-  }, [isGranted, todaysWorkout, user]);
+    const parts = next.flatMap(w => [
+      ...(hasRuns(w) ? w.runs.map(r => r.type) : []),
+      ...(hasExercises(w) ? w.exercises.map(e => e.name) : []),
+    ]);
+    checkAndScheduleNotification({ workoutTitle: next[0].title, exercises: parts.join(', ') }, user.notificationTime)
+      .catch(error => logger.error('Error scheduling notification:', error));
+  }, [user, program]);
 
-  
   const generateProgressData = (sessions: WorkoutSession[], stravaActivities: StravaActivity[] = []) => {
       const now = new Date();
       const weeklyData: { week: string, workouts: number }[] = [];
+      // A Strava activity linked to a session is the same workout — count it once.
+      const linkedStravaIds = new Set(sessions.map(s => s.stravaId).filter(Boolean).map(String));
+      const unlinkedActivities = stravaActivities.filter(a => !linkedStravaIds.has(String(a.id)));
 
       for (let i = 3; i >= 0; i--) {
           const weekStart = startOfWeek(subWeeks(now, i), { weekStartsOn: 1 });
           const weekEnd = new Date(weekStart);
           weekEnd.setDate(weekEnd.getDate() + 6);
+          weekEnd.setHours(23, 59, 59, 999); // include all of Sunday
 
           const appCount = sessions.filter(s =>
-              s.finishedAt && isWithinInterval(s.finishedAt, { start: weekStart, end: weekEnd })
+              s.finishedAt && !s.skipped && isWithinInterval(s.finishedAt, { start: weekStart, end: weekEnd })
           ).length;
 
-          const stravaCount = stravaActivities.filter(a => {
+          const stravaCount = unlinkedActivities.filter(a => {
               const d = new Date(a.start_date_local || a.start_date);
               return isWithinInterval(d, { start: weekStart, end: weekEnd });
           }).length;
@@ -322,12 +338,64 @@ export default function DashboardPage() {
     }
   };
 
-  const handleCommitTomorrow = () => {
-      // In a real app, this would use the Notification API
-      toast({
-          title: "Session Committed!",
-          description: "We'll remind you tomorrow morning. Get your kit ready!",
-      });
+  // Moves today's session to tomorrow (tomorrow's goes to the next rest day),
+  // records the commitment for the morning reminder, and schedules a native
+  // reminder where there is one. This button used to show a toast promising a
+  // reminder and do nothing else.
+  const handleCommitTomorrow = async () => {
+      if (!user || !program || !user.startDate || !todaysWorkout?.sessions.length) return;
+      setIsPostponing(true);
+      try {
+          const today = startOfDay(new Date());
+          const lastDay = addDays(today, 6);
+          const persisted = await getUserSessionsInRange(user.id, today, lastDay);
+          if (persisted.some(s => isSameDay(s.workoutDate, today) && s.finishedAt)) {
+              toast({ title: 'Already done today', description: 'Nice work — nothing to move.' });
+              return;
+          }
+
+          const week = Array.from({ length: 7 }, (_, offset) => {
+              const date = addDays(today, offset);
+              const scheduled = persisted
+                  .filter(s => isSameDay(s.workoutDate, date) && !['one-off-ai', 'custom-workout'].includes(s.programId))
+                  .sort((a, b) => (a.sessionIndex ?? 0) - (b.sessionIndex ?? 0));
+              const workouts = scheduled.length > 0
+                  ? scheduled.map(s => s.workoutDetails).filter((w): w is WorkoutDay => !!w)
+                  : getWorkoutForDay(program, user.startDate!, date).sessions;
+              return { date, workouts };
+          });
+
+          const plan = planPostpone(week);
+          if (!plan) return;
+          await saveScheduleChanges({ programId: program.id, days: plan.changes });
+
+          const tomorrow = addDays(today, 1);
+          const movedTitle = week[0].workouts[0].title;
+          await updateUser(user.id, {
+              trainingCommitment: { date: format(tomorrow, 'yyyy-MM-dd'), workoutTitle: movedTitle },
+          });
+          void scheduleDailyNotification(
+              { workoutTitle: movedTitle, exercises: week[0].workouts.map(w => w.title).join(', ') },
+              user.notificationTime,
+          ).catch(err => logger.error('Could not schedule the reminder:', err));
+
+          trackEvent(user.id, 'workout_postponed', { title: movedTitle, bumped: !!plan.bumpedTo });
+          await refreshData();
+          toast({
+              title: `${movedTitle} is now tomorrow`,
+              description: [
+                  plan.bumpedTo ? `Tomorrow's session moved to ${format(plan.bumpedTo, 'EEEE')}.` : null,
+                  isGranted || Capacitor.isNativePlatform()
+                      ? "We'll remind you in the morning."
+                      : 'Turn on notifications in Profile for a morning reminder.',
+              ].filter(Boolean).join(' '),
+          });
+      } catch (error) {
+          logger.error('Failed to move today to tomorrow:', error);
+          toast({ title: 'Could not move the session', description: 'Please try again.', variant: 'destructive' });
+      } finally {
+          setIsPostponing(false);
+      }
   };
 
   const handleMarkDone = async () => {
@@ -338,8 +406,9 @@ export default function DashboardPage() {
               finishedAt: new Date(),
               workoutTitle: todaysWorkout.workout.title,
           });
+          trackEvent(user!.id, 'workout_completed', { source: 'dashboard_mark_done', sessionId: todaysSession.id, title: todaysWorkout.workout.title });
           await refreshData();
-          toast({ title: 'Workout Completed!', description: 'Nice work. Keep the streak alive!' });
+          toast({ title: 'Workout Completed!', description: 'Nice work — one more toward this week.' });
       } catch (error) {
           logger.error('Failed to mark workout done:', error);
           toast({ title: 'Error', description: 'Could not mark workout as done.', variant: 'destructive' });
@@ -362,8 +431,11 @@ export default function DashboardPage() {
   // wrapped up before the "Today's Workout" card switches to its completed state.
   const isWorkoutCompleted = todaysWorkoutSessions.length > 0 && todaysWorkoutSessions.every((s) => !!s.finishedAt);
   const completedWorkoutCount = allSessions.filter((s) => s.finishedAt && !s.skipped).length;
+  // The retired 3-session AI starter: anyone still on it has nothing after day 3.
+  const isStarterPlan = user?.programId === 'hyrox-starter';
+  const starterEnded = isStarterPlan && (todaysWorkout?.day ?? 0) > 3;
   const showProfilePrompt =
-    user?.onboardingSkipped && completedWorkoutCount >= 3 && !profileBannerDismissed;
+    !!user?.onboardingSkipped && (starterEnded || (completedWorkoutCount >= 3 && !profileBannerDismissed));
   
   if (loading) {
     return (
@@ -404,6 +476,10 @@ export default function DashboardPage() {
                 </p>
             </div>
 
+            {user && (
+              <PlanAdjustmentNotice userId={user.id} todaysSessions={todaysWorkoutSessions} onChanged={refreshData} />
+            )}
+
             <AndroidBetaBanner userEmail={user?.email} userName={user?.firstName} />
 
             <div className="grid gap-6 md:grid-cols-2">
@@ -411,16 +487,16 @@ export default function DashboardPage() {
                 <Card className="border-2 border-primary/20 bg-gradient-to-br from-card to-primary/5 shadow-lg">
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2 text-xl">
-                            {user?.onboardingSkipped ? (
+                            {isStarterPlan ? (
                               <Sparkles className="h-6 w-6 text-primary" />
                             ) : (
                               <Target className="h-6 w-6 text-primary" />
                             )}
-                            {user?.onboardingSkipped ? 'Your Hyrox Starter Plan' : 'Your First Mission'}
+                            {isStarterPlan ? 'Your Hyrox Starter Plan' : 'Your First Mission'}
                         </CardTitle>
                         <CardDescription>
-                            {user?.onboardingSkipped
-                              ? 'AI-generated Hyrox workouts to get you moving — complete 3 and we\'ll match you to a full program.'
+                            {isStarterPlan
+                              ? 'AI-generated Hyrox workouts to get you moving — then we\'ll match you to a full program.'
                               : 'Complete just 1 workout this week to build momentum.'}
                         </CardDescription>
                     </CardHeader>
@@ -446,10 +522,21 @@ export default function DashboardPage() {
                             </div>
                         ) : (
                             <div className="text-center py-6">
-                                <p>No workout scheduled today.</p>
-                                <Button variant="link" onClick={handleGenerateWorkout}>
-                                    Generate a Quick Start Session
-                                </Button>
+                                {starterEnded ? (
+                                    <>
+                                        <p>Your starter sessions are done — let&apos;s get you on a full plan.</p>
+                                        <Button className="mt-3" onClick={() => setShowCompleteOnboarding(true)}>
+                                            Get My Program <ArrowRight className="ml-2 h-4 w-4" />
+                                        </Button>
+                                    </>
+                                ) : (
+                                    <>
+                                        <p>No workout scheduled today.</p>
+                                        <Button variant="link" onClick={handleGenerateWorkout}>
+                                            Generate a Quick Start Session
+                                        </Button>
+                                    </>
+                                )}
                             </div>
                         )}
                     </CardContent>
@@ -464,13 +551,14 @@ export default function DashboardPage() {
                             <Zap className="mr-2 h-5 w-5 fill-yellow-400 text-yellow-400" />
                             Start First Workout
                         </Button>
-                        <Button 
-                            variant="outline" 
-                            size="lg" 
+                        <Button
+                            variant="outline"
+                            size="lg"
                             className="w-full"
                             onClick={handleCommitTomorrow}
+                            disabled={!todaysWorkout?.workout || isPostponing || isWorkoutCompleted}
                         >
-                            <Calendar className="mr-2 h-4 w-4" />
+                            {isPostponing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Calendar className="mr-2 h-4 w-4" />}
                             Do It Tomorrow
                         </Button>
                     </CardFooter>
@@ -489,7 +577,7 @@ export default function DashboardPage() {
                                 </div>
                                 <div>
                                     <p className="font-semibold">AI Adaptability</p>
-                                    <p className="text-muted-foreground">If you miss a day, just tell the AI. It re-plans your week instantly.</p>
+                                    <p className="text-muted-foreground">Busy week, sore legs, holiday coming? Tell your coach and it reworks what&apos;s ahead.</p>
                                 </div>
                             </div>
                             <div className="flex gap-3">
@@ -498,11 +586,13 @@ export default function DashboardPage() {
                                 </div>
                                 <div>
                                     <p className="font-semibold">Event Prep</p>
-                                    <p className="text-muted-foreground">Training for Hyrox or a Marathon? Use our "Train for an Event" tool.</p>
+                                    <p className="text-muted-foreground">Training for Hyrox or a Marathon? Give us the race date and we&apos;ll build the plan back from it.</p>
                                 </div>
                             </div>
                         </CardContent>
                     </Card>
+
+                    <RacePrepDialog />
 
                     {/* SETUP STEPS */}
                     <Card>
@@ -527,6 +617,15 @@ export default function DashboardPage() {
                     </Card>
                 </div>
             </div>
+            {user && (
+              <CompleteOnboardingDialog
+                open={showCompleteOnboarding}
+                onOpenChange={setShowCompleteOnboarding}
+                userId={user.id}
+                userName={user.firstName}
+                onComplete={refreshData}
+              />
+            )}
         </div>
       );
   }
@@ -535,25 +634,54 @@ export default function DashboardPage() {
   return (
     <>
       <div className="space-y-6">
-        {/* Trial countdown — drives trial→paid conversion (hidden for paid/admin users) */}
-        <TrialBanner />
+        {/* Today's session is the first thing on the page. Everything else —
+            coach, trial, integrations — comes after it. */}
+        <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
+          Welcome back, {user?.firstName || 'Athlete'}
+        </h1>
+
+        {/* Trial countdown: at the top only in its last few days. */}
+        <TrialBanner when="urgent" />
+
+        {user && (
+          <PlanAdjustmentNotice userId={user.id} todaysSessions={todaysWorkoutSessions} onChanged={refreshData} />
+        )}
+
+        {user && (
+          <PlanCatchUpCard
+            user={user}
+            program={program}
+            allSessions={allSessions}
+            sessionsLoaded={sessionsLoaded}
+            onChanged={refreshData}
+          />
+        )}
+
+        {user?.startDate && (
+          <ProgramFinishCard
+            user={user}
+            program={program}
+            todayProgramDay={programDayFor(user.startDate, startOfDay(new Date()))}
+            allSessions={allSessions}
+          />
+        )}
 
         {/* First-workout activation nudge — completing the first session is the
             strongest predictor of retention, so we surface it prominently until done. */}
-        {!loading && completedWorkoutCount === 0 && (
+        {!loading && !program && !user?.planPausedAt && (
           <Card className="border-accent/50 bg-gradient-to-r from-accent/10 to-primary/10">
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Zap className="h-5 w-5 text-accent" />
-                Let&apos;s log your first workout
+                Pick a plan to train with
               </CardTitle>
               <CardDescription>
-                Completing your first session unlocks your streak and tailors your coaching. It only takes one to get started.
+                A plan puts a session here every training day, with reminders and a coach that knows what&apos;s next.
               </CardDescription>
             </CardHeader>
             <CardFooter className="pt-0">
-              <Button size="sm" onClick={() => router.push(todaysWorkout?.workout ? '/workout/active' : '/programs')}>
-                {todaysWorkout?.workout ? "Start today's workout" : 'Choose a program'}
+              <Button size="sm" onClick={() => router.push('/programs')}>
+                Choose a program
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </CardFooter>
@@ -566,58 +694,35 @@ export default function DashboardPage() {
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Trophy className="h-5 w-5 text-primary" />
-                You've smashed {completedWorkoutCount} workouts!
+                {starterEnded
+                  ? 'Your starter sessions are done'
+                  : `You've smashed ${completedWorkoutCount} workouts!`}
               </CardTitle>
               <CardDescription>
-                Complete your profile to get a structured program matched to your goals and unlock personalised coaching.
+                {starterEnded
+                  ? 'Answer three quick questions and we’ll put you on a full plan that fits your week.'
+                  : 'Answer three quick questions and we’ll match you to a plan built around your goal and schedule.'}
               </CardDescription>
             </CardHeader>
             <CardFooter className="gap-2 pt-0">
               <Button size="sm" onClick={() => setShowCompleteOnboarding(true)}>
                 Get My Program <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => {
-                  localStorage.setItem('profileBannerDismissed', 'true');
-                  setProfileBannerDismissed(true);
-                }}
-              >
-                Maybe Later
-              </Button>
+              {!starterEnded && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    localStorage.setItem('profileBannerDismissed', 'true');
+                    setProfileBannerDismissed(true);
+                  }}
+                >
+                  Maybe Later
+                </Button>
+              )}
             </CardFooter>
           </Card>
         )}
-
-        <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
-                Welcome back, {user?.firstName || 'Athlete'}
-              </h1>
-            </div>
-            <CoachPanel
-              summary={summary}
-              summaryLoading={summaryLoading}
-              notes={coachNotes.notes}
-              onDismissNote={coachNotes.dismiss}
-              onNotesMayHaveChanged={coachNotes.refresh}
-            />
-
-            {/* Hiding Weekly Analysis for now 
-            {user && (
-              <Suspense fallback={null}>
-                <WeeklyAnalysisDialog userId={user.id} />
-              </Suspense>
-            )}
-            */}
-        </div>
-
-        {/* Android Beta Testing Banner */}
-        <AndroidBetaBanner
-          userEmail={user?.email}
-          userName={user?.firstName}
-        />
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           <Card className={cn("lg:col-span-2", isWorkoutCompleted && "bg-muted/30")}>
@@ -628,7 +733,7 @@ export default function DashboardPage() {
                       {workoutHasRuns && !workoutHasExercises ? <Route className="h-6 w-6" /> : <Target className="h-6 w-6" />}
                       {program && todaysWorkout?.workout && !programStartsInFuture ? `Today's Workout (Day ${todaysWorkout.day})` : "Today's Plan"}
                       {user?.customProgram && user.customProgram.length > 0 && (
-                        <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 ml-2">
+                        <Badge variant="outline" className="bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800 ml-2">
                           <Zap className="mr-1 h-3 w-3" />
                           Personalized
                         </Badge>
@@ -636,7 +741,7 @@ export default function DashboardPage() {
                     </CardTitle>
                   </div>
                   {isWorkoutCompleted && (
-                      <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">
+                      <Badge variant="outline" className="bg-green-100 dark:bg-green-950/40 text-green-800 dark:text-green-300 border-green-200 dark:border-green-800">
                           <CheckCircle className="mr-2 h-4 w-4" />
                           Completed
                       </Badge>
@@ -682,7 +787,7 @@ export default function DashboardPage() {
                                   {sessionWorkout.title}
                                 </p>
                                 {isSessionDone && (
-                                  <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200 shrink-0">
+                                  <Badge variant="outline" className="bg-green-100 dark:bg-green-950/40 text-green-800 dark:text-green-300 border-green-200 dark:border-green-800 shrink-0">
                                     <CheckCircle className="mr-1 h-3 w-3" />
                                     Done
                                   </Badge>
@@ -730,7 +835,11 @@ export default function DashboardPage() {
                       ) : (
                           <>
                               <p>No workout scheduled for today.</p>
-                              <p className="text-sm">Assign a program in your profile, generate one with AI, or log a custom activity.</p>
+                              <p className="text-sm">
+                                {program
+                                  ? 'Rest day — or generate a session with AI, or log something you did.'
+                                  : <>Pick a plan from <Link href="/programs" className="underline">Programs</Link>, generate a session with AI, or log something you did.</>}
+                              </p>
                           </>
                       )}
                   </div>
@@ -800,20 +909,20 @@ export default function DashboardPage() {
             )}
 
             {stravaLoadError === 'reconnect_required' && (
-              <Card className="bg-red-50 border-red-200">
+              <Card className="bg-red-50 dark:bg-red-950/40 border-red-200 dark:border-red-800">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-red-800">
+                  <CardTitle className="flex items-center gap-2 text-red-800 dark:text-red-300">
                     <LinkIcon className="h-5 w-5" />
                     Strava Disconnected
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm text-red-700">
+                  <p className="text-sm text-red-700 dark:text-red-300">
                     Your Strava connection has expired. Reconnect to resume activity syncing and personalised insights.
                   </p>
                 </CardContent>
                 <CardFooter>
-                  <Button asChild variant="outline" className="w-full border-red-300 text-red-800 hover:bg-red-100 hover:text-red-900">
+                  <Button asChild variant="outline" className="w-full border-red-300 dark:border-red-800 text-red-800 dark:text-red-300 hover:bg-red-100 hover:text-red-900 dark:hover:bg-red-950/70 dark:hover:text-red-200">
                     <Link href="/profile">Reconnect Strava</Link>
                   </Button>
                 </CardFooter>
@@ -821,20 +930,20 @@ export default function DashboardPage() {
             )}
 
             {!isStravaConnected && !stravaLoadError && (
-              <Card className="bg-orange-50 border-orange-200">
+              <Card className="bg-orange-50 dark:bg-orange-950/40 border-orange-200 dark:border-orange-800">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-orange-800">
+                  <CardTitle className="flex items-center gap-2 text-orange-800 dark:text-orange-300">
                     <LinkIcon className="h-5 w-5" />
                     Connect to Strava
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm text-orange-700">
+                  <p className="text-sm text-orange-700 dark:text-orange-300">
                     Automatically sync your activities to track progress and get personalized insights.
                   </p>
                 </CardContent>
                 <CardFooter>
-                  <Button asChild variant="outline" className="w-full border-orange-300 text-orange-800 hover:bg-orange-100 hover:text-orange-900">
+                  <Button asChild variant="outline" className="w-full border-orange-300 dark:border-orange-800 text-orange-800 dark:text-orange-300 hover:bg-orange-100 hover:text-orange-900 dark:hover:bg-orange-950/70 dark:hover:text-orange-200">
                     <Link href="/profile">Connect Account</Link>
                   </Button>
                 </CardFooter>
@@ -881,6 +990,22 @@ export default function DashboardPage() {
             </Card>
           </div>
         </div>
+
+        <CoachPanel
+          summary={summary}
+          summaryLoading={summaryLoading}
+          notes={coachNotes.notes}
+          onDismissNote={coachNotes.dismiss}
+          onNotesMayHaveChanged={coachNotes.refresh}
+        />
+
+        <TrialBanner when="calm" />
+
+        {/* Android Beta Testing Banner */}
+        <AndroidBetaBanner
+          userEmail={user?.email}
+          userName={user?.firstName}
+        />
 
         {/* Today's Strava Activity Feed — only rendered when Strava is connected */}
         {isStravaConnected && user && (

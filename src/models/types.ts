@@ -101,7 +101,9 @@ export interface User {
   subscriptionId?: string | null;
   trialStartDate?: Date;
   cancel_at_period_end?: boolean;
-  cancellation_effective_date?: Date;
+  cancellation_effective_date?: Date | null;
+  /** Why they cancelled, from the cancel flow. */
+  cancellationReason?: string;
   /**
    * Finished workouts, maintained server-side by the marketing activity
    * reconciler (lib/marketing/activity.ts) from the workoutSessions stream.
@@ -121,6 +123,10 @@ export interface User {
    */
   timeZone?: string;
   notificationTime?: { hour: number; minute: number };
+  /** Set while the athlete has paused their plan (holiday, illness, injury). Resuming moves the start date on by the pause. */
+  planPausedAt?: Date | null;
+  /** "Do it tomorrow": the day (YYYY-MM-DD, athlete's calendar) they committed to train, for the reminder job. */
+  trainingCommitment?: { date: string; workoutTitle: string } | null;
   // Analytics fields
   lastSeenAt?: Date;
   lastLoginAt?: Date;
@@ -264,6 +270,21 @@ export interface TimerRecord {
 
 // ─────────────────────────────────────────────────────────────────────────────
 
+export type SkipReason = 'time' | 'tired' | 'ill' | 'injured' | 'other';
+
+/** What the athlete actually did on one exercise. Every field is optional. */
+export interface ExerciseResult {
+  /** Display name as prescribed, e.g. "Sled Push". */
+  name: string;
+  /** Kilograms. */
+  load?: number;
+  reps?: number;
+  /** Seconds. */
+  timeSeconds?: number;
+  /** Metres. */
+  distance?: number;
+}
+
 export interface WorkoutSession {
     id: string;
     userId: string;
@@ -281,6 +302,14 @@ export interface WorkoutSession {
     sessionCount?: number;
     extendedExercises?: Exercise[];
     skipped?: boolean;
+    /** Why the athlete skipped, when they said — read by the coach. */
+    skipReason?: SkipReason;
+    /** Session RPE, 1–10, from the completion screen. */
+    rpe?: number;
+    /** True once the athlete actually opened the session; startedAt is then the real start. */
+    startedInApp?: boolean;
+    /** Logged results, keyed by normalised exercise name (lib/exercise-results). */
+    results?: Record<string, ExerciseResult>;
     workoutDetails?: Workout | RunningWorkout;
     exerciseChecklist?: Record<string, boolean>;
     timerRecord?: TimerRecord;

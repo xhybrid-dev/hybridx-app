@@ -24,6 +24,7 @@ import type { Exercise, PlannedRun } from '@/models/types';
 import { formatPlannedRun } from '@/lib/workout-utils';
 import { hasRuns, hasExercises } from '@/lib/type-guards';
 import { canFixTreadmill } from '@/lib/treadmill';
+import { ProgressLinesCard } from '@/components/progress-lines-card';
 
 // Lazy load heavy dialogs
 const ShareWorkoutDialog = lazy(() => import('@/components/share-workout-dialog').then(mod => ({ default: mod.ShareWorkoutDialog })));
@@ -218,8 +219,8 @@ export default function WorkoutHistoryPage() {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Workout History</h1>
-          <p className="text-muted-foreground">Track your progress and review past workouts.</p>
+          <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Progress</h1>
+          <p className="text-muted-foreground">How your training is building, and every session you&apos;ve done.</p>
         </div>
         {userId && (
           <Button onClick={() => setIsLogWorkoutOpen(true)} className="shrink-0">
@@ -280,6 +281,8 @@ export default function WorkoutHistoryPage() {
           </CardContent>
         </Card>
       </div>
+
+      <ProgressLinesCard />
 
       {/* Filters and Search */}
       <Card>

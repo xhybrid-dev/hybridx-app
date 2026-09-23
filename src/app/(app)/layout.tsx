@@ -42,6 +42,8 @@ import { MobileNavBar, primaryNavItems, secondaryNavItems, adminNavItems } from 
 import { UserProvider, useUserProfile } from '@/contexts/user-context';
 import { Capacitor } from '@capacitor/core';
 import { StatusBar, Style } from '@capacitor/status-bar';
+import { LocalNotifications } from '@capacitor/local-notifications';
+import { resumeNativePush } from '@/lib/native-push';
 
 
 function NavMenu() {
@@ -145,17 +147,28 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     updateUserMeta(currentUser.uid, {
                         lastLoginAt: new Date(),
                         platform: getPlatform(),
+                        // Server jobs run in UTC; this is how they know the athlete's day.
+                        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
                     });
                 }
 
                 const appUser = await getUserClient(currentUser.uid);
-                if (appUser && !appUser.isAdmin && pathname !== '/subscription') {
+                // Without access, an athlete can still see their own history and
+                // account — locking them out of their data entirely was the old
+                // behaviour. Everything else goes to the subscription page.
+                const openWithoutAccess = ['/subscription', '/history', '/profile'];
+                if (appUser && !appUser.isAdmin && !openWithoutAccess.some(p => pathname.startsWith(p))) {
                     const status = appUser.subscriptionStatus || 'trial';
                     const trialEnded = isTrialExpired(appUser.trialStartDate);
+                    // Cancelled but still inside the paid period.
+                    const paidUntilLater =
+                        status === 'canceled' &&
+                        !!appUser.cancellation_effective_date &&
+                        appUser.cancellation_effective_date > new Date();
 
                     if (status === 'trial' && trialEnded) {
                         router.push('/subscription');
-                    } else if (!['trial', 'active', 'paused'].includes(status)) {
+                    } else if (!['trial', 'active', 'paused'].includes(status) && !paidUntilLater) {
                         router.push('/subscription');
                     }
                 }
@@ -196,6 +209,20 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         }
     };
   }, [router, pathname]);
+
+  // Tapping a native reminder opens the app wherever it was last left; send
+  // the athlete to what the reminder was about instead.
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    const listener = LocalNotifications.addListener('localNotificationActionPerformed', (action) => {
+      const url = action.notification.extra?.url;
+      router.push(typeof url === 'string' && url.startsWith('/') ? url : '/dashboard');
+    });
+    void resumeNativePush(url => router.push(url));
+    return () => {
+      void listener.then(handle => handle.remove());
+    };
+  }, [router]);
 
   // Track page views on route change
   useEffect(() => {

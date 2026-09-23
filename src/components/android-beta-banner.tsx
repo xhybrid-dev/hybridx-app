@@ -13,7 +13,22 @@ interface AndroidBetaBannerProps {
 }
 
 export function AndroidBetaBanner({ userEmail, userName }: AndroidBetaBannerProps) {
-  const [isDismissed, setIsDismissed] = useState(false);
+  // Remembered: the banner used to come back on every visit.
+  const [isDismissed, setIsDismissedState] = useState(() => {
+    try {
+      return typeof window !== 'undefined' && localStorage.getItem('android-beta-banner-dismissed') === 'true';
+    } catch {
+      return false;
+    }
+  });
+  const setIsDismissed = (value: boolean) => {
+    setIsDismissedState(value);
+    try {
+      if (value) localStorage.setItem('android-beta-banner-dismissed', 'true');
+    } catch {
+      /* ignore */
+    }
+  };
   const [isRequesting, setIsRequesting] = useState(false);
   const [hasRequested, setHasRequested] = useState(false);
   const { toast } = useToast();
@@ -82,7 +97,7 @@ export function AndroidBetaBanner({ userEmail, userName }: AndroidBetaBannerProp
   };
 
   return (
-    <Card className="bg-gradient-to-r from-green-50 to-emerald-50 border-green-200 relative">
+    <Card className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/40 dark:to-emerald-950/40 border-green-200 dark:border-green-800 relative">
       <Button
         variant="ghost"
         size="icon"
@@ -93,18 +108,18 @@ export function AndroidBetaBanner({ userEmail, userName }: AndroidBetaBannerProp
       </Button>
 
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-green-800 pr-8">
+        <CardTitle className="flex items-center gap-2 text-green-800 dark:text-green-300 pr-8">
           <Smartphone className="h-5 w-5" />
           Join the Android Beta Program
         </CardTitle>
-        <CardDescription className="text-green-700">
+        <CardDescription className="text-green-700 dark:text-green-300">
           Help us improve the app! Get early access to new features and updates.
         </CardDescription>
       </CardHeader>
 
       <CardContent>
         {hasRequested ? (
-          <div className="flex items-center gap-2 text-green-700">
+          <div className="flex items-center gap-2 text-green-700 dark:text-green-300">
             <CheckCircle className="h-5 w-5" />
             <p className="text-sm font-medium">
               Your request has been submitted. Check your email for next steps!
@@ -112,7 +127,7 @@ export function AndroidBetaBanner({ userEmail, userName }: AndroidBetaBannerProp
           </div>
         ) : (
           <>
-            <p className="text-sm text-green-700 mb-4">
+            <p className="text-sm text-green-700 dark:text-green-300 mb-4">
               We're testing the Android app with a small group before the full release.
               Click below to join our closed testing program on Google Play.
             </p>

@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState, lazy, Suspense, useCallback } from 'react';
+import { useEffect, useState, lazy, Suspense, useCallback, useMemo } from 'react';
+import { addDays, startOfDay } from 'date-fns';
 import { Flag, Loader2, CalendarDays, AlertTriangle, Timer, X, Share2, Sparkles, Clock, Link as LinkIcon, CheckSquare, Square, WifiOff } from 'lucide-react';
 import { useDebouncedCallback } from 'use-debounce';
 
@@ -13,20 +14,25 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { updateWorkoutSession, type WorkoutSession } from '@/services/session-service-client';
-import type { User, Workout, RunningWorkout, Exercise, PlannedRun, TimerRecord, WorkoutDay } from '@/models/types';
+import type { User, Workout, RunningWorkout, Exercise, ExerciseResult, PlannedRun, TimerRecord, WorkoutDay, SkipReason } from '@/models/types';
 import { formatPace } from '@/lib/pace-utils';
-import { formatPlannedRun } from '@/lib/workout-utils';
+import { formatPlannedRun, getWorkoutForDay } from '@/lib/workout-utils';
 import Link from 'next/link';
 import { Separator } from '@/components/ui/separator';
 import { LinkStravaActivityDialog } from '@/components/link-strava-activity-dialog';
 import { useUser } from '@/contexts/user-context';
 import { useToast } from '@/hooks/use-toast';
 import { hasRuns, hasExercises } from '@/lib/type-guards';
-import { ExerciseHistory } from '@/components/exercise-history';
+import { ExerciseResultInput } from '@/components/exercise-result-input';
+import { lastResult, personalBests, resultKey } from '@/lib/exercise-results';
 import { convertDistanceInText, convertTextWithUnits } from '@/lib/unit-conversion';
 import { WorkoutTimer } from '@/components/workout-timer';
+import { WorkoutSkipDialog } from '@/components/workout-skip-dialog';
+import { trackEvent } from '@/lib/analytics';
+import { aiCopyKey, readAiCopy, writeAiCopy } from '@/lib/ai-copy-cache';
 
 const WorkoutCompleteModal = lazy(() => import('@/components/workout-complete-modal'));
+const CustomWorkoutDialog = lazy(() => import('@/components/custom-workout-dialog').then(mod => ({ default: mod.CustomWorkoutDialog })));
 
 export default function ActiveWorkoutPage() {
   const { user, todaysWorkout, todaysWorkoutSessions, trainingPaces, loading, refreshData } = useUser();
@@ -59,14 +65,7 @@ export default function ActiveWorkoutPage() {
     : (todaysWorkout?.workout ? [todaysWorkout.workout] : []);
 
   if (daySessions.length === 0 || todaysWorkoutSessions.length === 0) {
-    return (
-      <div className="text-center max-w-2xl mx-auto">
-        <Card>
-          <CardHeader><CardTitle>No Workout Today</CardTitle></CardHeader>
-          <CardContent><p className="text-muted-foreground">Enjoy your rest day or check your program schedule.</p></CardContent>
-        </Card>
-      </div>
-    );
+    return <NoWorkoutToday />;
   }
 
   const isMultiSession = daySessions.length > 1;
@@ -74,7 +73,7 @@ export default function ActiveWorkoutPage() {
   return (
     <div className="space-y-6 max-w-2xl mx-auto">
       {!isOnline && (
-        <div className="flex items-center gap-2 rounded-md border border-yellow-400 bg-yellow-50 px-4 py-2 text-sm text-yellow-800">
+        <div className="flex items-center gap-2 rounded-md border border-yellow-400 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-950/40 px-4 py-2 text-sm text-yellow-800 dark:text-yellow-300">
           <WifiOff className="h-4 w-4 shrink-0" />
           <span>You&apos;re offline — your progress is saved locally and will sync when reconnected.</span>
         </div>
@@ -101,6 +100,51 @@ export default function ActiveWorkoutPage() {
   );
 }
 
+/** The centre "Workout" button on a day with nothing scheduled: somewhere useful to go, not a dead end. */
+function NoWorkoutToday() {
+  const { user, program, refreshData } = useUser();
+  const [isLogOpen, setIsLogOpen] = useState(false);
+  const paused = !!user?.planPausedAt;
+
+  const title = paused ? 'Your plan is paused' : program ? 'Rest day' : 'No plan yet';
+  const description = paused
+    ? 'Nothing is due while you are away. Resume from the dashboard whenever you are ready.'
+    : program
+      ? 'Recovery is when the training lands. If you did something anyway, log it — it all counts.'
+      : 'Pick a plan and a session will be waiting here every training day.';
+
+  return (
+    <div className="max-w-2xl mx-auto">
+      <Card>
+        <CardHeader>
+          <CardTitle>{title}</CardTitle>
+          <CardDescription>{description}</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-2 sm:grid-cols-3">
+          {program ? (
+            <Button asChild variant="outline"><Link href="/calendar"><CalendarDays className="mr-2 h-4 w-4" />See this week</Link></Button>
+          ) : (
+            <Button asChild><Link href="/programs">Choose a program</Link></Button>
+          )}
+          <Button variant="outline" onClick={() => setIsLogOpen(true)} disabled={!user}>
+            <Flag className="mr-2 h-4 w-4" />Log an activity
+          </Button>
+          <Button asChild variant="outline">
+            <Link href={`/assistant?q=${encodeURIComponent("It's a rest day — what should I do to recover well?")}`}>
+              <Sparkles className="mr-2 h-4 w-4" />Ask your coach
+            </Link>
+          </Button>
+        </CardContent>
+      </Card>
+      {user && (
+        <Suspense fallback={null}>
+          <CustomWorkoutDialog isOpen={isLogOpen} setIsOpen={setIsLogOpen} userId={user.id} onLogged={refreshData} />
+        </Suspense>
+      )}
+    </div>
+  );
+}
+
 interface WorkoutSessionCardProps {
   planned: WorkoutDay;
   initialSession: WorkoutSession;
@@ -122,6 +166,44 @@ function WorkoutSessionCard({ planned, initialSession, day, isMultiSession, sess
   const [summaryText, setSummaryText] = useState('');
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [isCompleteModalOpen, setIsCompleteModalOpen] = useState(false);
+  const [isSkipOpen, setIsSkipOpen] = useState(false);
+  const { program, streakData, allSessions } = useUser();
+  const [results, setResults] = useState<Record<string, ExerciseResult>>(initialSession.results || {});
+
+  const debouncedSaveResults = useDebouncedCallback(async (next: Record<string, ExerciseResult>) => {
+    await updateWorkoutSession(session.id, { results: next });
+  }, 800);
+
+  const handleResultChange = (result: ExerciseResult) => {
+    setResults(prev => {
+      const next = { ...prev, [resultKey(result.name)]: result };
+      debouncedSaveResults(next);
+      return next;
+    });
+  };
+
+  const resultInput = (name: string, kind: 'strength' | 'run', defaultDistance?: number) => (
+    <ExerciseResultInput
+      name={name}
+      kind={kind}
+      value={results[resultKey(name)]}
+      last={lastResult(allSessions, name, session.id)}
+      defaultDistance={defaultDistance}
+      disabled={!!session.finishedAt}
+      onChange={handleResultChange}
+    />
+  );
+  const weekProgress = { done: streakData.thisWeekWorkouts, target: streakData.weeklyTarget };
+  const nextSession = useMemo(() => {
+    if (!program || !user?.startDate || user.planPausedAt) return null;
+    const today = startOfDay(new Date());
+    for (let offset = 1; offset <= 7; offset++) {
+      const date = addDays(today, offset);
+      const next = getWorkoutForDay(program, user.startDate, date).sessions[0];
+      if (next) return { title: next.title, date };
+    }
+    return null;
+  }, [program, user?.startDate, user?.planPausedAt]);
   const [isLinkerOpen, setIsLinkerOpen] = useState(false);
   const [exerciseChecklist, setExerciseChecklist] = useState<Record<string, boolean>>(initialSession.exerciseChecklist || {});
   const [showTimer, setShowTimer] = useState(false);
@@ -151,10 +233,19 @@ function WorkoutSessionCard({ planned, initialSession, day, isMultiSession, sess
         ...(hasRuns(planned) ? (planned as RunningWorkout).runs.map(r => r.type) : []),
         ...(hasExercises(planned) ? [...(planned as Workout).exercises, ...extendedExercises].map(e => e.name) : []),
       ].join(', ');
+      // Day-stable copy: cached like the dashboard's, so reopening the session
+      // doesn't wait on (and pay for) the model again.
+      const cacheKey = aiCopyKey('active-workout', user.id, planned.title, exercisesForSummary);
+      const cached = readAiCopy(cacheKey);
+      if (cached) {
+        setSummaryText(cached);
+        return;
+      }
       const summaryPromise = workoutSummary({ userName: user.firstName, workoutTitle: planned.title, exercises: exercisesForSummary });
       const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('AI summary timeout')), 15000));
       const summaryResult = await Promise.race([summaryPromise, timeoutPromise]) as any;
       setSummaryText(summaryResult.summary);
+      writeAiCopy(cacheKey, summaryResult.summary);
     } catch (error) {
       console.error('Failed to generate AI workout summary:', error);
       setSummaryText(planned.title);
@@ -163,6 +254,18 @@ function WorkoutSessionCard({ planned, initialSession, day, isMultiSession, sess
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, planned, extendedExercises, summaryText, summaryLoading]);
+
+  // The first time the athlete opens an unfinished session is when it really
+  // started: the doc itself is created whenever the dashboard first loads that
+  // day, which made the derived duration hours long.
+  useEffect(() => {
+    if (!user || initialSession.finishedAt || initialSession.startedInApp) return;
+    const startedAt = new Date();
+    setSession(prev => ({ ...prev, startedAt, startedInApp: true }));
+    updateWorkoutSession(initialSession.id, { startedAt, startedInApp: true }).catch(err => console.error('Failed to record start:', err));
+    trackEvent(user.id, 'workout_started', { sessionId: initialSession.id, title: planned.title, programId: initialSession.programId });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, initialSession.id]);
 
   useEffect(() => {
     if (user) {
@@ -217,22 +320,41 @@ function WorkoutSessionCard({ planned, initialSession, day, isMultiSession, sess
 
   const handleFinishWorkout = async () => {
     debouncedSaveNotes.flush();
+    debouncedSaveResults.flush();
+    const bests = personalBests({ ...session, results, finishedAt: new Date() }, allSessions);
+    if (bests.length > 0) {
+      toast({
+        title: bests.length === 1 ? `New best: ${bests[0].name} 🏆` : `${bests.length} new bests 🏆`,
+        description: bests.slice(0, 3).map(b => `${b.name} — ${b.label}`).join(' · '),
+      });
+    }
     const finishedAt = new Date();
     const updatedSessionData = { ...session, finishedAt, notes, workoutTitle: planned.title, programType: planned.programType };
     setSession(updatedSessionData);
     await updateWorkoutSession(session.id, { finishedAt, notes, workoutTitle: planned.title, programType: planned.programType });
+    if (user) {
+      trackEvent(user.id, 'workout_completed', {
+        source: 'active_workout',
+        sessionId: session.id,
+        title: planned.title,
+        itemsChecked: checkedCount,
+        itemsTotal: totalCount,
+        resultsLogged: Object.keys(results).length,
+        personalBests: bests.length,
+      });
+    }
     setIsCompleteModalOpen(true);
     refreshData();
   };
 
-  const handleSkipWorkout = async () => {
+  const handleSkipWorkout = async (skipReason: SkipReason) => {
     debouncedSaveNotes.flush();
     const finishedAt = new Date();
     const skipNotes = notes ? `${notes}\n\n[WORKOUT SKIPPED]` : '[WORKOUT SKIPPED]';
-    const updatedSessionData = { ...session, finishedAt, notes: skipNotes, workoutTitle: planned.title, programType: planned.programType, skipped: true };
-    setSession(updatedSessionData);
-    await updateWorkoutSession(session.id, { finishedAt, notes: skipNotes, workoutTitle: planned.title, programType: planned.programType, skipped: true });
-    setIsCompleteModalOpen(true);
+    const update = { finishedAt, notes: skipNotes, workoutTitle: planned.title, programType: planned.programType, skipped: true, skipReason };
+    setSession(prev => ({ ...prev, ...update }));
+    await updateWorkoutSession(session.id, update);
+    if (user) trackEvent(user.id, 'workout_skipped', { sessionId: session.id, title: planned.title, reason: skipReason });
     refreshData();
   };
 
@@ -287,12 +409,12 @@ function WorkoutSessionCard({ planned, initialSession, day, isMultiSession, sess
           </div>
 
           {isRunning && !trainingPaces && (
-            <div className="p-4 border border-yellow-400 bg-yellow-50 rounded-md text-yellow-800 flex items-start gap-3">
+            <div className="p-4 border border-yellow-400 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-950/40 rounded-md text-yellow-800 dark:text-yellow-300 flex items-start gap-3">
               <AlertTriangle className="h-5 w-5 mt-0.5" />
               <div>
                 <h4 className="font-semibold">Paces Not Calculated</h4>
                 <p className="text-sm">To see your personalized training paces, please add at least one benchmark race time to your profile.</p>
-                <Button variant="link" className="p-0 h-auto mt-1 text-sm text-yellow-800" asChild>
+                <Button variant="link" className="p-0 h-auto mt-1 text-sm text-yellow-800 dark:text-yellow-300" asChild>
                   <Link href="/profile">Update Your Profile</Link>
                 </Button>
               </div>
@@ -342,6 +464,7 @@ function WorkoutSessionCard({ planned, initialSession, day, isMultiSession, sess
                           {trainingPaces && (
                             <p className="text-sm text-muted-foreground">Target Pace: <span className="font-semibold text-primary">{formatPace(trainingPaces[run.paceZone])}</span> / km</p>
                           )}
+                          {user && resultInput(rawLabel, 'run', run.distance ? Math.round(run.distance * 1000) : undefined)}
                         </div>
                       </CardContent>
                     </Card>
@@ -367,7 +490,7 @@ function WorkoutSessionCard({ planned, initialSession, day, isMultiSession, sess
                         <div className="flex-1">
                           <p className={`font-semibold ${isDone ? 'line-through text-muted-foreground' : ''}`}>{ex.name}</p>
                           <p className="text-sm text-muted-foreground whitespace-pre-wrap">{details}</p>
-                          {user && <ExerciseHistory userId={user.id} exerciseName={ex.name} />}
+                          {user && resultInput(ex.name, 'strength')}
                         </div>
                       </CardContent>
                     </Card>
@@ -395,7 +518,7 @@ function WorkoutSessionCard({ planned, initialSession, day, isMultiSession, sess
                     <div className="flex-1">
                       <p className={`font-semibold ${isDone ? 'line-through text-muted-foreground' : ''}`}>{item.name}</p>
                       <p className="text-sm text-muted-foreground whitespace-pre-wrap">{details}</p>
-                      {user && <ExerciseHistory userId={user.id} exerciseName={item.name} />}
+                      {user && resultInput(item.name, 'strength')}
                     </div>
                   </CardContent>
                 </Card>
@@ -422,8 +545,10 @@ function WorkoutSessionCard({ planned, initialSession, day, isMultiSession, sess
               <>
                 <Button className="w-full" onClick={handleFinishWorkout}><Flag className="mr-2" />Finish{isMultiSession ? ' Session' : ' Workout'}</Button>
                 <Button variant="outline" className="w-full" onClick={() => setIsLinkerOpen(true)}><LinkIcon className="mr-2" />Link Strava Activity</Button>
-                <Button variant="outline" className="w-full" onClick={handleSkipWorkout}><X className="mr-2" />Skip</Button>
+                <Button variant="outline" className="w-full" onClick={() => setIsSkipOpen(true)}><X className="mr-2" />Skip</Button>
               </>
+            ) : session.skipped ? (
+              <p className="w-full text-center text-sm text-muted-foreground">Skipped — your next session is on the dashboard.</p>
             ) : (
               <Button className="w-full" variant="secondary" onClick={() => setIsCompleteModalOpen(true)}><Share2 className="mr-2" />Share Workout</Button>
             )}
@@ -431,11 +556,19 @@ function WorkoutSessionCard({ planned, initialSession, day, isMultiSession, sess
         </CardContent>
       </Card>
 
-      {session.finishedAt && (
+      {session.finishedAt && !session.skipped && (
         <Suspense fallback={<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"><Loader2 className="h-8 w-8 animate-spin text-white" /></div>}>
-          <WorkoutCompleteModal isOpen={isCompleteModalOpen} onClose={() => setIsCompleteModalOpen(false)} session={session} userHasStrava={!!user?.strava?.accessToken} workout={planned as Workout | RunningWorkout} />
+          <WorkoutCompleteModal
+            isOpen={isCompleteModalOpen}
+            onClose={() => setIsCompleteModalOpen(false)}
+            session={session}
+            userHasStrava={!!user?.strava?.accessToken}
+            weekProgress={weekProgress}
+            nextSession={nextSession}
+          />
         </Suspense>
       )}
+      <WorkoutSkipDialog open={isSkipOpen} onOpenChange={setIsSkipOpen} workoutTitle={planned.title} onConfirm={handleSkipWorkout} />
       <LinkStravaActivityDialog isOpen={isLinkerOpen} setIsOpen={setIsLinkerOpen} session={session} onLinkSuccess={handleLinkSuccess} />
     </>
   );

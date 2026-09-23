@@ -1,101 +1,72 @@
 // src/utils/streak-calculator.ts
+//
+// The streak counts consecutive WEEKS in which the athlete hit their weekly
+// training target, not consecutive days. A daily streak reset on every rest
+// day, so an athlete following a 3–5 day plan exactly could never get past a
+// few days, and "keep the streak alive" nudged people to skip recovery.
 import { WorkoutSession } from '@/models/types';
-import { isToday, isYesterday, isSameDay, subDays } from 'date-fns';
+import { startOfWeek, subDays, subWeeks, format } from 'date-fns';
 
 export interface StreakData {
+  /** Consecutive weeks meeting the weekly target (the current week counts once met, and never breaks it while in progress). */
   currentStreak: number;
   longestStreak: number;
   totalWorkouts: number;
+  /** Training days so far this week (Monday start). */
   thisWeekWorkouts: number;
   thisMonthWorkouts: number;
+  /** Training days a week that count as a week "hit". */
+  weeklyTarget: number;
 }
 
-export function calculateStreakData(sessions: WorkoutSession[]): StreakData {
-  // Filter only completed sessions and sort by date descending
-  const completedSessions = sessions
-    .filter(s => s.finishedAt && !s.skipped)
-    .sort((a, b) => b.workoutDate.getTime() - a.workoutDate.getTime());
+export const DEFAULT_WEEKLY_TARGET = 3;
 
-  if (completedSessions.length === 0) {
-    return {
-      currentStreak: 0,
-      longestStreak: 0,
-      totalWorkouts: 0,
-      thisWeekWorkouts: 0,
-      thisMonthWorkouts: 0,
-    };
+const weekKey = (date: Date) => format(startOfWeek(date, { weekStartsOn: 1 }), 'yyyy-MM-dd');
+const dayKey = (date: Date) => format(date, 'yyyy-MM-dd');
+
+export function calculateStreakData(
+  sessions: WorkoutSession[],
+  options: { weeklyTarget?: number; now?: Date } = {},
+): StreakData {
+  const weeklyTarget = Math.max(1, Math.round(options.weeklyTarget ?? DEFAULT_WEEKLY_TARGET));
+  const now = options.now ?? new Date();
+  const completed = sessions.filter(s => s.finishedAt && !s.skipped);
+
+  // A day with several finished sub-workouts (Run + Strength) is one training day.
+  const daysByWeek = new Map<string, Set<string>>();
+  for (const session of completed) {
+    const week = weekKey(session.workoutDate);
+    const days = daysByWeek.get(week) ?? new Set<string>();
+    days.add(dayKey(session.workoutDate));
+    daysByWeek.set(week, days);
+  }
+  const hit = (week: string) => (daysByWeek.get(week)?.size ?? 0) >= weeklyTarget;
+
+  const thisWeek = weekKey(now);
+  let currentStreak = hit(thisWeek) ? 1 : 0;
+  for (let back = 1; ; back++) {
+    if (!hit(weekKey(subWeeks(now, back)))) break;
+    currentStreak++;
   }
 
-  // A day can now have multiple completed sub-workouts (e.g. a Run + a Weight Training
-  // session). Any one of them finishing counts the day toward the streak, so de-dupe to
-  // one entry per calendar day before running the day-to-day streak logic.
-  const uniqueDays: Date[] = [];
-  for (const session of completedSessions) {
-    const day = new Date(session.workoutDate);
-    day.setHours(0, 0, 0, 0);
-    if (uniqueDays.length === 0 || !isSameDay(uniqueDays[uniqueDays.length - 1], day)) {
-      uniqueDays.push(day);
-    }
-  }
-
-  // Calculate current streak
-  let currentStreak = 0;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  // Check if most recent workout day was today or yesterday
-  const mostRecent = uniqueDays[0];
-  if (!isToday(mostRecent) && !isYesterday(mostRecent)) {
-    // Streak is broken
-    currentStreak = 0;
-  } else {
-    // Count consecutive days
-    let checkDate = isToday(mostRecent) ? today : subDays(today, 1);
-
-    for (const day of uniqueDays) {
-      if (isSameDay(day, checkDate)) {
-        currentStreak++;
-        checkDate = subDays(checkDate, 1);
-      } else if (day < checkDate) {
-        // Gap in streak
-        break;
-      }
-    }
-  }
-
-  // Calculate longest streak
   let longestStreak = 0;
-  let tempStreak = 1;
-
-  for (let i = 0; i < uniqueDays.length - 1; i++) {
-    const daysDiff = Math.floor((uniqueDays[i].getTime() - uniqueDays[i + 1].getTime()) / (1000 * 60 * 60 * 24));
-
-    if (daysDiff === 1) {
-      tempStreak++;
-    } else {
-      longestStreak = Math.max(longestStreak, tempStreak);
-      tempStreak = 1;
-    }
+  const hitWeeks = [...daysByWeek.keys()].filter(hit).sort();
+  let run = 0;
+  let previous: string | null = null;
+  for (const week of hitWeeks) {
+    const expected = previous ? weekKey(subDays(new Date(`${week}T12:00:00`), 7)) : null;
+    run = previous && expected === previous ? run + 1 : 1;
+    longestStreak = Math.max(longestStreak, run);
+    previous = week;
   }
-  longestStreak = Math.max(longestStreak, tempStreak);
 
-  // Calculate this week's workouts
-  const oneWeekAgo = subDays(today, 7);
-  const thisWeekWorkouts = completedSessions.filter(
-    s => s.workoutDate >= oneWeekAgo
-  ).length;
-
-  // Calculate this month's workouts
-  const oneMonthAgo = subDays(today, 30);
-  const thisMonthWorkouts = completedSessions.filter(
-    s => s.workoutDate >= oneMonthAgo
-  ).length;
-
+  const oneMonthAgo = subDays(now, 30);
   return {
     currentStreak,
-    longestStreak,
-    totalWorkouts: completedSessions.length,
-    thisWeekWorkouts,
-    thisMonthWorkouts,
+    longestStreak: Math.max(longestStreak, currentStreak),
+    totalWorkouts: completed.length,
+    thisWeekWorkouts: daysByWeek.get(thisWeek)?.size ?? 0,
+    thisMonthWorkouts: completed.filter(s => s.workoutDate >= oneMonthAgo).length,
+    weeklyTarget,
   };
 }

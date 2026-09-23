@@ -1,5 +1,7 @@
 
 'use client';
+import { maxTrainingDaysPerWeek } from '@/lib/plan-condense';
+import { hyroxProgramsComparison } from '@/data/hyrox-programs-comparison';
 
 import { useState, useEffect } from 'react';
 import { CheckCircle, Dumbbell, Route, Trash2, Calendar, Zap, UserCheck } from 'lucide-react';
@@ -159,10 +161,7 @@ export default function ProgramsPage() {
                 </CardHeader>
                 <CardContent className="flex-grow">
                     <div className="flex items-center text-sm text-muted-foreground gap-4">
-                        <div className="flex items-center gap-1.5">
-                            {program.programType === 'running' ? <Route className="h-4 w-4" /> : <Dumbbell className="h-4 w-4" />}
-                            <span>{program.workouts.length} workouts</span>
-                        </div>
+                        <ProgramFacts program={program} />
                     </div>
                 </CardContent>
                 <CardFooter>
@@ -209,10 +208,7 @@ export default function ProgramsPage() {
                 </CardHeader>
                 <CardContent className="flex-grow">
                   <div className="flex items-center text-sm text-muted-foreground gap-4">
-                    <div className="flex items-center gap-1.5">
-                      {program.programType === 'running' ? <Route className="h-4 w-4" /> : <Dumbbell className="h-4 w-4" />}
-                      <span>{program.workouts.length} workouts</span>
-                    </div>
+                    <ProgramFacts program={program} />
                   </div>
                 </CardContent>
                 <CardFooter>
@@ -266,7 +262,7 @@ export default function ProgramsPage() {
                     <div className="flex items-center text-sm text-muted-foreground gap-4">
                         <div className="flex items-center gap-1.5">
                             <Calendar className="h-4 w-4" />
-                            <span>{(program.workouts.length / 7).toFixed(0)} Weeks</span>
+                            <span>{Math.ceil(Math.max(0, ...program.workouts.map(w => w.day)) / 7)} weeks</span>
                         </div>
                         <div className="flex items-center gap-1.5">
                             {program.programType === 'running' ? <Route className="h-4 w-4" /> : <Dumbbell className="h-4 w-4" />}
@@ -348,6 +344,23 @@ export default function ProgramsPage() {
                 </div>
             </TabsContent>
         </Tabs>
+    </div>
+  );
+}
+
+/** What an athlete needs to choose a plan: length, weekly load and level — not a raw workout count. */
+function ProgramFacts({ program }: { program: Program }) {
+  const weeks = Math.ceil(Math.max(0, ...program.workouts.map(w => w.day)) / 7);
+  const perWeek = maxTrainingDaysPerWeek(program.workouts);
+  const level = hyroxProgramsComparison.find(p => p.id === program.id)?.experienceLevel;
+  return (
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+      <span className="flex items-center gap-1.5">
+        {program.programType === 'running' ? <Route className="h-4 w-4" /> : <Dumbbell className="h-4 w-4" />}
+        {weeks} weeks
+      </span>
+      {perWeek > 0 && <span>{perWeek} days/week</span>}
+      {level && <span className="capitalize">{level}</span>}
     </div>
   );
 }

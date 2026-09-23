@@ -10,6 +10,7 @@ import { Loader2, Link as LinkIcon, Bell, CheckCircle2, XCircle, AlertTriangle, 
 import { ThemeSwitcher } from '@/components/theme-switcher';
 import { GarminIntegrationCard } from '@/components/garmin-integration-card';
 import { MarketingPreferencesCard } from '@/components/marketing-preferences-card';
+import { AccountSettingsCard } from '@/components/account-settings-card';
 import {
   Dialog,
   DialogContent,
@@ -21,6 +22,7 @@ import {
 import { subscribeUserToPush } from '@/lib/push-subscribe';
 import { Capacitor } from '@capacitor/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
+import { enableNativePush } from '@/lib/native-push';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -31,6 +33,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { getAuthInstance } from '@/lib/firebase';
+import { trackEvent } from '@/lib/analytics';
 import { getUserClient, updateUser } from '@/services/user-service-client';
 import type { User, UserRunningProfile } from '@/models/types';
 import { timeStringToSeconds, secondsToTimeString } from '@/lib/pace-utils';
@@ -187,6 +190,8 @@ export default function ProfilePage() {
     setEnablingNotifs(true);
     try {
       if (isNative) {
+        // Server push through FCM, plus local permission for the on-device fallback.
+        await enableNativePush();
         const status = await LocalNotifications.requestPermissions();
         const mapped = nativeToWebPermission(status.display);
         setNotifPermission(mapped);
@@ -216,6 +221,7 @@ export default function ProfilePage() {
     const stravaError = urlParams.get('strava-error');
 
     if (stravaSuccess === 'success') {
+        void getAuthInstance().then(auth => trackEvent(auth.currentUser?.uid ?? null, 'strava_connected'));
         toast({ 
             title: 'Success!', 
             description: 'Your Strava account has been connected successfully.' 
@@ -241,6 +247,7 @@ export default function ProfilePage() {
     const garminSuccess = urlParams.get('garmin');
     const garminError = urlParams.get('garmin-error');
     if (garminSuccess === 'success') {
+        void getAuthInstance().then(auth => trackEvent(auth.currentUser?.uid ?? null, 'garmin_connected'));
         toast({ title: 'Garmin Connected!', description: 'Account linked. Click "Sync next 14 days" to push your training plan to your watch.' });
         fetchUserData();
         window.history.replaceState({}, '', '/profile');
@@ -605,6 +612,12 @@ export default function ProfilePage() {
             <div className="lg:col-span-2">
               <ThemeSwitcher />
             </div>
+
+            {user?.email && (
+              <div className="lg:col-span-2">
+                <AccountSettingsCard email={user.email} />
+              </div>
+            )}
         </div>
       </div>
     </div>

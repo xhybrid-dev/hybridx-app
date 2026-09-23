@@ -27,7 +27,7 @@ import {
 } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
-import { calculateTrainingPhases, type RacePlan } from '@/services/race-scheduler';
+import { alignPlanToRace, calculateTrainingPhases, type RacePlan } from '@/services/race-scheduler';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { authedFetch } from '@/lib/client-auth';
@@ -92,7 +92,7 @@ export function RacePrepDialog() {
     }
   }, [date]);
 
-  const handleGeneratePreview = async () => {
+  const handleGeneratePreview = async (feedback?: string) => {
     if (!date || !eventName) return;
     setIsGenerating(true);
     
@@ -104,7 +104,9 @@ export function RacePrepDialog() {
                 date,
                 eventName,
                 eventType,
-                eventDetails
+                eventDetails: feedback
+                    ? `${eventDetails}\n\nFeedback on the previous draft — change the plan accordingly: ${feedback}`
+                    : eventDetails,
             })
         });
         
@@ -126,7 +128,9 @@ export function RacePrepDialog() {
       setIsSaving(true);
       
       try {
-          const sanitizedWorkouts = sanitizeForFirestore(generatedWorkouts);
+          // Line the plan up so its last day is race day.
+          const aligned = alignPlanToRace(generatedWorkouts, date!);
+          const sanitizedWorkouts = sanitizeForFirestore(aligned.workouts);
 
           // 1. Create a Personal Program document
           const programId = await savePersonalProgram(user.id, {
@@ -140,7 +144,7 @@ export function RacePrepDialog() {
           await updateUser(user.id, {
               programId: programId,
               customProgram: sanitizedWorkouts, // Keep this for now as a fallback/cache
-              startDate: new Date(),
+              startDate: aligned.startDate,
               goal: 'hybrid',
           });
 
@@ -163,9 +167,12 @@ export function RacePrepDialog() {
               });
           }
 
+          const startsLater = aligned.startDate.getTime() > Date.now();
           toast({
               title: "Plan Activated!",
-              description: `Training for ${eventName} starts now. Good luck!`,
+              description: startsLater
+                  ? `Your ${eventName} plan starts ${format(aligned.startDate, 'EEEE d MMMM')}, so it peaks on race day.`
+                  : `Training for ${eventName} starts now and finishes on race day. Good luck!`,
           });
           
           setIsOpen(false);
@@ -180,8 +187,12 @@ export function RacePrepDialog() {
   };
 
   const handleRegenerate = async () => {
-      toast({ title: "AI Adjustment", description: "This would regenerate the plan based on your comments.", });
-      handleGeneratePreview();
+      if (!adjustComments.trim()) {
+          toast({ title: 'Add a comment first', description: 'Say what to change, e.g. "Make Saturdays rest days".' });
+          return;
+      }
+      await handleGeneratePreview(adjustComments.trim());
+      setAdjustComments('');
   };
 
   return (
@@ -378,7 +389,7 @@ export function RacePrepDialog() {
 
         <DialogFooter className="mt-4 gap-2 sm:gap-0">
           {step === 1 ? (
-              <Button disabled={!date || !eventName || isGenerating} onClick={handleGeneratePreview} className="w-full sm:w-auto">
+              <Button disabled={!date || !eventName || isGenerating} onClick={() => handleGeneratePreview()} className="w-full sm:w-auto">
                 {isGenerating ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Generating...</> : "Preview Plan"}
               </Button>
           ) : (

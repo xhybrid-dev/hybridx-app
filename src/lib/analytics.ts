@@ -21,7 +21,9 @@ export type AnalyticsEventName =
   | 'workout_completed'
   | 'workout_skipped'
   | 'strava_connected'
-  | 'garmin_connected';
+  | 'garmin_connected'
+  | 'notifications_enabled'
+  | 'workout_postponed';
 
 export function getPlatform(): string {
   if (typeof window === 'undefined') return 'server';

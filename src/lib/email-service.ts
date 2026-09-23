@@ -146,3 +146,44 @@ export async function sendVerificationEmail(email: string, verifyLink: string, n
     return { success: false, error };
   }
 }
+
+/**
+ * Sends a password-reset link through our own transport, for the same inbox
+ * placement reason as the verification email. The link is generated
+ * server-side with the Admin SDK and passed in.
+ */
+export async function sendPasswordResetEmail(email: string, resetLink: string, name?: string) {
+  try {
+    if (!isEmailConfigured()) {
+      console.warn('Email credentials not configured, skipping password reset email');
+      return { success: false, error: 'email-not-configured' };
+    }
+
+    const safeName = name || 'Athlete';
+    const html = `
+      <div style="font-family: Arial, Helvetica, sans-serif; max-width: 520px; margin: 0 auto; padding: 24px; color: #111;">
+        <h1 style="font-size: 22px; margin: 0 0 16px;">Reset your password</h1>
+        <p style="font-size: 15px; line-height: 1.5;">Hi ${safeName}, someone asked to reset the password for your HybridX account. Choose a new one and your plan will be right where you left it.</p>
+        <p style="margin: 28px 0;">
+          <a href="${resetLink}" style="background:#111; color:#fff; text-decoration:none; padding:12px 22px; border-radius:8px; font-size:15px; display:inline-block;">Choose a new password</a>
+        </p>
+        <p style="font-size: 13px; color:#555; line-height: 1.5;">If the button doesn't work, copy and paste this link into your browser:<br>
+          <a href="${resetLink}" style="color:#2563eb; word-break: break-all;">${resetLink}</a>
+        </p>
+        <p style="font-size: 12px; color:#999; margin-top: 28px;">If you didn't ask for this, you can ignore this email — your password won't change.</p>
+      </div>
+    `;
+
+    await transporter.sendMail({
+      from: getFromAddress(),
+      to: email,
+      subject: 'Reset your HybridX password',
+      html,
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error('Failed to send password reset email:', error);
+    return { success: false, error };
+  }
+}

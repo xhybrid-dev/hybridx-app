@@ -1,4 +1,5 @@
 'use client';
+import { trackEvent } from '@/lib/analytics';
 import { logger } from '@/lib/logger';
 
 import { useState } from 'react';
@@ -137,6 +138,7 @@ export function CustomWorkoutDialog({ isOpen, setIsOpen, userId, onLogged }: Cus
               .map((e) => ({ name: e.name.trim(), details: e.details?.trim() || '' }))
           : undefined,
       });
+      trackEvent(userId, 'workout_completed', { source: 'manual_log', title: data.title });
       toast({ title: 'Workout Logged', description: `"${data.title}" has been added to your log.` });
       setIsOpen(false);
       form.reset();

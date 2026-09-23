@@ -8,23 +8,24 @@ import { cn } from '@/lib/utils';
 import { CustomWorkoutIcon } from './icons';
 import { useScrollDirection } from '@/hooks/use-scroll-direction';
 
-// Primary navigation items, including the central button
+// Primary navigation items, including the central button. The coach is the
+// app's main differentiator, so it gets a tab rather than a hamburger entry.
 export const primaryNavItems = [
-  { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { href: '/calendar', icon: Calendar, label: 'Calendar' },
+  { href: '/dashboard', icon: LayoutDashboard, label: 'Today' },
+  { href: '/calendar', icon: Calendar, label: 'Plan' },
   { href: '/workout/active', icon: CustomWorkoutIcon, label: 'Workout', isCentral: true },
-  { href: '/journal', icon: BookMarked, label: 'Journal' },
-  { href: '/profile', icon: User, label: 'Profile' },
+  { href: '/assistant', icon: Sparkles, label: 'Coach' },
+  { href: '/history', icon: History, label: 'Progress' },
 ];
 
-// Secondary content-focused items
+// Everything else lives in the menu.
 export const secondaryNavItems = [
+  { href: '/programs', icon: BookOpen, label: 'Programs' },
+  { href: '/profile', icon: User, label: 'Profile' },
+  { href: '/journal', icon: BookMarked, label: 'Journal' },
   { href: '/training', icon: Gauge, label: 'Training Form' },
-  { href: '/assistant', icon: Sparkles, label: 'Edge Coach' },
-  { href: '/history', icon: History, label: 'History' },
   { href: '/activity-feed', icon: Activity, label: 'Activity Feed' },
   { href: '/articles', icon: Newspaper, label: 'Articles' },
-  { href: '/programs', icon: BookOpen, label: 'Programs' },
   { href: '/vdot', icon: Target, label: 'VDOT Calculator' },
   { href: '/subscription', icon: CreditCard, label: 'Subscription' },
 ];

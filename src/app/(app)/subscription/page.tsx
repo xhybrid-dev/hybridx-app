@@ -5,11 +5,12 @@ import { useState, useEffect } from 'react';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { format } from 'date-fns';
 import { getTrialEndDate, getTrialDaysLeft } from '@/lib/trial';
-import { Loader2, CheckCircle, ShieldCheck, Star, PauseCircle, XCircle } from 'lucide-react';
+import { Loader2, CheckCircle, ShieldCheck, Star, PauseCircle, XCircle, History } from 'lucide-react';
 
 import { getAuthInstance } from '@/lib/firebase';
 import { getUserClient } from '@/services/user-service-client';
-import { createCheckoutSession, pauseSubscription, cancelSubscription, type SubscriptionPlan } from '@/services/stripe-service';
+import { createCheckoutSession, pauseSubscription, cancelSubscription, resumeSubscription, type CancelReason, type SubscriptionPlan } from '@/services/stripe-service';
+import Link from 'next/link';
 import type { User } from '@/models/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -30,6 +31,15 @@ import {
 // Annual billing only appears once STRIPE_ANNUAL_PRICE_ID is configured and this
 // public flag is set — keeps a half-configured annual button from erroring.
 const ANNUAL_ENABLED = process.env.NEXT_PUBLIC_ANNUAL_PLAN_ENABLED === 'true';
+
+const CANCEL_OPTIONS: { value: CancelReason; label: string }[] = [
+    { value: 'too-expensive', label: 'It costs too much' },
+    { value: 'not-training', label: "I'm not training right now" },
+    { value: 'race-done', label: 'My race is done' },
+    { value: 'missing-features', label: "It's missing something I need" },
+    { value: 'other-app', label: "I'm using another app" },
+    { value: 'other', label: 'Something else' },
+];
 
 const MEMBER_BENEFITS = [
     'AI-tailored training plans matched to your goal',
@@ -58,7 +68,9 @@ function UpgradePanel({
             <ul className="space-y-2">
                 {MEMBER_BENEFITS.map((benefit) => (
                     <li key={benefit} className="flex items-start gap-2 text-sm">
-                        <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-green-500" />
+                        {lostAccess
+                            ? <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                            : <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-green-500" />}
                         <span className={lostAccess ? 'text-foreground' : 'text-muted-foreground'}>
                             {lostAccess ? `Lose access to: ${benefit}` : benefit}
                         </span>
@@ -105,6 +117,7 @@ export default function SubscriptionPage() {
     const [loading, setLoading] = useState(true);
     const [isRedirecting, setIsRedirecting] = useState(false);
     const [isManaging, setIsManaging] = useState(false);
+    const [cancelReason, setCancelReason] = useState<CancelReason | null>(null);
     const { toast } = useToast();
 
     const fetchUserData = async (fbUser: FirebaseUser) => {
@@ -169,11 +182,25 @@ export default function SubscriptionPage() {
         }
     }
 
+    const handleResume = async () => {
+        if (!user?.subscriptionId) return;
+        setIsManaging(true);
+        try {
+            await resumeSubscription();
+            toast({ title: 'Welcome back', description: 'Your membership continues as normal.' });
+            if (firebaseUser) await fetchUserData(firebaseUser);
+        } catch (error) {
+            toast({ title: 'Error', description: error instanceof Error ? error.message : String(error), variant: 'destructive' });
+        } finally {
+            setIsManaging(false);
+        }
+    }
+
     const handleCancel = async () => {
         if (!user?.subscriptionId) return;
         setIsManaging(true);
         try {
-            await cancelSubscription();
+            await cancelSubscription(cancelReason ?? undefined);
             toast({ title: 'Success', description: 'Your subscription will be cancelled at the end of the current billing period.'});
             if (firebaseUser) await fetchUserData(firebaseUser);
         } catch (error) {
@@ -215,7 +242,12 @@ export default function SubscriptionPage() {
         )
     }
 
-    const status = user?.subscriptionStatus || 'trial';
+    const rawStatus = user?.subscriptionStatus || 'trial';
+    const cancelDate = user?.cancellation_effective_date ?? null;
+    // 'canceled' with time left was written by an older cancel flow; it's
+    // really an active membership that ends later.
+    const status = rawStatus === 'canceled' && cancelDate && cancelDate > new Date() ? 'active' : rawStatus;
+    const pendingCancel = status === 'active' && !!user?.cancel_at_period_end;
     const trialStart = user?.trialStartDate;
     const trialEndDate = getTrialEndDate(trialStart) ?? new Date();
     const daysLeft = getTrialDaysLeft(trialStart);
@@ -228,7 +260,27 @@ export default function SubscriptionPage() {
                 <p className="text-muted-foreground">Manage your subscription and billing details.</p>
             </div>
             
-            {status === 'active' && (
+            {status === 'active' && pendingCancel && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <XCircle className="h-6 w-6 text-muted-foreground" />
+                            Membership ends {cancelDate ? `on ${format(cancelDate, 'MMMM do')}` : 'at the end of this period'}
+                        </CardTitle>
+                        <CardDescription>
+                            You keep full access until then. Changed your mind? Keep your plan, history and coach with one tap.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardFooter>
+                        <Button onClick={handleResume} disabled={isManaging}>
+                            {isManaging && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Keep my membership
+                        </Button>
+                    </CardFooter>
+                </Card>
+            )}
+
+            {status === 'active' && !pendingCancel && (
                  <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
@@ -251,32 +303,59 @@ export default function SubscriptionPage() {
                                 <AlertDialogHeader>
                                     <AlertDialogTitle>Pause your subscription?</AlertDialogTitle>
                                     <AlertDialogDescription>
-                                        This will pause your payments. You can resume anytime. Your current access will continue until the end of this billing period.
+                                        Payments stop until you resume — handy for an off-season or an injury. Your plan, history and coach stay put.
                                     </AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction onClick={handlePause}>Confirm Pause</AlertDialogAction>
+                                    <AlertDialogCancel>Not now</AlertDialogCancel>
+                                    <AlertDialogAction onClick={handlePause}>Pause payments</AlertDialogAction>
                                 </AlertDialogFooter>
                             </AlertDialogContent>
                         </AlertDialog>
-                         <AlertDialog>
+                         <AlertDialog onOpenChange={(open) => { if (!open) setCancelReason(null); }}>
                             <AlertDialogTrigger asChild>
-                                <Button variant="destructive" disabled={isManaging}>
-                                     {isManaging && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                <Button variant="ghost" className="text-muted-foreground" disabled={isManaging}>
                                     Cancel Subscription
                                 </Button>
                             </AlertDialogTrigger>
                             <AlertDialogContent>
                                 <AlertDialogHeader>
-                                    <AlertDialogTitle>Are you sure you want to cancel?</AlertDialogTitle>
+                                    <AlertDialogTitle>Before you go — what&apos;s the main reason?</AlertDialogTitle>
                                     <AlertDialogDescription>
-                                       Your subscription will be cancelled at the end of the current billing period. You will lose access to all features at that time.
+                                        You&apos;ll keep full access until the end of this billing period.
                                     </AlertDialogDescription>
                                 </AlertDialogHeader>
-                                <AlertDialogFooter>
+                                <div className="grid gap-2" role="radiogroup" aria-label="Reason for cancelling">
+                                    {CANCEL_OPTIONS.map(option => (
+                                        <button
+                                            key={option.value}
+                                            type="button"
+                                            role="radio"
+                                            aria-checked={cancelReason === option.value}
+                                            onClick={() => setCancelReason(option.value)}
+                                            className={`rounded-md border px-3 py-2 text-left text-sm transition-colors ${cancelReason === option.value ? 'border-primary bg-primary/5 font-medium' : 'hover:bg-muted'}`}
+                                        >
+                                            {option.label}
+                                        </button>
+                                    ))}
+                                </div>
+                                {cancelReason && ['not-training', 'race-done', 'too-expensive'].includes(cancelReason) && (
+                                    <p className="rounded-md bg-muted/60 p-3 text-sm">
+                                        You could <strong>pause</strong> instead: no payments until you&apos;re back, and your plan and history stay exactly where they are.
+                                    </p>
+                                )}
+                                <AlertDialogFooter className="gap-2">
                                     <AlertDialogCancel>Keep Subscription</AlertDialogCancel>
-                                    <AlertDialogAction onClick={handleCancel}>Confirm Cancellation</AlertDialogAction>
+                                    {cancelReason && ['not-training', 'race-done', 'too-expensive'].includes(cancelReason) && (
+                                        <AlertDialogAction onClick={handlePause}>Pause instead</AlertDialogAction>
+                                    )}
+                                    <AlertDialogAction
+                                        onClick={handleCancel}
+                                        disabled={!cancelReason}
+                                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                    >
+                                        Cancel at period end
+                                    </AlertDialogAction>
                                 </AlertDialogFooter>
                             </AlertDialogContent>
                         </AlertDialog>
@@ -289,14 +368,17 @@ export default function SubscriptionPage() {
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
                             <PauseCircle className="h-6 w-6 text-yellow-500" />
-                            Subscription Paused
+                            Payments paused
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <p className="text-muted-foreground">Your subscription is currently paused. To regain access, please re-subscribe.</p>
+                        <p className="text-muted-foreground">You won&apos;t be charged while paused. Resume whenever you&apos;re ready to train again — everything is where you left it.</p>
                     </CardContent>
                      <CardFooter>
-                        <UpgradePanel onSubscribe={handleSubscribe} isRedirecting={isRedirecting} />
+                        <Button onClick={handleResume} disabled={isManaging}>
+                            {isManaging && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Resume my membership
+                        </Button>
                     </CardFooter>
                 </Card>
             )}
@@ -341,8 +423,11 @@ export default function SubscriptionPage() {
                             }
                         </CardDescription>
                     </CardHeader>
-                    <CardFooter>
+                    <CardFooter className="flex-col items-stretch gap-4">
                         <UpgradePanel onSubscribe={handleSubscribe} isRedirecting={isRedirecting} lostAccess />
+                        <Button asChild variant="ghost" size="sm" className="self-start">
+                            <Link href="/history"><History className="mr-2 h-4 w-4" />Your workout history is still here</Link>
+                        </Button>
                     </CardFooter>
                 </Card>
             )}
