@@ -128,6 +128,18 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
                     : Promise.resolve(null),
             ]);
 
+            if (currentUser.programId && currentUser.startDate) {
+                // A personalised customProgram overrides the stored plan, and is already
+                // on the user document — which is why the fetch above skips it entirely.
+                currentProgram = currentUser.customProgram
+                    ? ({ id: currentUser.programId, workouts: currentUser.customProgram } as Program)
+                    : fetchedProgram;
+                // Set even when a one-off takes over today: the program is still the
+                // athlete's plan, and the dashboard/workout page key off it (a null
+                // program swaps "Start" for "Generate AI Workout" and hides next-session).
+                if (currentProgram) setProgram(currentProgram);
+            }
+
             if (oneOffSession) {
                 workoutSessions = [oneOffSession];
                 currentWorkoutInfo = {
@@ -136,20 +148,11 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
                     sessions: oneOffSession.workoutDetails ? [oneOffSession.workoutDetails as Workout] : [],
                 };
             } else if (currentUser.programId && currentUser.startDate) {
-                // A personalised customProgram overrides the stored plan, and is already
-                // on the user document — which is why the fetch above skips it entirely.
-                currentProgram = currentUser.customProgram
-                    ? ({ id: currentUser.programId, workouts: currentUser.customProgram } as Program)
-                    : fetchedProgram;
-
                 // Only proceed if a program was found
                 if (currentProgram && currentUser.planPausedAt) {
                     // Paused: nothing is due, and no session docs are created for the days away.
-                    setProgram(currentProgram);
                     currentWorkoutInfo = { day: 0, workout: null, sessions: [] };
                 } else if (currentProgram) {
-                    setProgram(currentProgram);
-
                     const scheduledWorkoutInfo = getWorkoutForDay(currentProgram, currentUser.startDate, today);
 
                     // Always resolve via the persisted layer, even when the program's default schedule

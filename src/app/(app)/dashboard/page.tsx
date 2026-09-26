@@ -327,7 +327,11 @@ export default function DashboardPage() {
         today.setHours(0, 0, 0, 0);
 
         await getOrCreateWorkoutSession(user.id, 'one-off-ai', today, oneOffWorkout, true);
-        
+        // The dashboard and /workout/active read today's workout from the shared user
+        // context, not Firestore — without this they keep showing the pre-generation
+        // rest day and only the calendar (which queries sessions directly) has it.
+        await refreshData();
+
         toast({ title: 'Workout Generated!', description: 'Redirecting you to start your session.' });
         router.push('/workout/active');
 
@@ -731,7 +735,7 @@ export default function DashboardPage() {
                   <div className="flex-1">
                     <CardTitle className="flex items-center gap-2">
                       {workoutHasRuns && !workoutHasExercises ? <Route className="h-6 w-6" /> : <Target className="h-6 w-6" />}
-                      {program && todaysWorkout?.workout && !programStartsInFuture ? `Today's Workout (Day ${todaysWorkout.day})` : "Today's Plan"}
+                      {program && todaysWorkout?.workout && !programStartsInFuture ? (todaysWorkout.day > 0 ? `Today's Workout (Day ${todaysWorkout.day})` : "Today's Workout") : "Today's Plan"}
                       {user?.customProgram && user.customProgram.length > 0 && (
                         <Badge variant="outline" className="bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800 ml-2">
                           <Zap className="mr-1 h-3 w-3" />
