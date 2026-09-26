@@ -23,7 +23,8 @@ export type AnalyticsEventName =
   | 'strava_connected'
   | 'garmin_connected'
   | 'notifications_enabled'
-  | 'workout_postponed';
+  | 'workout_postponed'
+  | 'ai_workout_generated';
 
 export function getPlatform(): string {
   if (typeof window === 'undefined') return 'server';

@@ -12,6 +12,7 @@ import { CoachMarkdown } from '@/components/coach-markdown';
 import { dashboardSummary } from '@/ai/flows/dashboard-summary';
 import { workoutSummary } from '@/ai/flows/workout-summary';
 import { generateWorkout } from '@/ai/flows/generate-workout';
+import type { WorkoutPreferences } from '@/lib/workout-preferences';
 import { generateHyroxStarter } from '@/ai/flows/generate-hyrox-starter';
 import { updateUser } from '@/services/user-service-client';
 import { CompleteOnboardingDialog } from '@/components/complete-onboarding-dialog';
@@ -58,6 +59,7 @@ import type { StravaLoadError } from '@/components/today-strava-feed';
 
 // Lazy load heavy AI-powered components
 // const WeeklyAnalysisDialog = lazy(() => import('@/components/weekly-analysis-dialog').then(mod => ({ default: mod.WeeklyAnalysisDialog })));
+const GenerateWorkoutDialog = lazy(() => import('@/components/generate-workout-dialog').then(mod => ({ default: mod.GenerateWorkoutDialog })));
 const CustomWorkoutDialog = lazy(() => import('@/components/custom-workout-dialog').then(mod => ({ default: mod.CustomWorkoutDialog })));
 const TrainingLoadCard = lazy(() => import('@/components/training-load-card').then(mod => ({ default: mod.TrainingLoadCard })));
 const TodayStravaFeed = lazy(() => import('@/components/today-strava-feed').then(mod => ({ default: mod.TodayStravaFeed })));
@@ -85,6 +87,7 @@ export default function DashboardPage() {
   // doesn't come back at them as a missed week.
   const coachNotes = useCoachNotes(!!user);
   const [isGeneratingWorkout, setIsGeneratingWorkout] = useState(false);
+  const [isGenerateDialogOpen, setIsGenerateDialogOpen] = useState(false);
   const [isMarkingDone, setIsMarkingDone] = useState(false);
   const [isPostponing, setIsPostponing] = useState(false);
   const [isCustomWorkoutDialogOpen, setIsCustomWorkoutDialogOpen] = useState(false);
@@ -307,7 +310,7 @@ export default function DashboardPage() {
       }
   }
   
-  const handleGenerateWorkout = async () => {
+  const handleGenerateWorkout = async (preferences: WorkoutPreferences) => {
     if (!user) return;
     setIsGeneratingWorkout(true);
     toast({ title: 'Generating your workout...', description: 'The AI is building a custom session for you.' });
@@ -315,12 +318,18 @@ export default function DashboardPage() {
         const generated = await generateWorkout({
             userName: user.firstName,
             experience: user.experience,
+            ...preferences,
         });
 
+        const exercises = generated.exercises ?? [];
+        const runs = generated.runs ?? [];
         const oneOffWorkout: WorkoutDay = {
             ...generated,
+            exercises,
+            runs,
             day: 0,
-            programType: 'hyrox',
+            // A run-only session must be typed 'running' or the workout page won't treat it as one.
+            programType: runs.length > 0 && exercises.length === 0 ? 'running' : 'hyrox',
         } as WorkoutDay;
         
         const today = new Date();
@@ -332,7 +341,9 @@ export default function DashboardPage() {
         // rest day and only the calendar (which queries sessions directly) has it.
         await refreshData();
 
+        trackEvent(user.id, 'ai_workout_generated', { focus: preferences.focus, durationMinutes: preferences.durationMinutes, equipment: preferences.equipment, intensity: preferences.intensity });
         toast({ title: 'Workout Generated!', description: 'Redirecting you to start your session.' });
+        setIsGenerateDialogOpen(false);
         router.push('/workout/active');
 
     } catch (error) {
@@ -536,7 +547,7 @@ export default function DashboardPage() {
                                 ) : (
                                     <>
                                         <p>No workout scheduled today.</p>
-                                        <Button variant="link" onClick={handleGenerateWorkout}>
+                                        <Button variant="link" onClick={() => setIsGenerateDialogOpen(true)}>
                                             Generate a Quick Start Session
                                         </Button>
                                     </>
@@ -858,7 +869,7 @@ export default function DashboardPage() {
                     </Link>
                 </Button>
               ) : showGenerateWorkoutButton ? (
-                  <Button variant="accent" className="w-full" onClick={handleGenerateWorkout} disabled={isGeneratingWorkout}>
+                  <Button variant="accent" className="w-full" onClick={() => setIsGenerateDialogOpen(true)} disabled={isGeneratingWorkout}>
                       {isGeneratingWorkout ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="mr-2 h-4 w-4" />}
                       {isGeneratingWorkout ? 'Generating...' : 'Generate AI Workout'}
                   </Button>
@@ -1030,6 +1041,16 @@ export default function DashboardPage() {
 
         <StatsWidget streakData={streakData} loading={loading} />
       </div>
+      {user && isGenerateDialogOpen && (
+        <Suspense fallback={null}>
+          <GenerateWorkoutDialog
+            isOpen={isGenerateDialogOpen}
+            setIsOpen={setIsGenerateDialogOpen}
+            isGenerating={isGeneratingWorkout}
+            onGenerate={handleGenerateWorkout}
+          />
+        </Suspense>
+      )}
       {user && (
         <Suspense fallback={null}>
           <CustomWorkoutDialog
