@@ -50,20 +50,33 @@ function toDate(value: any): Date {
   return new Date(value ?? Date.now());
 }
 
+/**
+ * One stored message, with optional fields present only when they have a
+ * value. The whole array is written back on every turn, and Firestore rejects
+ * a field set to `undefined` — so an athlete message with no `consulted`
+ * would otherwise fail every reply after the first in a thread.
+ */
+function toStoredMessage(message: any): StoredCoachMessage {
+  const stored: StoredCoachMessage = {
+    role: message.role === 'assistant' ? 'assistant' : 'user',
+    content: String(message.content ?? ''),
+    createdAt: typeof message.createdAt === 'string' ? message.createdAt : new Date().toISOString(),
+  };
+  if (Array.isArray(message.consulted) && message.consulted.length > 0) {
+    stored.consulted = message.consulted.map(String);
+  }
+  if (message.kind === 'voice') stored.kind = 'voice';
+  if (typeof message.about === 'string' && message.about) stored.about = message.about;
+  return stored;
+}
+
 function fromFirestore(doc: FirebaseFirestore.DocumentSnapshot): CoachConversation {
   const data = doc.data() as Record<string, any>;
   return {
     id: doc.id,
     userId: data.userId,
     title: data.title || 'Talk to Coach',
-    messages: (data.messages ?? []).map((message: any) => ({
-      role: message.role === 'assistant' ? 'assistant' : 'user',
-      content: String(message.content ?? ''),
-      createdAt: message.createdAt ?? new Date().toISOString(),
-      consulted: message.consulted ?? undefined,
-      kind: message.kind === 'voice' ? 'voice' : undefined,
-      about: typeof message.about === 'string' ? message.about : undefined,
-    })),
+    messages: (data.messages ?? []).map((message: any) => toStoredMessage(message)),
     createdAt: toDate(data.createdAt),
     updatedAt: toDate(data.updatedAt),
   };
@@ -182,7 +195,9 @@ export async function appendExchange(input: {
     return doc.id;
   }
 
-  const messages = [...existing.messages, ...newMessages].slice(-MAX_STORED_MESSAGES);
+  const messages = [...existing.messages, ...newMessages]
+    .slice(-MAX_STORED_MESSAGES)
+    .map(toStoredMessage);
 
   await collection.doc(existing.id).update({
     messages,
