@@ -36,6 +36,7 @@ import type {
   WorkoutSession,
 } from '@/models/types';
 import { formatNotesForPrompt, getActiveNotes, type CoachNote } from '@/services/coach-notes';
+import { getLatestConversation } from '@/services/coach-conversation';
 import {
   computeAdherence,
   computeStreak,
@@ -170,6 +171,43 @@ export async function getRecentJournalEntries(
     })
     .sort((a, b) => b.date.getTime() - a.date.getTime())
     .slice(0, limit);
+}
+
+/**
+ * What the athlete has said to the coach over the last fortnight that has
+ * already scrolled out of the history the chat carries — the voice note from
+ * Monday about the Achilles, the "away this weekend" from last week. Durable
+ * facts are in the notes; this is the texture around them, in their words.
+ */
+const TOLD_RECENTLY_DAYS = 14;
+const TOLD_RECENTLY_MAX = 10;
+/** Kept in step with HISTORY_TURNS in ai/flows/coach-chat.ts: those are already in front of the model. */
+const IN_CONVERSATION_MESSAGES = 16;
+
+export async function getRecentAthleteMessages(userId: string, now: Date): Promise<string[]> {
+  try {
+    const conversation = await getLatestConversation(userId);
+    if (!conversation) return [];
+    const cutoff = subDays(now, TOLD_RECENTLY_DAYS).getTime();
+    return conversation.messages
+      .slice(0, -IN_CONVERSATION_MESSAGES)
+      .filter(message => message.role === 'user' && new Date(message.createdAt).getTime() >= cutoff)
+      .slice(-TOLD_RECENTLY_MAX)
+      .map(message => {
+        const text = message.content.replace(/\s+/g, ' ').trim();
+        const clipped = text.length > 280 ? `${text.slice(0, 277)}…` : text;
+        const how = message.kind === 'voice' ? 'voice note' : 'message';
+        const about = message.about ? `, about ${message.about}` : '';
+        return `- ${format(new Date(message.createdAt), 'EEE d MMM')} (${how}${about}): "${clipped}"`;
+      });
+  } catch (error) {
+    // Context, not a dependency: the coach answers without it.
+    logger.warn(
+      '[coach-context] Recent messages unavailable:',
+      error instanceof Error ? error.message : String(error),
+    );
+    return [];
+  }
 }
 
 // One conversation turn can want Strava three times over — the briefing, the
@@ -363,6 +401,7 @@ export interface CoachSnapshotNote {
   id: string;
   category: CoachNote['category'];
   content: string;
+  pausesTraining: boolean;
 }
 
 export interface CoachSnapshot {
@@ -440,7 +479,7 @@ export function invalidateCoachContext(userId: string): void {
 /**
  * Builds the full coaching briefing for an athlete.
  *
- * Everything here is bounded — 28 days back, 10 days forward, 8 journal entries
+ * Everything here is bounded — 28 days back, 10 days forward, 10 recent notes
  * — so the prompt stays a readable page rather than a dump. Anything outside
  * that window is a tool call away.
  */
@@ -496,13 +535,17 @@ async function buildCoachContextUncached(
   const historyStart = subDays(today, 28);
   const scheduleEnd = addDays(today, 10);
 
-  const [program, sessions, journal, trainingLoad, notes] = await Promise.all([
+  const [program, sessions, allJournal, trainingLoad, notes, toldRecently] = await Promise.all([
     getEffectiveProgram(user),
     getSessionsInRange(userId, historyStart, scheduleEnd, timeZone),
     getRecentJournalEntries(userId, 8, timeZone),
     getTrainingLoadText(userId).catch(() => null),
     getActiveNotes(userId, now),
+    getRecentAthleteMessages(userId, now),
   ]);
+  // The journal has been folded into Talk to Coach. Entries written before
+  // that still count for as long as the rest of the briefing looks back.
+  const journal = allJournal.filter(entry => entry.date >= historyStart);
 
   const schedule = buildSchedule(
     historyStart,
@@ -627,10 +670,12 @@ async function buildCoachContextUncached(
     '## Training load',
     trainingLoad ?? '- Strava is not connected, so no objective load data (ATL/CTL/TSB) is available.',
     '',
-    '## Journal (the athlete in their own words)',
-    journal.length > 0
-      ? journal.map(entry => `- ${summariseJournalEntry(entry)}`).join('\n')
-      : '- No journal entries yet.',
+    '## What they have told you lately (their notes and voice notes, beyond the conversation below)',
+    toldRecently.length > 0
+      ? toldRecently.join('\n')
+      : '- Nothing further back than the conversation below.',
+    journal.length > 0 ? '\n## Journal entries (their own words, from before notes moved to Talk to Coach)' : null,
+    journal.length > 0 ? journal.map(entry => `- ${summariseJournalEntry(entry)}`).join('\n') : null,
   ]
     .filter(line => line !== null)
     .join('\n');
@@ -657,6 +702,7 @@ async function buildCoachContextUncached(
         id: note.id,
         category: note.category,
         content: note.content,
+        pausesTraining: note.pausesTraining,
       })),
       suggestedPrompts: buildSuggestedPrompts({
         todaysSessions,

@@ -7,7 +7,8 @@
 
 import { useEffect, useState } from 'react';
 import { differenceInMinutes, format } from 'date-fns';
-import { Bell, CalendarClock, CheckCircle2 } from 'lucide-react';
+import Link from 'next/link';
+import { Bell, CalendarClock, CheckCircle2, Mic } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 import { PushNotifications } from '@capacitor/push-notifications';
 import { useDebouncedCallback } from 'use-debounce';
@@ -201,6 +202,18 @@ export default function WorkoutCompleteModal({
               )}
             </div>
           )}
+
+          {/* How it went, in their words — a voice note or a line — tied to this
+              session so the coach reads "legs were gone" against the right one. */}
+          <Button asChild variant="secondary" className="w-full gap-2">
+            <Link
+              href={`/coach?about=${encodeURIComponent(session.workoutTitle)}`}
+              onClick={() => saveDuration.flush()}
+            >
+              <Mic className="h-4 w-4" />
+              Tell your coach how it went
+            </Link>
+          </Button>
 
           <Separator />
 

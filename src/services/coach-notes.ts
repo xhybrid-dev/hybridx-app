@@ -65,18 +65,32 @@ const DEFAULT_TTL_DAYS: Record<CoachNoteCategory, number | null> = {
 /** Active notes kept per athlete. Oldest beyond this are retired, not deleted. */
 const MAX_ACTIVE_NOTES = 24;
 
+/**
+ * How long "I'm taking some time off" lasts when the athlete didn't say. Short
+ * on purpose: a week of silence is a kindness, a month of it is a lapse the
+ * coach never noticed.
+ */
+const DEFAULT_PAUSE_DAYS = 7;
+
 export interface CoachNote {
   id: string;
   userId: string;
   category: CoachNoteCategory;
   /** One sentence, in the third person: "Away in Spain 12–19 Sep." */
   content: string;
-  source: 'chat' | 'journal' | 'manual';
+  source: 'chat' | 'voice' | 'journal' | 'manual';
   status: 'active' | 'resolved';
   createdAt: Date;
   updatedAt: Date;
   /** When this stops being true. Null means it doesn't expire on its own. */
   expiresAt: Date | null;
+  /**
+   * The athlete has said they are not training for this period — ill, a week
+   * off, a holiday with no training, family comes first this weekend. While a
+   * note like this is current, nothing chases them for missed sessions:
+   * reminders go quiet and the nightly job leaves the plan alone.
+   */
+  pausesTraining: boolean;
 }
 
 function toDate(value: any): Date {
@@ -99,12 +113,34 @@ function fromFirestore(doc: FirebaseFirestore.DocumentSnapshot): CoachNote {
     createdAt: toDate(data.createdAt),
     updatedAt: toDate(data.updatedAt),
     expiresAt: data.expiresAt ? toDate(data.expiresAt) : null,
+    pausesTraining: data.pausesTraining === true,
   };
 }
 
+/**
+ * Whether a note still holds. The expiry is a day marker ("through 19 Sep"),
+ * so the note stays true for the whole of that day rather than lapsing at the
+ * midnight that starts it.
+ */
+export function isCurrent(note: Pick<CoachNote, 'expiresAt'>, now = new Date()): boolean {
+  return !note.expiresAt || note.expiresAt.getTime() + 86_400_000 > now.getTime();
+}
+
+/**
+ * The time off the athlete is currently on, if any — the note that says they
+ * are ill, away or resting, and so should not be chased for missing sessions.
+ */
+export function activeTrainingPause(notes: CoachNote[], now = new Date()): CoachNote | null {
+  return notes.find(note => note.pausesTraining && note.status === 'active' && isCurrent(note, now)) ?? null;
+}
+
 /** The expiry a note gets when the athlete didn't name an end date themselves. */
-export function defaultExpiry(category: CoachNoteCategory, from: Date): Date | null {
-  const days = DEFAULT_TTL_DAYS[category];
+export function defaultExpiry(
+  category: CoachNoteCategory,
+  from: Date,
+  overrideDays?: number,
+): Date | null {
+  const days = overrideDays ?? DEFAULT_TTL_DAYS[category];
   if (days === null) return null;
   // Pinned to UTC midnight so the date read back — and shown to the model — is
   // the same day whatever zone the code runs in. Expiry is day-granular; the
@@ -129,7 +165,7 @@ export async function getActiveNotes(userId: string, now = new Date()): Promise<
 
     return snapshot.docs
       .map(fromFirestore)
-      .filter(note => !note.expiresAt || note.expiresAt >= now)
+      .filter(note => isCurrent(note, now))
       .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())
       .slice(0, MAX_ACTIVE_NOTES);
   } catch (error) {
@@ -153,7 +189,8 @@ export function formatNotesForPrompt(notes: CoachNote[], now = new Date()): stri
         : '';
       const age = Math.max(0, Math.round((now.getTime() - note.updatedAt.getTime()) / 86_400_000));
       const when = age === 0 ? 'today' : age === 1 ? 'yesterday' : `${age} days ago`;
-      return `- [${note.category}] ${note.content}${until} — noted ${when}`;
+      const label = note.pausesTraining ? `${note.category} · time off` : note.category;
+      return `- [${label}] ${note.content}${until} — noted ${when}`;
     })
     .join('\n');
 }
@@ -166,6 +203,8 @@ export interface CoachNoteWrite {
   content?: string;
   /** ISO date (YYYY-MM-DD) the note stops being true, if the athlete said. */
   expiresAt?: string | null;
+  /** The athlete is not training for this period. See CoachNote.pausesTraining. */
+  pausesTraining?: boolean;
 }
 
 /**
@@ -191,19 +230,30 @@ export async function applyNoteWrites(
   // blind write to an id the model produced.
   const referencedIds = [...new Set(writes.map(write => write.id).filter(Boolean) as string[])];
   const owned = new Set<string>();
+  const alreadyPaused = new Set<string>();
   if (referencedIds.length > 0) {
     const docs = await db.getAll(...referencedIds.map(id => collection.doc(id)));
     for (const doc of docs) {
-      if (doc.exists && doc.data()?.userId === userId) owned.add(doc.id);
+      if (doc.exists && doc.data()?.userId === userId) {
+        owned.add(doc.id);
+        if (doc.data()?.pausesTraining === true) alreadyPaused.add(doc.id);
+      }
     }
   }
 
-  const parseExpiry = (value: string | null | undefined, category: CoachNoteCategory) => {
-    if (value === null) return null;
+  const parseExpiry = (
+    value: string | null | undefined,
+    category: CoachNoteCategory,
+    pausesTraining: boolean,
+  ) => {
     if (value) {
       const parsed = new Date(value);
       if (!Number.isNaN(parsed.getTime())) return parsed;
     }
+    // Time off always ends. An open-ended pause would silence the coach for
+    // good, so one without a date gets a week and the athlete can extend it.
+    if (pausesTraining) return defaultExpiry(category, now, DEFAULT_PAUSE_DAYS);
+    if (value === null) return null;
     return defaultExpiry(category, now);
   };
 
@@ -223,10 +273,12 @@ export async function applyNoteWrites(
     const category = write.category ?? 'context';
 
     if (write.action === 'update' && write.id && owned.has(write.id)) {
-      const expiresAt = parseExpiry(write.expiresAt, category);
+      const pausesTraining = write.pausesTraining ?? alreadyPaused.has(write.id);
+      const expiresAt = parseExpiry(write.expiresAt, category, pausesTraining);
       batch.update(collection.doc(write.id), {
         category,
         content,
+        pausesTraining,
         expiresAt: expiresAt ? Timestamp.fromDate(expiresAt) : null,
         updatedAt: Timestamp.fromDate(now),
         status: 'active',
@@ -240,11 +292,13 @@ export async function applyNoteWrites(
     // a true thing about *this* athlete, and losing it is worse than carrying a
     // near-duplicate the next extraction pass can merge, so it lands as a new
     // note under the right owner rather than being dropped.
-    const expiresAt = parseExpiry(write.expiresAt, category);
+    const pausesTraining = write.pausesTraining === true;
+    const expiresAt = parseExpiry(write.expiresAt, category, pausesTraining);
     batch.set(collection.doc(), {
       userId,
       category,
       content,
+      pausesTraining,
       source,
       status: 'active',
       createdAt: Timestamp.fromDate(now),
@@ -276,7 +330,7 @@ async function retireOverflow(userId: string, now: Date): Promise<void> {
 
     const active = snapshot.docs
       .map(fromFirestore)
-      .filter(note => !note.expiresAt || note.expiresAt >= now)
+      .filter(note => isCurrent(note, now))
       .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
 
     if (active.length <= MAX_ACTIVE_NOTES) return;

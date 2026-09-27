@@ -130,7 +130,7 @@ function NoWorkoutToday() {
             <Flag className="mr-2 h-4 w-4" />Log an activity
           </Button>
           <Button asChild variant="outline">
-            <Link href={`/assistant?q=${encodeURIComponent("It's a rest day — what should I do to recover well?")}`}>
+            <Link href={`/coach?q=${encodeURIComponent("It's a rest day — what should I do to recover well?")}`}>
               <Sparkles className="mr-2 h-4 w-4" />Ask your coach
             </Link>
           </Button>

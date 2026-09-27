@@ -2,7 +2,7 @@
 //
 // Turns what the athlete just said into what the coach will remember.
 //
-// Runs after every chat turn (and after a journal entry is written) on the fast
+// Runs after every message to the coach — typed or a voice note — on the fast
 // model, given the exchange and everything already remembered. It returns
 // changes rather than a fresh list, so "the knee is fine now" resolves the old
 // note instead of sitting next to it contradicting it, and "actually I'm back
@@ -32,6 +32,12 @@ const NoteWriteSchema = z.object({
     .string()
     .optional()
     .describe('YYYY-MM-DD when this stops being true. Omit if there is no natural end.'),
+  pausesTraining: z
+    .boolean()
+    .optional()
+    .describe(
+      'True only when the athlete has said they are NOT training for a stretch — ill, a week off, a holiday or family time with no training. Set expiresAt to the last day off.',
+    ),
 });
 
 const ExtractCoachNotesOutputSchema = z.object({
@@ -62,7 +68,7 @@ Only things that would change what the coach says to this athlete days or weeks 
 
 WHAT IS NOT
 - Anything already in the training data: sessions completed, missed, times, distances, loads. The coach reads those directly.
-- One-off feelings about a single session ("legs were heavy today"). That's a journal note, not a standing fact.
+- One-off feelings about a single session ("legs were heavy today"). The coach has the conversation for that; it is not a standing fact.
 - Advice the coach gave. You remember the athlete, not the coach.
 - Anything you are inferring rather than being told.
 
@@ -70,6 +76,12 @@ HOW TO WRITE A NOTE
 - One sentence, third person, about the athlete: "Away in Spain 12–19 September." "Right knee sore on lunges since early September." "Prefers to train before work."
 - Self-contained. It will be read months later with none of this conversation around it.
 - Pin dates absolutely (14 September), never relatively (next Tuesday).
+
+TIME OFF
+Set pausesTraining: true when the athlete tells you they are not going to train for a while — "I'm ill, taking the week off", "away this weekend with the family, no training", "resting the Achilles until Friday". While that note is current the coach stops chasing them for missed sessions, so:
+- Always give it an expiresAt: the last day off. "This week" ends on Sunday; "a few days" is three days; if they gave nothing, a week from today.
+- A niggle they are training around ("Achilles is tight") is a constraint WITHOUT pausesTraining. Only set it when they have said they are stopping.
+- When they say they're back ("feeling better, back at it tomorrow"), resolve the note.
 
 CHANGING WHAT IS ALREADY THERE
 - If this contradicts or moves on from an existing note, "update" that note by id — don't add a rival.
@@ -91,7 +103,8 @@ export async function extractCoachNotes(
     ? input.existingNotes
         .map(note => {
           const until = note.expiresAt ? `, through ${note.expiresAt.toISOString().slice(0, 10)}` : '';
-          return `- id=${note.id} [${note.category}${until}] ${note.content}`;
+          const off = note.pausesTraining ? ', time off' : '';
+          return `- id=${note.id} [${note.category}${off}${until}] ${note.content}`;
         })
         .join('\n')
     : '(nothing remembered yet)';
@@ -133,5 +146,8 @@ ${input.coachReply ? `THE COACH REPLIED:\n"""\n${input.coachReply}\n"""` : ''}`,
         : 'context',
       content: write.content?.trim(),
       expiresAt: write.expiresAt ?? undefined,
+      // Left undefined when the model didn't say, so an edit to a note's wording
+      // doesn't quietly end the athlete's time off.
+      pausesTraining: write.pausesTraining,
     }));
 }

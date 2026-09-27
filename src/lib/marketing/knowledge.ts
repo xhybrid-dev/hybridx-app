@@ -98,7 +98,7 @@ export const APP_FEATURES = [
   'Garmin integration — push workouts to the watch and pull activities back',
   'Workout tracking with streaks, consistency scoring and progress charts',
   'VDOT calculator and pace-zone guidance',
-  'Training journal with trend analysis',
+  'Talk to Coach — send your coach a typed or voice note (ill, away, a niggle, how a session went) and it remembers, easing off and adjusting instead of chasing missed sessions',
   'Available on iOS, Android and web as a PWA',
 ] as const;
 

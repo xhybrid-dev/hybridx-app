@@ -3,18 +3,19 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { User, Newspaper, LayoutDashboard, Sparkles, BookOpen, CreditCard, Calendar, Activity, Shield, History, BookMarked, Gauge, Target } from 'lucide-react';
+import { User, Newspaper, LayoutDashboard, MessageCircle, BookOpen, CreditCard, Calendar, Activity, Shield, History, Gauge, Target } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { CustomWorkoutIcon } from './icons';
 import { useScrollDirection } from '@/hooks/use-scroll-direction';
 
 // Primary navigation items, including the central button. The coach is the
-// app's main differentiator, so it gets a tab rather than a hamburger entry.
+// app's main differentiator, so it gets a tab rather than a hamburger entry —
+// and it's where the journal went, so there is one place to tell it things.
 export const primaryNavItems = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Today' },
   { href: '/calendar', icon: Calendar, label: 'Plan' },
   { href: '/workout/active', icon: CustomWorkoutIcon, label: 'Workout', isCentral: true },
-  { href: '/assistant', icon: Sparkles, label: 'Coach' },
+  { href: '/coach', icon: MessageCircle, label: 'Coach' },
   { href: '/history', icon: History, label: 'Progress' },
 ];
 
@@ -22,7 +23,6 @@ export const primaryNavItems = [
 export const secondaryNavItems = [
   { href: '/programs', icon: BookOpen, label: 'Programs' },
   { href: '/profile', icon: User, label: 'Profile' },
-  { href: '/journal', icon: BookMarked, label: 'Journal' },
   { href: '/training', icon: Gauge, label: 'Training Form' },
   { href: '/activity-feed', icon: Activity, label: 'Activity Feed' },
   { href: '/articles', icon: Newspaper, label: 'Articles' },

@@ -52,8 +52,15 @@ export function decideReminder(args: {
   commitmentTitle: string | null;
   /** Whole days since they last opened the app; null if never recorded. */
   daysSinceSeen: number | null;
+  /**
+   * They've told their coach they're not training right now — ill, away, a
+   * week off. Nothing is sent: a reminder to train while you're in bed with
+   * flu is the fastest way to get notifications switched off for good.
+   */
+  onTimeOff?: boolean;
 }): Reminder {
-  const { todaysWorkout, commitmentTitle, daysSinceSeen } = args;
+  const { todaysWorkout, commitmentTitle, daysSinceSeen, onTimeOff } = args;
+  if (onTimeOff) return { kind: 'none' };
   if (commitmentTitle) return { kind: 'commitment', workoutTitle: commitmentTitle };
 
   const away = daysSinceSeen ?? 0;

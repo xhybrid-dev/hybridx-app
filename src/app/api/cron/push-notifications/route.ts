@@ -6,7 +6,8 @@
  * What gets sent is decided in lib/reminders.ts: today's session on a
  * training day, nothing on a rest day or a paused plan, the session they
  * committed to with "Do it tomorrow", and a few spaced-out nudges (then
- * silence) for athletes who have stopped opening the app.
+ * silence) for athletes who have stopped opening the app — and nothing at
+ * all while the athlete has told their coach they're ill, away or resting.
  *
  * Previously this fired once at 07:00 UTC for everyone, worked out "today"
  * with UTC arithmetic, ignored customised plans (so quick-start athletes
@@ -26,6 +27,7 @@ import { mapWithLimit } from '@/lib/concurrency';
 import { calendarDayKey, normaliseTimeZone } from '@/lib/program-day';
 import { plannedFor, type DaySessionLite } from '@/lib/coach/daily-adjust';
 import { isTrialExpired } from '@/lib/trial';
+import { activeTrainingPause, getActiveNotes } from '@/services/coach-notes';
 import {
   DEFAULT_REMINDER_TIME,
   DEFAULT_TIME_ZONE,
@@ -164,11 +166,14 @@ export async function GET(request: Request) {
       const lastSeen = toDate(user.lastSeenAt);
       const daysSinceSeen = lastSeen ? differenceInCalendarDays(today, new Date(`${calendarDayKey(lastSeen, timeZone)}T00:00:00`)) : null;
       const commitment = user.trainingCommitment?.date === dateKey ? user.trainingCommitment.workoutTitle : null;
+      // What they've told their coach: "ill this week" means no nudges this week.
+      const onTimeOff = !!activeTrainingPause(await getActiveNotes(userId, now), now);
 
       const reminder = decideReminder({
         todaysWorkout: todaysWorkout ? { title: todaysWorkout.title, exercises: summarise(todaysWorkout) } : null,
         commitmentTitle: commitment,
         daysSinceSeen,
+        onTimeOff,
       });
 
       const userRef = db.collection('users').doc(userId);

@@ -2,22 +2,21 @@
 //
 // The coach, where the athlete already is.
 //
-// The chat page is where you go to have a conversation; this is the coach being
+// Talk to Coach is where you go to have a conversation; this is the coach being
 // present on the dashboard — saying its piece, showing what it is holding on to
-// about you, and taking a reply without you going anywhere. A reply here goes
-// into the same thread as the chat page, so the two are one conversation, not
-// two.
+// about you, and taking a typed line or a voice note without you going
+// anywhere. Either goes into the same thread as Talk to Coach, so the two are
+// one conversation, not two.
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ArrowRight, CornerDownLeft, Loader2, MessageCircle, X } from 'lucide-react';
+import { ArrowRight, X } from 'lucide-react';
 
 import { authedFetch } from '@/lib/client-auth';
 import { logger } from '@/lib/logger';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
+import { CoachComposer, type CoachMessageKind } from './coach-composer';
 import { CoachMarkdown } from './coach-markdown';
 import { Logo } from './icons';
 
@@ -26,6 +25,7 @@ export interface CoachNote {
   category: string;
   content: string;
   expiresAt: string | null;
+  pausesTraining?: boolean;
 }
 
 interface CoachNotesState {
@@ -93,6 +93,12 @@ const CATEGORY_LABELS: Record<string, string> = {
   commitment: 'You said',
 };
 
+/** The short label a remembered note is shown under. */
+export function noteLabel(note: { category: string; pausesTraining?: boolean }): string {
+  if (note.pausesTraining) return 'Time off';
+  return CATEGORY_LABELS[note.category] ?? 'Noted';
+}
+
 export function CoachPanel({
   summary,
   summaryLoading,
@@ -108,15 +114,13 @@ export function CoachPanel({
   onNotesMayHaveChanged?: () => void;
   className?: string;
 }) {
-  const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [reply, setReply] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
 
-  const send = async () => {
-    const message = input.trim();
-    if (!message || sending) return;
+  const send = async (message: string, kind: CoachMessageKind) => {
+    if (!message.trim() || sending) return;
 
     setSending(true);
     setError(null);
@@ -125,12 +129,11 @@ export function CoachPanel({
       const response = await authedFetch('/api/ai/coach-chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message }),
+        body: JSON.stringify({ message, kind }),
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error || 'The coach could not answer that.');
 
-      setInput('');
       setReply(data.answer);
 
       // What the coach remembers is updated after the reply is sent, so give
@@ -167,9 +170,7 @@ export function CoachPanel({
                   className="group inline-flex max-w-full items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground"
                 >
                   <span className="truncate">
-                    <span className="font-medium">
-                      {CATEGORY_LABELS[note.category] ?? 'Noted'}:
-                    </span>{' '}
+                    <span className="font-medium">{noteLabel(note)}:</span>{' '}
                     {note.content}
                   </span>
                   <button
@@ -198,10 +199,10 @@ export function CoachPanel({
             <div className="mt-3 rounded-md bg-muted p-3 text-sm">
               <CoachMarkdown content={reply} variant="compact" />
               <Link
-                href="/assistant"
+                href="/coach"
                 className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
               >
-                Carry on in Edge Coach
+                Carry on in Talk to Coach
                 <ArrowRight className="h-3 w-3" />
               </Link>
             </div>
@@ -209,36 +210,15 @@ export function CoachPanel({
 
           {error && <p className="mt-2 text-xs text-destructive">{error}</p>}
 
-          <form
-            onSubmit={event => {
-              event.preventDefault();
-              void send();
-            }}
-            className="relative mt-3"
-          >
-            <MessageCircle className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={input}
-              onChange={event => setInput(event.target.value)}
-              placeholder="Tell your coach something — away next week, short on time…"
-              className="pl-9 pr-10"
+          <div className="mt-3">
+            <CoachComposer
+              variant="compact"
+              onSend={send}
+              onError={setError}
               disabled={sending}
+              placeholder={sending ? 'Your coach is replying…' : 'Tell your coach something — or tap the mic'}
             />
-            <Button
-              type="submit"
-              size="icon"
-              variant="ghost"
-              className="absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2"
-              disabled={sending || !input.trim()}
-              aria-label="Send to your coach"
-            >
-              {sending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <CornerDownLeft className="h-4 w-4" />
-              )}
-            </Button>
-          </form>
+          </div>
         </div>
       </div>
     </div>

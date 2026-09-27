@@ -112,6 +112,7 @@ describe('coach notes', () => {
           createdAt: subDays(TODAY, 2),
           updatedAt: subDays(TODAY, 2),
           expiresAt: addDays(TODAY, 12),
+          pausesTraining: false,
         },
       ],
       TODAY,
@@ -220,6 +221,78 @@ describe('coach notes', () => {
     expect(counts.resolved).toBe(1);
     expect(writes[0]).toMatchObject({ op: 'update', id: 'mine' });
     expect(writes[0].data.status).toBe('resolved');
+  });
+
+  it('keeps a note current through the whole of its last day', async () => {
+    const { isCurrent } = await import('@/services/coach-notes');
+    const through = { expiresAt: new Date('2026-09-07T00:00:00.000Z') };
+
+    expect(isCurrent(through, TODAY)).toBe(true);
+    expect(isCurrent(through, new Date('2026-09-08T00:00:01.000Z'))).toBe(false);
+    expect(isCurrent({ expiresAt: null }, TODAY)).toBe(true);
+  });
+
+  it('knows when the athlete is on time off, and when that has ended', async () => {
+    const { activeTrainingPause } = await import('@/services/coach-notes');
+    const note = (overrides: Record<string, any>) => ({
+      id: 'n',
+      userId: 'a1',
+      category: 'constraint' as const,
+      content: 'Ill with flu; taking the week off.',
+      source: 'voice' as const,
+      status: 'active' as const,
+      createdAt: TODAY,
+      updatedAt: TODAY,
+      expiresAt: addDays(TODAY, 3),
+      pausesTraining: true,
+      ...overrides,
+    });
+
+    expect(activeTrainingPause([note({})], TODAY)?.content).toBe('Ill with flu; taking the week off.');
+    // A niggle they're training around is not time off.
+    expect(activeTrainingPause([note({ pausesTraining: false })], TODAY)).toBeNull();
+    expect(activeTrainingPause([note({ expiresAt: subDays(TODAY, 2) })], TODAY)).toBeNull();
+  });
+
+  it('gives time off an end even when the athlete named none', async () => {
+    const { applyNoteWrites } = await import('@/services/coach-notes');
+
+    await applyNoteWrites(
+      'a1',
+      [{ action: 'add', category: 'context', content: 'Family commitments; not training for now.', pausesTraining: true }],
+      { now: TODAY },
+    );
+
+    const written = writes.find(write => write.op === 'set');
+    expect(written?.data.pausesTraining).toBe(true);
+    // A week, not the 45 days a context note would otherwise get.
+    expect(written?.data.expiresAt.toDate()).toEqual(new Date('2026-09-14T00:00:00.000Z'));
+  });
+
+  it("doesn't end time off just because the note's wording was edited", async () => {
+    noteDocs.push({
+      id: 'off',
+      data: {
+        userId: 'a1',
+        category: 'constraint',
+        content: 'Ill this week.',
+        status: 'active',
+        pausesTraining: true,
+        createdAt: stamp(TODAY),
+        updatedAt: stamp(TODAY),
+        expiresAt: stamp(addDays(TODAY, 5)),
+      },
+    });
+
+    const { applyNoteWrites } = await import('@/services/coach-notes');
+    await applyNoteWrites(
+      'a1',
+      [{ action: 'update', id: 'off', category: 'constraint', content: 'Ill with flu this week.', expiresAt: '2026-09-13' }],
+      { now: TODAY },
+    );
+
+    expect(writes[0]).toMatchObject({ op: 'update', id: 'off' });
+    expect(writes[0].data.pausesTraining).toBe(true);
   });
 
   it('ignores writes with nothing in them', async () => {

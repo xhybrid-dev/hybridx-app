@@ -37,4 +37,10 @@ describe('decideReminder', () => {
     const on = (days: number) => decideReminder({ todaysWorkout: workout, commitmentTitle: null, daysSinceSeen: days }).kind;
     expect([2, 3, 4, 5, 6, 10, 11, 30].map(on)).toEqual(['reengage', 'none', 'none', 'reengage', 'none', 'reengage', 'none', 'none']);
   });
+
+  it('says nothing at all while they have told their coach they are off', () => {
+    expect(decideReminder({ todaysWorkout: workout, commitmentTitle: null, daysSinceSeen: 0, onTimeOff: true })).toEqual({ kind: 'none' });
+    expect(decideReminder({ todaysWorkout: workout, commitmentTitle: null, daysSinceSeen: 5, onTimeOff: true })).toEqual({ kind: 'none' });
+    expect(decideReminder({ todaysWorkout: null, commitmentTitle: 'Engine Builder', daysSinceSeen: 1, onTimeOff: true })).toEqual({ kind: 'none' });
+  });
 });

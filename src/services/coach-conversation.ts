@@ -1,6 +1,6 @@
 // src/services/coach-conversation.ts
 //
-// Persistence for Edge Coach conversations.
+// Persistence for Talk to Coach conversations — typed messages and voice notes.
 //
 // A coach you have to re-introduce yourself to every time you open the app is
 // not a coach. Threads are stored server-side (Admin SDK) so the athlete can
@@ -28,6 +28,10 @@ export interface StoredCoachMessage {
   createdAt: string;
   /** For assistant turns: the lookups the coach made, shown in the UI. */
   consulted?: string[];
+  /** For athlete turns: 'voice' when it arrived as a voice note (content is the transcript). */
+  kind?: 'text' | 'voice';
+  /** For athlete turns: the session it was about, when sent from a workout. */
+  about?: string;
 }
 
 export interface CoachConversation {
@@ -50,12 +54,14 @@ function fromFirestore(doc: FirebaseFirestore.DocumentSnapshot): CoachConversati
   return {
     id: doc.id,
     userId: data.userId,
-    title: data.title || 'Coach chat',
+    title: data.title || 'Talk to Coach',
     messages: (data.messages ?? []).map((message: any) => ({
       role: message.role === 'assistant' ? 'assistant' : 'user',
       content: String(message.content ?? ''),
       createdAt: message.createdAt ?? new Date().toISOString(),
       consulted: message.consulted ?? undefined,
+      kind: message.kind === 'voice' ? 'voice' : undefined,
+      about: typeof message.about === 'string' ? message.about : undefined,
     })),
     createdAt: toDate(data.createdAt),
     updatedAt: toDate(data.updatedAt),
@@ -65,7 +71,7 @@ function fromFirestore(doc: FirebaseFirestore.DocumentSnapshot): CoachConversati
 /** A thread title taken from how the athlete opened it. */
 export function deriveTitle(firstMessage: string): string {
   const cleaned = firstMessage.replace(/\s+/g, ' ').trim();
-  if (!cleaned) return 'Coach chat';
+  if (!cleaned) return 'Talk to Coach';
   return cleaned.length > 60 ? `${cleaned.slice(0, 57)}…` : cleaned;
 }
 
@@ -124,13 +130,22 @@ export async function appendExchange(input: {
   userMessage: string;
   assistantMessage: string;
   consulted?: string[];
+  userKind?: 'text' | 'voice';
+  about?: string | null;
 }): Promise<string> {
   const db = getAdminDb();
   const collection = db.collection(COACH_CONVERSATIONS_COLLECTION);
   const now = new Date();
 
   const newMessages: StoredCoachMessage[] = [
-    { role: 'user', content: truncate(input.userMessage), createdAt: now.toISOString() },
+    {
+      role: 'user',
+      content: truncate(input.userMessage),
+      createdAt: now.toISOString(),
+      // Firestore rejects undefined, so optional fields are only set when present.
+      ...(input.userKind === 'voice' ? { kind: 'voice' as const } : {}),
+      ...(input.about ? { about: input.about } : {}),
+    },
     {
       role: 'assistant',
       content: truncate(input.assistantMessage),
