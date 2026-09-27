@@ -170,19 +170,35 @@ ${input.briefing}
     { role: 'user' as const, content: [{ text: input.message }] },
   ];
 
-  const response = await ai.generate({
-    // The fast model, deliberately. A coach reply is a few sentences grounded in
-    // a briefing that has already been assembled — the hard thinking happened in
-    // coach-context.ts, not here — and a reply that arrives in a second is worth
-    // more in a conversation than a better-argued one that takes five.
-    model: MODELS.fast,
-    messages,
-    tools: input.tools,
-    // Enough hops for the coach to look something up, follow it with a second
-    // lookup, and still answer; low enough that a confused turn can't spiral.
-    maxTurns: 6,
-    config: { temperature: 0.7 },
-  });
+  const generate = (model: string) =>
+    ai.generate({
+      // The fast model by default, deliberately. A coach reply is a few
+      // sentences grounded in a briefing that has already been assembled — the
+      // hard thinking happened in coach-context.ts, not here — and a reply that
+      // arrives in a second is worth more in a conversation than a
+      // better-argued one that takes five.
+      model,
+      messages,
+      tools: input.tools,
+      // Enough hops for the coach to look something up, follow it with a second
+      // lookup, and still answer; low enough that a confused turn can't spiral.
+      maxTurns: 6,
+      config: { temperature: 0.7 },
+    });
+
+  let response: Awaited<ReturnType<typeof generate>>;
+  try {
+    response = await generate(MODELS.fast);
+  } catch (error) {
+    // A model ID gets retired or overloaded far more often than both do at
+    // once. One retry on the other model keeps the coach answering, and the
+    // log says which one broke.
+    logger.error(
+      '[coach-chat] Fast model failed, retrying on the reasoning model:',
+      error instanceof Error ? error.message : String(error),
+    );
+    response = await generate(MODELS.reasoning);
+  }
 
   const answer = response.text?.trim();
   if (!answer) throw new Error('The coach did not return a reply.');

@@ -468,7 +468,13 @@ export function TalkToCoach({
         });
 
         const data = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(data.error || 'The coach could not answer that.');
+        if (!response.ok) {
+          throw new Error(
+            [data.error || 'The coach could not answer that.', data.detail && `(${data.detail})`]
+              .filter(Boolean)
+              .join(' '),
+          );
+        }
 
         setConversationId(data.conversationId ?? conversationId);
         if (data.snapshot) {

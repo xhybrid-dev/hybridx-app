@@ -100,7 +100,9 @@ export function useVoiceRecorder(options: {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     } catch {
       handlersRef.current.onError?.(
-        'Microphone access is off. Allow it in your settings to send voice notes.',
+        // In the phone app, an install from before voice notes has no
+        // microphone permission to grant at all — only an update fixes that.
+        "Microphone access is off. Allow it for HYBRIDX in your phone's settings — if it isn't listed there, update the app first.",
       );
       return;
     }
@@ -163,6 +165,12 @@ export async function transcribeRecording(
 
   const response = await fetcher('/api/ai/coach-voice', { method: 'POST', body: form });
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data.error || "Couldn't make out that voice note.");
+  if (!response.ok) {
+    throw new Error(
+      [data.error || "Couldn't make out that voice note.", data.detail && `(${data.detail})`]
+        .filter(Boolean)
+        .join(' '),
+    );
+  }
   return typeof data.transcript === 'string' ? data.transcript : '';
 }

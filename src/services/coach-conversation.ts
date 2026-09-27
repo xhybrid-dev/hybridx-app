@@ -13,6 +13,7 @@
 
 import { Timestamp } from 'firebase-admin/firestore';
 import { getAdminDb } from '@/lib/firebase-admin';
+import { logger } from '@/lib/logger';
 
 export const COACH_CONVERSATIONS_COLLECTION = 'coachConversations';
 
@@ -93,26 +94,38 @@ export async function getConversation(
 }
 
 export async function getLatestConversation(userId: string): Promise<CoachConversation | null> {
-  const snapshot = await getAdminDb()
-    .collection(COACH_CONVERSATIONS_COLLECTION)
-    .where('userId', '==', userId)
-    .orderBy('updatedAt', 'desc')
-    .limit(1)
-    .get();
-
-  if (snapshot.empty) return null;
-  return fromFirestore(snapshot.docs[0]);
+  const [latest] = await listConversations(userId, 1);
+  return latest ?? null;
 }
 
+/**
+ * The athlete's threads, most recently active first.
+ *
+ * Ordering server-side needs the userId+updatedAt index (firestore.indexes.json).
+ * If that index isn't live — it ships separately from the app, see CLAUDE.md —
+ * the ordered query throws, and every coach message would fail with it. So it
+ * falls back to an unordered read sorted here: a slower query beats a coach
+ * that can't answer.
+ */
 export async function listConversations(userId: string, limit = 20): Promise<CoachConversation[]> {
-  const snapshot = await getAdminDb()
+  const collection = getAdminDb()
     .collection(COACH_CONVERSATIONS_COLLECTION)
-    .where('userId', '==', userId)
-    .orderBy('updatedAt', 'desc')
-    .limit(limit)
-    .get();
+    .where('userId', '==', userId);
 
-  return snapshot.docs.map(fromFirestore);
+  try {
+    const snapshot = await collection.orderBy('updatedAt', 'desc').limit(limit).get();
+    return snapshot.docs.map(fromFirestore);
+  } catch (error) {
+    logger.warn(
+      '[coach-conversation] Ordered query failed (index missing?), falling back:',
+      error instanceof Error ? error.message : String(error),
+    );
+    const snapshot = await collection.limit(100).get();
+    return snapshot.docs
+      .map(fromFirestore)
+      .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())
+      .slice(0, limit);
+  }
 }
 
 function truncate(content: string): string {
