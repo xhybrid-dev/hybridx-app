@@ -1,6 +1,6 @@
 // src/app/api/ai/coach-chat/route.ts
 //
-// The Edge Coach endpoint.
+// The Talk to Coach endpoint — typed messages and transcribed voice notes alike.
 //
 // GET  — the athlete's most recent thread plus a snapshot of where their
 //        training currently stands, so the chat opens already knowing them.
@@ -14,7 +14,7 @@ import { NextResponse, after } from 'next/server';
 
 import { requireUser } from '@/lib/api-auth';
 import { logger } from '@/lib/logger';
-import { coachChat, type CoachMessage } from '@/ai/flows/coach-chat';
+import { coachChat, describeForModel, type CoachMessage } from '@/ai/flows/coach-chat';
 import { extractCoachNotes } from '@/ai/flows/extract-coach-notes';
 import { buildCoachContext, invalidateCoachContext } from '@/services/coach-context';
 import { getUser, updateUserAdmin } from '@/services/user-service';
@@ -69,6 +69,13 @@ export async function POST(request: Request) {
     const body = await request.json();
     const message = typeof body.message === 'string' ? body.message.trim() : '';
     const conversationId = typeof body.conversationId === 'string' ? body.conversationId : null;
+    const kind: 'text' | 'voice' = body.kind === 'voice' ? 'voice' : 'text';
+    // The session a message was sent from ("how did Engine Builder go?"), so
+    // "legs were gone" is read against the right workout.
+    const about =
+      typeof body.about === 'string' && body.about.trim()
+        ? body.about.replace(/\s+/g, ' ').trim().slice(0, 120)
+        : null;
 
     if (!message) {
       return NextResponse.json({ error: 'Message is required.' }, { status: 400 });
@@ -81,11 +88,16 @@ export async function POST(request: Request) {
     }
 
     // History comes from the stored thread rather than the request, so a client
-    // cannot put words in the coach's mouth by inventing prior turns.
-    const existing = conversationId ? await getConversation(auth.uid, conversationId) : null;
+    // cannot put words in the coach's mouth by inventing prior turns. With no
+    // thread named — a voice note from the dashboard, a question from a
+    // workout — it joins the athlete's ongoing conversation rather than
+    // starting a fresh one: talking to your coach is one running thread.
+    const existing = conversationId
+      ? await getConversation(auth.uid, conversationId)
+      : await getLatestConversation(auth.uid);
     const history: CoachMessage[] = (existing?.messages ?? []).map(stored => ({
       role: stored.role,
-      content: stored.content,
+      content: describeForModel(stored.content, stored.kind, stored.about),
     }));
 
     const result = await coachChat({
@@ -93,6 +105,8 @@ export async function POST(request: Request) {
       message,
       history,
       timeZone: auth.timeZone,
+      kind,
+      about,
     });
 
     const savedConversationId = await appendExchange({
@@ -101,6 +115,8 @@ export async function POST(request: Request) {
       userMessage: message,
       assistantMessage: result.answer,
       consulted: result.consulted,
+      userKind: kind,
+      about,
     });
 
     // Remember where they are, so the jobs that run without a browser behind
@@ -130,12 +146,12 @@ export async function POST(request: Request) {
       try {
         const existingNotes = await getActiveNotes(auth.uid);
         const writes = await extractCoachNotes({
-          athleteMessage: message,
+          athleteMessage: about ? `(About their session "${about}") ${message}` : message,
           coachReply: result.answer,
           existingNotes,
         });
         if (writes.length === 0) return;
-        const counts = await applyNoteWrites(auth.uid, writes, { source: 'chat' });
+        const counts = await applyNoteWrites(auth.uid, writes, { source: kind === 'voice' ? 'voice' : 'chat' });
         // The next turn must open with what was just remembered.
         invalidateCoachContext(auth.uid);
         logger.info(

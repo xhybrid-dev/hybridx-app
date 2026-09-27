@@ -153,7 +153,8 @@ const nextConfig: NextConfig = {
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-          { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
+          // Microphone for our own pages only: Talk to Coach records voice notes.
+          { key: 'Permissions-Policy', value: 'camera=(), microphone=(self), geolocation=()' },
           // REPORT-ONLY, deliberately. A CSP was previously omitted altogether
           // because it had not been validated against Firebase Auth, Stripe,
           // Strava and Google AI — which is a fair reason not to *enforce* one,

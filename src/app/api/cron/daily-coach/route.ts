@@ -15,7 +15,7 @@ import { getAdminDb } from '@/lib/firebase-admin';
 import { analyzeAndAdjust } from '@/ai/flows/analyze-and-adjust';
 import { mapWithLimit } from '@/lib/concurrency';
 import { logger } from '@/lib/logger';
-import { formatNotesForPrompt, getActiveNotes } from '@/services/coach-notes';
+import { activeTrainingPause, formatNotesForPrompt, getActiveNotes } from '@/services/coach-notes';
 import { sendPushToUser } from '@/lib/web-push';
 import { stripUndefined } from '@/lib/firestore-values';
 import { normaliseTimeZone } from '@/lib/program-day';
@@ -174,11 +174,14 @@ export async function GET(request: Request) {
       const todaysWorkout = planned[0];
       if (!todaysWorkout) return; // rest day today — nothing to ease
 
-      results.missed++;
-
       // What the athlete has told their coach, so a trip they mentioned is
       // treated as a trip rather than a lapse.
       const notes = await getActiveNotes(userId, now);
+      // They said they're off — ill, away, resting. Yesterday wasn't missed,
+      // it was planned, and today's session is not ours to rework under them.
+      if (activeTrainingPause(notes, now)) return;
+
+      results.missed++;
       const noteContext = formatNotesForPrompt(notes, now);
       const onABreak = notes.some(note => note.category === 'availability');
 

@@ -24,7 +24,7 @@ const REASONS: { value: SkipReason; label: string }[] = [
 const FOLLOW_UP: Record<SkipReason, string> = {
   time: "No problem — one missed session doesn't undo your training. If this week is busy, your coach can reshuffle it.",
   tired: 'Listening to your body is part of the plan. If it keeps happening, your coach can ease the load.',
-  ill: 'Rest up. Tell your coach how long you expect to be off and it will adjust what comes next.',
+  ill: 'Rest up. Tell your coach how long you expect to be off — reminders go quiet and your plan waits for you.',
   injured: "Don't train through it. Tell your coach what hurts and it will work around it.",
   other: 'Noted. Your next session is on the dashboard when you are ready.',
 };
@@ -66,6 +66,14 @@ export function WorkoutSkipDialog({
   const coachQuestion = confirmed
     ? `I skipped ${workoutTitle} today — ${REASONS.find(r => r.value === confirmed)?.label.toLowerCase()}. What should I do with the rest of my week?`
     : '';
+  // Ill or hurt, the useful part is what only the athlete knows — how long,
+  // what hurts — so the message is started for them rather than sent.
+  const coachHref =
+    confirmed === 'ill'
+      ? `/coach?about=${encodeURIComponent(workoutTitle)}&draft=${encodeURIComponent("I'm ill — ")}`
+      : confirmed === 'injured'
+        ? `/coach?about=${encodeURIComponent(workoutTitle)}&draft=${encodeURIComponent('Something hurts — ')}`
+        : `/coach?q=${encodeURIComponent(coachQuestion)}`;
 
   return (
     <Dialog open={open} onOpenChange={close}>
@@ -78,7 +86,7 @@ export function WorkoutSkipDialog({
             </DialogHeader>
             <DialogFooter className="flex-col gap-2 sm:flex-row">
               <Button asChild variant={confirmed === 'ill' || confirmed === 'injured' ? 'default' : 'outline'}>
-                <Link href={`/assistant?q=${encodeURIComponent(coachQuestion)}`}>
+                <Link href={coachHref}>
                   <MessageCircle className="mr-2 h-4 w-4" />
                   Tell your coach
                 </Link>

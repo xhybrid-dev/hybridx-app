@@ -3,7 +3,7 @@
 // What the coach currently remembers about the signed-in athlete.
 //
 // A plain Firestore read with no model call, so the surfaces that aren't the
-// chat — the dashboard greeting, the daily tip, the journal response — can be
+// chat — the dashboard greeting, the daily tip — can be
 // written with the same memory the conversation has, without paying for it.
 //
 // DELETE lets the athlete drop a note. That matters: memory the athlete cannot
@@ -30,6 +30,7 @@ export async function GET(request: Request) {
         category: note.category,
         content: note.content,
         expiresAt: note.expiresAt ? note.expiresAt.toISOString() : null,
+        pausesTraining: note.pausesTraining,
       })),
       // The same rendering the coach's own prompts use, so a caller passing
       // this into a flow and the chat cannot drift apart.
@@ -83,6 +84,7 @@ export async function POST(request: Request) {
         category: note.category,
         content: note.content,
         expiresAt: note.expiresAt ? note.expiresAt.toISOString() : null,
+        pausesTraining: note.pausesTraining,
       })),
     });
   } catch (error) {

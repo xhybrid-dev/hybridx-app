@@ -899,7 +899,7 @@ export default function DashboardPage() {
               {todaysWorkout?.workout && !programStartsInFuture && !isWorkoutCompleted && (
                 <Button variant="ghost" className="w-full" asChild>
                     <Link
-                        href={`/assistant?q=${encodeURIComponent(
+                        href={`/coach?q=${encodeURIComponent(
                             `Talk me through today's ${todaysWorkout.workout.title} — how should I approach it?`,
                         )}`}
                     >

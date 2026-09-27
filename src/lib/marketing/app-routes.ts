@@ -32,9 +32,8 @@ export const APP_MARKETING_PATHS = [
   '/training',
   '/programs',
   '/calendar',
-  '/journal',
   '/activity-feed',
-  '/assistant',
+  '/coach',
   '/subscription',
   '/articles',
   '/profile',
@@ -42,7 +41,7 @@ export const APP_MARKETING_PATHS = [
 ] as const;
 
 /** Path prefixes covering a dynamic segment, e.g. /programs/abc123/view. */
-export const APP_MARKETING_PATH_PREFIXES = ['/programs/', '/articles/', '/journal/'] as const;
+export const APP_MARKETING_PATH_PREFIXES = ['/programs/', '/articles/'] as const;
 
 export function isKnownAppPath(pathname: string): boolean {
   const trimmed = pathname.replace(/\/$/, '') || '/';

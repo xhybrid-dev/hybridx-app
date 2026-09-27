@@ -22,6 +22,7 @@ import {
   formatTrainingSummaryForAI,
 } from '@/services/training-load-service';
 import { getUser } from '@/services/user-service';
+import { listConversations } from '@/services/coach-conversation';
 import {
   buildSchedule,
   getEffectiveProgram,
@@ -323,23 +324,41 @@ export function buildCoachTools(
 
   const journalTool = ai.dynamicTool(
     {
-      name: 'getJournalEntries',
+      name: 'getAthleteNotes',
       description:
-        "Read the athlete's training journal — their own words on how sessions felt, what is bothering them, and what they are pleased with. Use when a question touches motivation, confidence, niggles or life context.",
+        "Read further back through what the athlete has told you — their typed notes and voice notes to you, plus anything from the journal they used to keep. Their own words on how sessions felt, what is bothering them, and life around training. Use when a question touches motivation, confidence, niggles or life context from before the conversation in front of you.",
       inputSchema: z.object({
         limit: z.number().optional().describe('How many entries to return, newest first. Default 10, max 30.'),
       }),
       outputSchema: z.string(),
     },
     async input => {
-      record('journal');
-      const entries = await getRecentJournalEntries(
-        userId,
-        Math.min(Math.max(input.limit ?? 10, 1), 30),
-        timeZone,
+      record('your notes');
+      const limit = Math.min(Math.max(input.limit ?? 10, 1), 30);
+      const [conversations, journal] = await Promise.all([
+        listConversations(userId, 5).catch(() => []),
+        getRecentJournalEntries(userId, limit, timeZone).catch(() => []),
+      ]);
+
+      const said = conversations.flatMap(conversation =>
+        conversation.messages
+          .filter(message => message.role === 'user')
+          .map(message => {
+            const at = new Date(message.createdAt);
+            const how = message.kind === 'voice' ? 'voice note' : 'message';
+            const about = message.about ? `, about ${message.about}` : '';
+            const text = message.content.length > 600 ? `${message.content.slice(0, 597)}…` : message.content;
+            return { at, line: `${format(at, 'EEE d MMM yyyy')} (${how}${about}): "${text}"` };
+          }),
       );
-      if (entries.length === 0) return 'The athlete has not written any journal entries.';
-      return entries.map(entry => summariseJournalEntry(entry, 600)).join('\n');
+      const written = journal.map(entry => ({
+        at: entry.date,
+        line: `Journal — ${summariseJournalEntry(entry, 600)}`,
+      }));
+
+      const all = [...said, ...written].sort((a, b) => b.at.getTime() - a.at.getTime()).slice(0, limit);
+      if (all.length === 0) return 'The athlete has not sent you any notes yet.';
+      return all.map(entry => `- ${entry.line}`).join('\n');
     },
   );
 
