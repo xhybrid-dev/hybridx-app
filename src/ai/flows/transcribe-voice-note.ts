@@ -10,6 +10,7 @@
 // Server-only: called from /api/ai/coach-voice.
 
 import { ai, MODELS } from '@/ai/genkit';
+import { logger } from '@/lib/logger';
 
 /** Container types browsers record in, and that the model accepts. */
 export const VOICE_NOTE_MIME_TYPES = [
@@ -42,14 +43,27 @@ const PROMPT = `Transcribe this voice note from an athlete to their training coa
  * when the model call itself fails, so the route can say so.
  */
 export async function transcribeVoiceNote(audio: Buffer, mimeType: string): Promise<string> {
-  const { text } = await ai.generate({
-    model: MODELS.fast,
-    prompt: [
-      { media: { url: `data:${mimeType};base64,${audio.toString('base64')}`, contentType: mimeType } },
-      { text: PROMPT },
-    ],
-    config: { temperature: 0 },
-  });
+  const generate = (model: string) =>
+    ai.generate({
+      model,
+      prompt: [
+        { media: { url: `data:${mimeType};base64,${audio.toString('base64')}`, contentType: mimeType } },
+        { text: PROMPT },
+      ],
+      config: { temperature: 0 },
+    });
+
+  let text: string;
+  try {
+    ({ text } = await generate(MODELS.fast));
+  } catch (error) {
+    // Same fallback as the coach itself: one retry on the other model.
+    logger.error(
+      '[transcribe-voice-note] Fast model failed, retrying on the reasoning model:',
+      error instanceof Error ? error.message : String(error),
+    );
+    ({ text } = await generate(MODELS.reasoning));
+  }
 
   const transcript = (text ?? '').trim();
   if (!transcript || /^\[no speech\]$/i.test(transcript)) return '';

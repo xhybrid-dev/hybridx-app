@@ -173,13 +173,24 @@ export async function POST(request: Request) {
       snapshot: result.snapshot,
     });
   } catch (error) {
-    logger.error(
-      '[coach-chat] POST failed:',
-      error instanceof Error ? error.message : String(error),
-    );
+    const detail = error instanceof Error ? error.message : String(error);
+    logger.error('[coach-chat] POST failed:', detail);
     return NextResponse.json(
-      { error: 'The coach could not answer that just now. Try again in a moment.' },
+      {
+        error: 'The coach could not answer that just now. Try again in a moment.',
+        // Admins see why, in the chat itself — otherwise a broken model or a
+        // missing index is only visible in Cloud Logging.
+        ...((await isAdmin(auth.uid)) ? { detail: detail.slice(0, 500) } : {}),
+      },
       { status: 500 },
     );
+  }
+}
+
+async function isAdmin(uid: string): Promise<boolean> {
+  try {
+    return !!(await getUser(uid))?.isAdmin;
+  } catch {
+    return false;
   }
 }

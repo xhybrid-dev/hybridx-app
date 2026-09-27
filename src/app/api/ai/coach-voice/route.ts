@@ -13,6 +13,7 @@ import { NextResponse } from 'next/server';
 
 import { requireUser } from '@/lib/api-auth';
 import { logger } from '@/lib/logger';
+import { getUser } from '@/services/user-service';
 import { normaliseVoiceMimeType, transcribeVoiceNote } from '@/ai/flows/transcribe-voice-note';
 
 /** A few minutes of compressed speech is well under this. */
@@ -47,12 +48,19 @@ export async function POST(request: Request) {
     const transcript = await transcribeVoiceNote(Buffer.from(await file.arrayBuffer()), mimeType);
     return NextResponse.json({ transcript });
   } catch (error) {
-    logger.error(
-      '[coach-voice] Transcription failed:',
-      error instanceof Error ? error.message : String(error),
-    );
+    const detail = error instanceof Error ? error.message : String(error);
+    logger.error('[coach-voice] Transcription failed:', detail);
+    let admin = false;
+    try {
+      admin = !!(await getUser(auth.uid))?.isAdmin;
+    } catch {
+      /* not worth failing over */
+    }
     return NextResponse.json(
-      { error: "Couldn't make out that voice note just now. Try again, or type it instead." },
+      {
+        error: "Couldn't make out that voice note just now. Try again, or type it instead.",
+        ...(admin ? { detail: detail.slice(0, 500) } : {}),
+      },
       { status: 500 },
     );
   }
