@@ -43,6 +43,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useDebouncedCallback } from 'use-debounce';
 import { cn } from '@/lib/utils';
 import { logger } from '@/lib/logger';
+import { moveSession } from '@/lib/schedule-move';
 
 const MonthCalendarWidget = lazy(() => import('@/components/ui/calendar').then(mod => ({ default: mod.Calendar })));
 const LinkStravaActivityDialog = lazy(() => import('@/components/link-strava-activity-dialog').then(mod => ({ default: mod.LinkStravaActivityDialog })));
@@ -55,6 +56,12 @@ interface DaySlot {
   sessions: WorkoutSession[];
   isToday: boolean;
   isPast: boolean;
+  /**
+   * An earlier day this week with nothing finished on it. Its sessions can
+   * still be dragged forward — yesterday's missed session moved to today —
+   * though nothing can be dropped onto it.
+   */
+  canMoveFrom: boolean;
 }
 
 function isRestDayWorkout(workout: WorkoutDay): boolean {
@@ -103,6 +110,7 @@ function buildDaySlots(program: Program, startDate: Date, sessions: WorkoutSessi
   sessionsByDate.forEach(list => list.sort((a, b) => (a.sessionIndex ?? 0) - (b.sessionIndex ?? 0)));
 
   const today0 = startOfDay(new Date());
+  const weekStart = startOfWeek(today0, { weekStartsOn: 1 });
   const slots: DaySlot[] = [];
   let cursor = new Date(rangeStart);
   while (cursor <= rangeEnd) {
@@ -114,13 +122,17 @@ function buildDaySlots(program: Program, startDate: Date, sessions: WorkoutSessi
       ? persisted.map(s => s.workoutDetails).filter((w): w is WorkoutDay => !!w)
       : getWorkoutForDay(program, startDate, cursor).sessions;
 
+    const isPastDay = cursor < today0;
     slots.push({
       date: new Date(cursor),
       dateKey,
       workouts,
       sessions: persisted ?? [],
       isToday: isSameDay(cursor, today0),
-      isPast: cursor < today0,
+      isPast: isPastDay,
+      // A day with anything finished on it is left alone: the save skips such
+      // days, so moving its other session out would duplicate it.
+      canMoveFrom: isPastDay && cursor >= weekStart && !(persisted ?? []).some(s => !!s.finishedAt),
     });
     cursor = addDays(cursor, 1);
   }
@@ -139,7 +151,7 @@ function WeeklyScheduleView() {
   const [allSlots, setAllSlots] = useState<DaySlot[]>([]);
   const [originalByKey, setOriginalByKey] = useState<Map<string, WorkoutDay[]>>(new Map());
   const [changedKeys, setChangedKeys] = useState<Set<string>>(new Set());
-  const [visibleFromDate, setVisibleFromDate] = useState<Date>(() => startOfDay(new Date()));
+  const [visibleFromDate, setVisibleFromDate] = useState<Date>(() => startOfWeek(startOfDay(new Date()), { weekStartsOn: 1 }));
   const [activeDrag, setActiveDrag] = useState<WorkoutDay | null>(null);
   const [detailWorkout, setDetailWorkout] = useState<WorkoutDay | null>(null);
   const [markingDoneKey, setMarkingDoneKey] = useState<string | null>(null);
@@ -198,7 +210,9 @@ function WeeklyScheduleView() {
       setAllSlots(slots);
       setOriginalByKey(new Map(slots.map(s => [s.dateKey, s.workouts])));
       setChangedKeys(new Set());
-      setVisibleFromDate(today0);
+      // Open on the whole of this week, so a session missed on Monday is
+      // there to be dragged to today without scrolling back for it.
+      setVisibleFromDate(startOfWeek(today0, { weekStartsOn: 1 }));
     } catch (error) {
       console.error('Error fetching calendar data:', error);
     } finally {
@@ -278,33 +292,10 @@ function WeeklyScheduleView() {
     const [sourceDateKey, sourceIndexStr] = String(active.id).split('::');
     const sourceIndex = Number(sourceIndexStr);
     const targetDateKey = String(over.id);
-    if (sourceDateKey === targetDateKey) return;
-
-    setAllSlots(prev => {
-      const sourceSlot = prev.find(d => d.dateKey === sourceDateKey);
-      const targetSlot = prev.find(d => d.dateKey === targetDateKey);
-      if (!sourceSlot || !targetSlot || sourceIndex < 0 || sourceIndex >= sourceSlot.workouts.length) return prev;
-
-      const movedWorkout = sourceSlot.workouts[sourceIndex];
-      const remainingSource = sourceSlot.workouts.filter((_, i) => i !== sourceIndex);
-      // A day whose only content is a "Rest" placeholder is treated as empty — dropping something
-      // real there replaces the placeholder instead of sitting alongside it.
-      const targetContent = (targetSlot.workouts.length === 1 && isRestDayWorkout(targetSlot.workouts[0]))
-        ? []
-        : targetSlot.workouts;
-
-      // Straight swap when it's an unambiguous one-for-one trade; otherwise the moved workout
-      // just joins the target day without evicting whatever else is already scheduled there.
-      const isSimpleSwap = remainingSource.length === 0 && targetContent.length === 1;
-      const newSourceWorkouts = isSimpleSwap ? [targetContent[0]] : remainingSource;
-      const newTargetWorkouts = isSimpleSwap ? [movedWorkout] : [...targetContent, movedWorkout];
-
-      return prev.map(d => {
-        if (d.dateKey === sourceDateKey) return { ...d, workouts: newSourceWorkouts };
-        if (d.dateKey === targetDateKey) return { ...d, workouts: newTargetWorkouts };
-        return d;
-      });
-    });
+    // Nothing is ever moved into the past — only out of it. See lib/schedule-move.ts.
+    const next = moveSession(allSlots, sourceDateKey, sourceIndex, targetDateKey);
+    if (!next) return;
+    setAllSlots(next);
     setChangedKeys(prev => new Set(prev).add(sourceDateKey).add(targetDateKey));
   };
 
@@ -372,9 +363,10 @@ function WeeklyScheduleView() {
   const { leadingSlots, weekChunks } = useMemo(() => {
     if (visibleSlots.length === 0) return { leadingSlots: [] as DaySlot[], weekChunks: [] as DaySlot[][] };
     const today0 = startOfDay(new Date());
+    const currentWeekStart = startOfWeek(today0, { weekStartsOn: 1 });
     const currentWeekEnd = endOfWeek(today0, { weekStartsOn: 1 });
-    const leading = visibleSlots.filter(s => s.date >= today0 && s.date <= currentWeekEnd);
-    const others = visibleSlots.filter(s => s.date < today0 || s.date > currentWeekEnd);
+    const leading = visibleSlots.filter(s => s.date >= currentWeekStart && s.date <= currentWeekEnd);
+    const others = visibleSlots.filter(s => s.date < currentWeekStart || s.date > currentWeekEnd);
 
     const groupsMap = new Map<string, DaySlot[]>();
     others.forEach(s => {
@@ -418,7 +410,7 @@ function WeeklyScheduleView() {
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="space-y-6 max-w-2xl mx-auto pb-24">
         <div className="flex items-center justify-between gap-4">
-          <p className="text-sm text-muted-foreground">Long-press and drag a workout onto another day to reschedule it.</p>
+          <p className="text-sm text-muted-foreground">Long-press and drag a workout onto another day to reschedule it — including one you missed earlier this week.</p>
           <Button onClick={handleSave} disabled={changedKeys.size === 0 || saving} className={cn(changedKeys.size === 0 && 'opacity-50')}>
             {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
             Save{changedKeys.size > 0 ? ` (${changedKeys.size})` : ''}
@@ -1282,6 +1274,7 @@ function DayRow({ day, unitSystem, onOpenDetail, onMarkDone, markingDoneKey }: {
               unitSystem={unitSystem}
               isToday={day.isToday}
               isPast={day.isPast}
+              canMoveFrom={day.canMoveFrom}
               finishedSession={day.sessions.find(s => (s.sessionIndex ?? 0) === idx)}
               onOpenDetail={() => onOpenDetail(workout)}
               onMarkDone={() => onMarkDone(day.dateKey, idx, workout)}
@@ -1294,13 +1287,14 @@ function DayRow({ day, unitSystem, onOpenDetail, onMarkDone, markingDoneKey }: {
   );
 }
 
-function WorkoutCard({ dateKey, index, workout, unitSystem, isToday, isPast, finishedSession, onOpenDetail, onMarkDone, isMarkingDone }: {
+function WorkoutCard({ dateKey, index, workout, unitSystem, isToday, isPast, canMoveFrom, finishedSession, onOpenDetail, onMarkDone, isMarkingDone }: {
   dateKey: string;
   index: number;
   workout: WorkoutDay;
   unitSystem?: UnitSystem;
   isToday: boolean;
   isPast: boolean;
+  canMoveFrom: boolean;
   finishedSession?: WorkoutSession;
   onOpenDetail: () => void;
   onMarkDone: () => void;
@@ -1310,7 +1304,7 @@ function WorkoutCard({ dateKey, index, workout, unitSystem, isToday, isPast, fin
   const isDone = !!finishedSession?.finishedAt && !finishedSession.skipped;
   const isSkipped = !!finishedSession?.skipped;
   const isLocked = !!finishedSession?.finishedAt;
-  const isDraggable = !isPast && !isLocked && !isRest;
+  const isDraggable = (!isPast || canMoveFrom) && !isLocked && !isRest;
 
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `${dateKey}::${index}`,
