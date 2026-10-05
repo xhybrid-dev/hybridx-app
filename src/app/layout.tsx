@@ -6,6 +6,7 @@ import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { ThemeProvider } from '@/contexts/theme-context';
 import { AuthProvider } from '@/components/AuthProvider';
+import { NativeAppBridge } from '@/components/native-app-bridge';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -73,6 +74,7 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased">
         <ThemeProvider>
+          <NativeAppBridge />
           <AuthProvider>
             {children}
             <Toaster />

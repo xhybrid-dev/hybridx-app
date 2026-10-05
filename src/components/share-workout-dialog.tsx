@@ -1,5 +1,6 @@
 'use client';
 import { logger } from '@/lib/logger';
+import { isShareCancelled, shareContent } from '@/lib/native';
 
 import { useState, useCallback } from 'react';
 import { Share2, Copy, Check } from 'lucide-react';
@@ -101,18 +102,15 @@ export function ShareWorkoutDialog({ session, trigger }: ShareWorkoutDialogProps
   };
 
   const handleShare = async () => {
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: 'HYBRIDX Workout',
-          text: `Just crushed a ${session.workoutTitle} workout! 💪`,
-          url: 'https://hybridx.club',
-        });
-      } catch (error) {
-        logger.error('Error sharing:', error);
-      }
-    } else {
-      handleCopyText();
+    try {
+      const shared = await shareContent({
+        title: 'HYBRIDX Workout',
+        text: `Just crushed a ${session.workoutTitle} workout! 💪`,
+        url: 'https://hybridx.club',
+      });
+      if (!shared) handleCopyText();
+    } catch (error) {
+      if (!isShareCancelled(error)) logger.error('Error sharing:', error);
     }
   };
 

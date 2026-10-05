@@ -1,6 +1,7 @@
 // src/components/strava-upload-button.tsx
 'use client';
 import { logger } from '@/lib/logger';
+import { openExternal } from '@/lib/native';
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -91,7 +92,7 @@ export function StravaUploadButton({
 
   const openInStrava = () => {
     if (uploadedStravaId) {
-      window.open(`https://www.strava.com/activities/${uploadedStravaId}`, '_blank');
+      void openExternal(`https://www.strava.com/activities/${uploadedStravaId}`);
     }
   };
 

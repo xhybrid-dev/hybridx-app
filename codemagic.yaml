@@ -18,10 +18,10 @@ workflows:
     scripts:
       - name: Install dependencies
         script: |
-          npm install
-      - name: Build Next.js app
-        script: |
-          npm run build
+          # Only the Capacitor packages are used here. The apps load the live site
+          # (server.url), and webDir is the static native-shell/, so there is no
+          # Next.js build in these workflows.
+          npm ci
       - name: Patch Capacitor plugins for Java 17
         script: |
           # Patch capacitor-android
@@ -38,12 +38,6 @@ workflows:
           sed -i '' 's/JavaVersion.VERSION_21/JavaVersion.VERSION_17/g' node_modules/@capacitor/status-bar/android/build.gradle 2>/dev/null || \
           sed -i 's/JavaVersion.VERSION_21/JavaVersion.VERSION_17/g' node_modules/@capacitor/status-bar/android/build.gradle
           echo "Patched capacitor-status-bar to use Java 17"
-      - name: Install Capacitor CLI
-        script: |
-          npm install -g @capacitor/cli
-      - name: Create assets directory
-        script: |
-          mkdir -p android/app/src/main/assets
       - name: Sync Capacitor
         script: |
           npx cap sync android
@@ -67,7 +61,7 @@ workflows:
     publishing:
       email:
         recipients:
-          - your-email@example.com
+          - training@hybridx.club
         notify:
           success: true
           failure: true
@@ -94,10 +88,10 @@ workflows:
     scripts:
       - name: Install dependencies
         script: |
-          npm install
-      - name: Build Next.js app
-        script: |
-          npm run build
+          # Only the Capacitor packages are used here. The apps load the live site
+          # (server.url), and webDir is the static native-shell/, so there is no
+          # Next.js build in these workflows.
+          npm ci
       - name: Patch Capacitor plugins for Java 17
         script: |
           # Patch capacitor-android
@@ -114,12 +108,6 @@ workflows:
           sed -i '' 's/JavaVersion.VERSION_21/JavaVersion.VERSION_17/g' node_modules/@capacitor/status-bar/android/build.gradle 2>/dev/null || \
           sed -i 's/JavaVersion.VERSION_21/JavaVersion.VERSION_17/g' node_modules/@capacitor/status-bar/android/build.gradle
           echo "Patched capacitor-status-bar to use Java 17"
-      - name: Install Capacitor CLI
-        script: |
-          npm install -g @capacitor/cli
-      - name: Create assets directory
-        script: |
-          mkdir -p android/app/src/main/assets
       - name: Sync Capacitor
         script: |
           npx cap sync android
@@ -139,6 +127,18 @@ workflows:
           echo "CM_KEYSTORE_PASSWORD=$CM_KEYSTORE_PASSWORD" >> "$CM_BUILD_DIR/android/gradle.properties"
           echo "CM_KEY_ALIAS=$CM_KEY_ALIAS" >> "$CM_BUILD_DIR/android/gradle.properties"
           echo "CM_KEY_PASSWORD=$CM_KEY_PASSWORD" >> "$CM_BUILD_DIR/android/gradle.properties"
+      - name: Set version from Google Play and the tag
+        script: |
+          # Every upload needs a higher versionCode than anything already on Play.
+          LATEST=$(google-play get-latest-build-number --package-name "$PACKAGE_NAME" || true)
+          if [ -n "$LATEST" ]; then
+            echo "ANDROID_VERSION_CODE=$((LATEST + 1))" >> "$CM_ENV"
+            echo "Play's latest versionCode is $LATEST; building $((LATEST + 1))"
+          else
+            echo "Could not read Play's latest versionCode; using the one in android/app/build.gradle"
+          fi
+          # Tag v1.2.3 -> versionName 1.2.3
+          if [ -n "$CM_TAG" ]; then echo "ANDROID_VERSION_NAME=${CM_TAG#v}" >> "$CM_ENV"; fi
       - name: Build Android Release AAB
         script: |
           cd android
@@ -150,7 +150,7 @@ workflows:
     publishing:
       email:
         recipients:
-          - your-email@example.com
+          - training@hybridx.club
         notify:
           success: true
           failure: true
@@ -169,8 +169,7 @@ workflows:
         XCODE_WORKSPACE: "App.xcworkspace"
         XCODE_SCHEME: "App"
         BUNDLE_ID: "club.hybridx.app"
-        APP_STORE_APP_ID: YOUR_APP_STORE_ID # Replace with your App Store Connect app ID
-      xcode: 15.4
+      xcode: latest
       node: 20
       cocoapods: default
     triggering:
@@ -182,24 +181,27 @@ workflows:
     scripts:
       - name: Install dependencies
         script: |
-          npm install
-      - name: Build Next.js app
+          # Only the Capacitor packages are used here. The apps load the live site
+          # (server.url), and webDir is the static native-shell/, so there is no
+          # Next.js build in these workflows.
+          npm ci
+      - name: Add Firebase config for push (if provided)
         script: |
-          npm run build
-      - name: Install Capacitor CLI
-        script: |
-          npm install -g @capacitor/cli
-      - name: Create assets directory
-        script: |
-          mkdir -p ios/App/App/public
+          # Optional: a base64 GOOGLE_SERVICE_INFO_PLIST variable in Codemagic, as an
+          # alternative to committing ios/App/App/GoogleService-Info.plist.
+          if [ -n "$GOOGLE_SERVICE_INFO_PLIST" ]; then
+            echo "$GOOGLE_SERVICE_INFO_PLIST" | base64 --decode > ios/App/App/GoogleService-Info.plist
+          fi
       - name: Sync Capacitor
         script: |
           npx cap sync ios
       - name: Set build number
         script: |
           cd ios/App
-          BUILD_NUMBER=$(($(app-store-connect get-latest-testflight-build-number "$APP_STORE_APP_ID") + 1))
-          agvtool new-version -all $BUILD_NUMBER
+          APP_STORE_APP_ID=$(app-store-connect apps list --bundle-id-identifier "$BUNDLE_ID" --strict-match-identifier --json | jq -r '.[0].id')
+          # The very first build has nothing on TestFlight yet, so start from 0.
+          LATEST=$(app-store-connect get-latest-testflight-build-number "$APP_STORE_APP_ID" || echo 0)
+          agvtool new-version -all $((LATEST + 1))
       - name: Set up code signing settings on Xcode project
         script: |
           xcode-project use-profiles
@@ -216,7 +218,7 @@ workflows:
     publishing:
       email:
         recipients:
-          - your-email@example.com
+          - training@hybridx.club
         notify:
           success: true
           failure: true

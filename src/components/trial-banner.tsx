@@ -7,6 +7,7 @@ import { useUserProfile } from '@/contexts/user-context';
 import { getTrialDaysLeft } from '@/lib/trial';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useIsNativeApp } from '@/hooks/use-native-app';
 
 /**
  * Persistent trial-countdown banner shown on the dashboard.
@@ -18,6 +19,9 @@ import { cn } from '@/lib/utils';
  */
 export function TrialBanner({ when }: { when?: 'urgent' | 'calm' } = {}) {
   const { user, loading } = useUserProfile();
+  // The apps show the countdown only: no price or subscribe button (store
+  // billing rules, see useIsNativeApp).
+  const isNativeApp = useIsNativeApp();
 
   if (loading || !user) return null;
   // Only relevant while actually on a trial.
@@ -50,16 +54,20 @@ export function TrialBanner({ when }: { when?: 'urgent' | 'calm' } = {}) {
               ? `${daysLeft} day${daysLeft !== 1 ? 's' : ''} left in your free trial`
               : 'Your free trial has ended'}
           </p>
-          <p className="text-sm text-muted-foreground">
-            Keep your AI-tailored plans, race planner and progress tracking — just £5/month.
-          </p>
+          {!isNativeApp && (
+            <p className="text-sm text-muted-foreground">
+              Keep your AI-tailored plans, race planner and progress tracking — just £5/month.
+            </p>
+          )}
         </div>
       </div>
-      <Button asChild variant={urgent ? 'destructive' : 'accent'} className="shrink-0">
-        <Link href="/subscription">
-          {daysLeft > 0 ? 'Subscribe & keep access' : 'Subscribe now'}
-        </Link>
-      </Button>
+      {!isNativeApp && (
+        <Button asChild variant={urgent ? 'destructive' : 'accent'} className="shrink-0">
+          <Link href="/subscription">
+            {daysLeft > 0 ? 'Subscribe & keep access' : 'Subscribe now'}
+          </Link>
+        </Button>
+      )}
     </div>
   );
 }

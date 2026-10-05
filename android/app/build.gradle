@@ -13,8 +13,10 @@ android {
         applicationId "club.hybridx.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 3
-        versionName "1.0.2"
+        // Codemagic's release workflow sets these from Google Play's latest build and
+        // the git tag; local builds use the fallbacks.
+        versionCode (System.getenv('ANDROID_VERSION_CODE') ?: '4').toInteger()
+        versionName System.getenv('ANDROID_VERSION_NAME') ?: "1.0.3"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.

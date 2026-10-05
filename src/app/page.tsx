@@ -1,6 +1,6 @@
 
 import { redirect } from 'next/navigation';
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
@@ -64,15 +64,23 @@ export default async function WelcomePage() {
   const sessionCookie = cookieStore.get('__session')?.value;
 
   if (sessionCookie) {
+    let valid = false;
     try {
-      const adminAuth = getAdminAuth();
-      await adminAuth.verifySessionCookie(sessionCookie, true);
-      console.log('✅ [WelcomePage] Valid session found, redirecting to dashboard');
-      redirect('/dashboard');
-    } catch (error) {
+      await getAdminAuth().verifySessionCookie(sessionCookie, true);
+      valid = true;
+    } catch {
       console.log('⚠️ [WelcomePage] Session cookie found but invalid or expired');
     }
+    // Outside the try: redirect() works by throwing, and the catch above used to
+    // swallow it, so signed-in visitors were never sent on to their dashboard.
+    if (valid) redirect('/dashboard');
   }
+
+  // The iOS/Android apps (appendUserAgent in capacitor.config.ts) skip the
+  // marketing page: it shows prices, which store billing rules don't allow in
+  // an app. Login links to sign-up.
+  const userAgent = (await headers()).get('user-agent') ?? '';
+  if (userAgent.includes('HYBRIDXApp/')) redirect('/login');
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
