@@ -16,6 +16,7 @@ Builds run on Codemagic (`codemagic.yaml`).
 - **Back button (Android):** closes an open dialog or menu first, then goes back
   a page, and exits only from the first page (`src/components/native-app-bridge.tsx`).
 - **Status bar:** icon colour follows the app's light/dark theme.
+- **iOS swipe back:** a swipe in from the left edge goes back a page (`MainViewController` in `AppDelegate.swift`).
 - **Other websites:** Capacitor opens other domains in the phone's browser.
   Strava and Garmin sign-in are the exception (`allowNavigation` in
   `capacitor.config.ts`) so their OAuth redirect returns to the logged-in app.
@@ -72,11 +73,15 @@ One-time setup:
 
 ## Store policy watch-outs
 
-- **Digital subscriptions.** The subscription page sells through Stripe.
-  Apple (3.1.1) and Google Play billing policy generally require their own
-  in-app purchase for digital subscriptions sold inside the app. Either hide
-  purchasing in the native apps (users subscribe on the web) or add in-app
-  purchases. Decide before submitting to Apple.
+- **Digital subscriptions.** Apple (3.1.1) and Google Play billing policy
+  require their own in-app purchase for digital subscriptions sold in an app.
+  The apps therefore never sell: no prices, no subscribe or resume buttons, and
+  the marketing page is skipped (`useIsNativeApp`, and the `HYBRIDXApp/` user
+  agent check in `src/app/page.tsx`). Members who subscribed on the website are
+  recognised by their account; pause and cancel stay available. Apple can still
+  ask for in-app purchase for a paid service with no way to buy in the app. If
+  review insists, the fix is store billing (e.g. RevenueCat) granting the same
+  entitlement Stripe sets.
 - **Apple 4.2 (minimum functionality).** Apps that only wrap a website get
   rejected. Point reviewers at the native features: push reminders, on-device
   workout reminders, voice notes to the coach.

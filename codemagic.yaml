@@ -185,6 +185,13 @@ workflows:
           # (server.url), and webDir is the static native-shell/, so there is no
           # Next.js build in these workflows.
           npm ci
+      - name: Add Firebase config for push (if provided)
+        script: |
+          # Optional: a base64 GOOGLE_SERVICE_INFO_PLIST variable in Codemagic, as an
+          # alternative to committing ios/App/App/GoogleService-Info.plist.
+          if [ -n "$GOOGLE_SERVICE_INFO_PLIST" ]; then
+            echo "$GOOGLE_SERVICE_INFO_PLIST" | base64 --decode > ios/App/App/GoogleService-Info.plist
+          fi
       - name: Sync Capacitor
         script: |
           npx cap sync ios

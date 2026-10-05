@@ -36,9 +36,11 @@ remote-notification background mode are in place. Still needed, in accounts:
 - Apple Developer → Keys → create an APNs key (.p8), then Firebase console →
   Project settings → Cloud Messaging → Apple app configuration → upload it.
 - Firebase console → Project settings → add an iOS app for `club.hybridx.app`
-  if there isn't one, download `GoogleService-Info.plist`, and add it to the
-  **App** target in Xcode (drag into `ios/App/App`, tick "Copy items" and the
-  App target). Commit it — like `google-services.json`, it is not a secret.
+  if there isn't one and download `GoogleService-Info.plist`. Either commit it
+  as `ios/App/App/GoogleService-Info.plist` (like `google-services.json`, it is
+  not a secret) or store it base64-encoded as `GOOGLE_SERVICE_INFO_PLIST` in
+  Codemagic. A build phase in the Xcode project bundles it when present, so
+  no Xcode changes are needed.
 
 Until the plist is in the bundle, `AppDelegate` skips Firebase and hands back
 the raw 64-character APNs token. The client detects that

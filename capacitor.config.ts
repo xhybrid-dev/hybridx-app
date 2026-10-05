@@ -18,11 +18,17 @@ const config: CapacitorConfig = {
     // OAuth redirect lands back here, logged in.
     allowNavigation: ['www.strava.com', 'connect.garmin.com', 'sso.garmin.com'],
   },
+  // Lets the server recognise the apps (src/app/page.tsx sends them past the
+  // marketing page). Keep the "HYBRIDXApp/" prefix in sync with that check.
+  appendUserAgent: 'HYBRIDXApp/1',
   android: {
     allowMixedContent: false, // All traffic over HTTPS
   },
   ios: {
-    contentInset: 'automatic',
+    // The layout pads itself for the notch and home bar with env(safe-area-inset-*)
+    // (viewportFit: 'cover'), exactly as the home-screen web app does. 'automatic'
+    // would make iOS inset the page as well, doubling the gap under the status bar.
+    contentInset: 'never',
   },
   plugins: {
     StatusBar: {

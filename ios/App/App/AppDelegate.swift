@@ -78,3 +78,14 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
 }
+
+/// The app's root view controller (set in Main.storyboard). It lives in this
+/// file so it compiles without another Xcode project entry.
+class MainViewController: CAPBridgeViewController {
+    override func capacitorDidLoad() {
+        super.capacitorDidLoad()
+        // iPhones have no back button: let a swipe in from the left edge go back
+        // a page, as in Safari.
+        webView?.allowsBackForwardNavigationGestures = true
+    }
+}

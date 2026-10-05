@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
+import { useIsNativeApp } from '@/hooks/use-native-app';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -63,6 +64,7 @@ function UpgradePanel({
     isRedirecting: boolean;
     lostAccess?: boolean;
 }) {
+    const isNativeApp = useIsNativeApp();
     return (
         <div className="w-full space-y-4">
             <ul className="space-y-2">
@@ -78,6 +80,15 @@ function UpgradePanel({
                 ))}
             </ul>
 
+            {/* No prices or purchase buttons in the iOS/Android apps (store billing
+                rules); see useIsNativeApp. */}
+            {isNativeApp ? (
+                <p className="text-sm text-muted-foreground">
+                    Memberships can&apos;t be bought in the app. If your account already has one,
+                    it unlocks here automatically.
+                </p>
+            ) : (
+            <>
             <div className="flex flex-col gap-3 sm:flex-row">
                 <Button
                     onClick={() => onSubscribe('monthly')}
@@ -107,6 +118,8 @@ function UpgradePanel({
             <p className="text-xs text-muted-foreground">
                 Cancel anytime · Secure payment by Stripe
             </p>
+            </>
+            )}
         </div>
     );
 }
@@ -119,6 +132,9 @@ export default function SubscriptionPage() {
     const [isManaging, setIsManaging] = useState(false);
     const [cancelReason, setCancelReason] = useState<CancelReason | null>(null);
     const { toast } = useToast();
+    // Restarting billing (resume, undo a cancellation) is a purchase as far as the
+    // app stores are concerned, so it is web-only. Pause and cancel stay in the app.
+    const isNativeApp = useIsNativeApp();
 
     const fetchUserData = async (fbUser: FirebaseUser) => {
         const appUser = await getUserClient(fbUser.uid);
@@ -268,15 +284,19 @@ export default function SubscriptionPage() {
                             Membership ends {cancelDate ? `on ${format(cancelDate, 'MMMM do')}` : 'at the end of this period'}
                         </CardTitle>
                         <CardDescription>
-                            You keep full access until then. Changed your mind? Keep your plan, history and coach with one tap.
+                            {isNativeApp
+                                ? 'You keep full access until then.'
+                                : 'You keep full access until then. Changed your mind? Keep your plan, history and coach with one tap.'}
                         </CardDescription>
                     </CardHeader>
+                    {!isNativeApp && (
                     <CardFooter>
                         <Button onClick={handleResume} disabled={isManaging}>
                             {isManaging && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             Keep my membership
                         </Button>
                     </CardFooter>
+                    )}
                 </Card>
             )}
 
@@ -372,14 +392,20 @@ export default function SubscriptionPage() {
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <p className="text-muted-foreground">You won&apos;t be charged while paused. Resume whenever you&apos;re ready to train again — everything is where you left it.</p>
+                        <p className="text-muted-foreground">
+                            {isNativeApp
+                                ? 'You won\u2019t be charged while paused. Everything is where you left it.'
+                                : <>You won&apos;t be charged while paused. Resume whenever you&apos;re ready to train again — everything is where you left it.</>}
+                        </p>
                     </CardContent>
+                    {!isNativeApp && (
                      <CardFooter>
                         <Button onClick={handleResume} disabled={isManaging}>
                             {isManaging && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             Resume my membership
                         </Button>
                     </CardFooter>
+                    )}
                 </Card>
             )}
 
@@ -398,7 +424,7 @@ export default function SubscriptionPage() {
                                 Your trial will end on <span className="font-bold text-foreground">{trialEndDateFormatted}</span>.
                             </p>
                         ) : (
-                            <p className="text-destructive">Your free trial has ended. Please subscribe to continue.</p>
+                            <p className="text-destructive">Your free trial has ended.{isNativeApp ? '' : ' Please subscribe to continue.'}</p>
                         )}
                     </CardContent>
                     <CardFooter>
@@ -419,7 +445,9 @@ export default function SubscriptionPage() {
                         <CardDescription>
                             {user?.cancel_at_period_end 
                                 ? `Your subscription is set to cancel at the end of the current period. Your access will continue until then.`
-                                : `Your access is currently limited. Please subscribe to regain full access.`
+                                : isNativeApp
+                                    ? 'Your access is currently limited.'
+                                    : `Your access is currently limited. Please subscribe to regain full access.`
                             }
                         </CardDescription>
                     </CardHeader>
