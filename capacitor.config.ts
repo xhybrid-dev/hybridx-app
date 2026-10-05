@@ -12,6 +12,11 @@ const config: CapacitorConfig = {
     url: 'https://app.hybridx.club',
     cleartext: false, // Use HTTPS only
     errorPath: 'offline.html',
+    // Capacitor sends every other domain to the phone's browser, which doesn't
+    // have the app's session cookie, so connecting Strava or Garmin always came
+    // back "session expired". Keep their sign-in pages inside the app so the
+    // OAuth redirect lands back here, logged in.
+    allowNavigation: ['www.strava.com', 'connect.garmin.com', 'sso.garmin.com'],
   },
   android: {
     allowMixedContent: false, // All traffic over HTTPS
@@ -21,13 +26,9 @@ const config: CapacitorConfig = {
   },
   plugins: {
     StatusBar: {
-      style: 'light', // 'light' for dark icons, 'dark' for light icons
+      style: 'LIGHT', // dark icons until NativeAppBridge applies the app theme
       backgroundColor: '#FFFFFF', // Match your app's light theme header
       overlaysWebView: false, // Don't overlay content, push it down
-    },
-    SplashScreen: {
-      launchAutoHide: false,
-      androidScaleType: 'CENTER_CROP',
     }
   }
 };

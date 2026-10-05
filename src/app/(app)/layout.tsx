@@ -41,7 +41,7 @@ import { isTrialExpired } from '@/lib/trial';
 import { MobileNavBar, primaryNavItems, secondaryNavItems, adminNavItems } from '@/components/mobile-nav-bar';
 import { UserProvider, useUserProfile } from '@/contexts/user-context';
 import { Capacitor } from '@capacitor/core';
-import { StatusBar, Style } from '@capacitor/status-bar';
+import { StatusBar } from '@capacitor/status-bar';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { resumeNativePush } from '@/lib/native-push';
 
@@ -193,9 +193,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 // enforced and this is a no-op, so the layout must also inset
                 // itself with env(safe-area-inset-*) — see the header below.
                 await StatusBar.setOverlaysWebView({ overlay: false });
-                // Set style and background color explicitly
-                await StatusBar.setStyle({ style: Style.Light });
-                await StatusBar.setBackgroundColor({ color: '#FFFFFF' });
+                // Icon colour follows the app theme: see NativeAppBridge.
             } catch (e) {
                 logger.error("Status bar configuration failed", e);
             }

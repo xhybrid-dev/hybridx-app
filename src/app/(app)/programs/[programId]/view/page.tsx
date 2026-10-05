@@ -32,6 +32,7 @@ import { ProgramCalendarView } from '@/components/program-calendar-view';
 import { ProgramScheduleDialog } from '@/components/program-schedule-dialog';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useUser } from '@/contexts/user-context';
+import { saveFile } from '@/lib/native';
 
 export default function ProgramViewPage({ params }: { params: Promise<{ programId: string }> }) {
   const [program, setProgram] = useState<Program | null>(null);
@@ -323,7 +324,7 @@ export default function ProgramViewPage({ params }: { params: Promise<{ programI
         }
 
         const fileName = `${program.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_training_calendar.pdf`;
-        pdf.save(fileName);
+        await saveFile(pdf.output('blob'), fileName);
         
         toast({ title: 'PDF Downloaded!', description: `Your ${totalPages}-page training calendar has been saved.` });
     } catch (error) {

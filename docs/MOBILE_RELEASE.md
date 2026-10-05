@@ -11,6 +11,22 @@ site can't be reached, instead of a blank screen.
 
 Builds run on Codemagic (`codemagic.yaml`).
 
+## Native behaviour (what differs from the website)
+
+- **Back button (Android):** closes an open dialog or menu first, then goes back
+  a page, and exits only from the first page (`src/components/native-app-bridge.tsx`).
+- **Status bar:** icon colour follows the app's light/dark theme.
+- **Other websites:** Capacitor opens other domains in the phone's browser.
+  Strava and Garmin sign-in are the exception (`allowNavigation` in
+  `capacitor.config.ts`) so their OAuth redirect returns to the logged-in app.
+  Links meant to leave the app should use `openExternal()` from
+  `src/lib/native.ts` (in-app browser sheet).
+- **Files and sharing:** web downloads don't work in the Android WebView. Use
+  `saveFile()` / `shareContent()` from `src/lib/native.ts`, which open the
+  native share sheet in the apps.
+- **Plugins** are native code: adding or upgrading one needs `npx cap sync`
+  and a new store build, not just a web deploy.
+
 ## Android (Google Play)
 
 **Ship a release:** merge to `main`, then push a tag `v<version>` (e.g.
