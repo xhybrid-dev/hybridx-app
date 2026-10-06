@@ -72,7 +72,7 @@ const chartConfig = {
 };
 
 export default function DashboardPage() {
-  const { user, program, todaysWorkout, todaysSession, todaysWorkoutSessions, allSessions, sessionsLoaded, streakData, trainingPaces, loading, refreshData } = useUser();
+  const { user, program, todaysWorkout, todaysSession, todaysWorkoutSessions, allSessions, sessionsLoaded, streakData, trainingPaces, loading, loadError, refreshData } = useUser();
   const [progressData, setProgressData] = useState<{ week: string, workouts: number }[]>([]);
   const [todayStravaSummary, setTodayStravaSummary] = useState<string | null>(null);
   const [stravaRecentActivities, setStravaRecentActivities] = useState<StravaActivity[]>([]);
@@ -110,7 +110,7 @@ export default function DashboardPage() {
   // Keying this off allSessions alone put an athlete 82 days into a program behind
   // the week-1 welcome takeover whenever the sessions query returned empty or
   // failed, hiding the real dashboard (and their actual program) entirely.
-  const isNewUser = !loading && allSessions.length === 0 && (todaysWorkout?.day ?? 0) <= 7;
+  const isNewUser = !loading && !!user && allSessions.length === 0 && (todaysWorkout?.day ?? 0) <= 7;
 
   // Calculate progress data when sessions or Strava activities change
   useEffect(() => {
@@ -471,6 +471,20 @@ export default function DashboardPage() {
                 </div>
             </div>
         </div>
+    );
+  }
+
+  // The account couldn't be read. Say so and offer a retry, rather than showing the
+  // Week 1 welcome with no name (which looks like the account has been reset).
+  if (loadError) {
+    return (
+      <div className="mx-auto max-w-md space-y-4 py-10 text-center">
+        <h1 className="text-2xl font-bold tracking-tight">We couldn&apos;t load your account</h1>
+        <p className="text-muted-foreground">
+          Your data is safe. This is usually a weak or blocked connection. Check your connection and try again.
+        </p>
+        <Button onClick={() => void refreshData()}>Try again</Button>
+      </div>
     );
   }
 

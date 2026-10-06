@@ -105,6 +105,9 @@ export default function ProfilePage() {
         if (firebaseUser) {
             const currentUser = await getUserClient(firebaseUser.uid);
             setUser(currentUser);
+            if (!currentUser) {
+                toast({ title: "Couldn't load your profile", description: 'Check your connection and reload the app.', variant: 'destructive' });
+            }
             if (currentUser) {
                 profileForm.reset({
                     firstName: currentUser.firstName,
