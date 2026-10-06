@@ -37,6 +37,12 @@ const db = (() => {
     try {
       return initializeFirestore(app, {
         localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+        // iPhone home-screen apps (and some mobile networks and VPNs) block
+        // Firestore's streaming connection. Without a fallback every read fails
+        // with "client is offline" and the account looks empty. Auto-detect
+        // switches to long polling when streaming doesn't connect; browsers that
+        // stream fine are unaffected.
+        experimentalAutoDetectLongPolling: true,
       });
     } catch {
       // Already initialized (e.g. hot-reload) — reuse existing instance

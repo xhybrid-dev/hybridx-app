@@ -28,6 +28,8 @@ interface UserContextType {
     streakData: StreakData;
     trainingPaces: Record<string, number> | null;
     loading: boolean;
+    /** True when the signed-in athlete's account couldn't be read (offline, blocked, or the profile is missing). Distinct from "new user". */
+    loadError: boolean;
     refreshData: () => Promise<void>;
 }
 
@@ -43,6 +45,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     const [sessionsLoaded, setSessionsLoaded] = useState(false);
     const [trainingPaces, setTrainingPaces] = useState<Record<string, number> | null>(null);
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState(false);
     // Prevent concurrent refreshes (e.g. rapid re-mounts or multiple callers)
     const isRefreshingRef = useRef(false);
 
@@ -57,6 +60,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         }
 
         setLoading(true);
+        setLoadError(false);
 
         // Try to load cached data first for offline-first experience
         const cachedWorkout = OfflineCache.getTodaysWorkout();
@@ -78,7 +82,14 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
             const currentUser = await getUserClient(userId);
             setUser(currentUser);
 
-            if (!currentUser) return;
+            if (!currentUser) {
+                // Signed in, but no profile document came back. That is not a new
+                // athlete (sign-up creates the document), so don't let the
+                // dashboard fall through to the Week 1 welcome.
+                logger.error(`No user profile found for ${userId}`);
+                setLoadError(true);
+                return;
+            }
 
             if (currentUser.runningProfile) {
                 const paces = calculateTrainingPaces(currentUser);
@@ -201,6 +212,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
         } catch (error) {
             logger.error("Error fetching user data:", error);
+            setLoadError(true);
         } finally {
             setLoading(false);
             isRefreshingRef.current = false;
@@ -222,6 +234,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
                     setAllSessions([]);
                     setSessionsLoaded(false);
                     setTrainingPaces(null);
+                    setLoadError(false);
                     setLoading(false);
                 }
             });
@@ -258,8 +271,9 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         streakData,
         trainingPaces,
         loading,
+        loadError,
         refreshData
-    }), [user, program, todaysWorkout, todaysSession, todaysWorkoutSessions, allSessions, sessionsLoaded, streakData, trainingPaces, loading]);
+    }), [user, program, todaysWorkout, todaysSession, todaysWorkoutSessions, allSessions, sessionsLoaded, streakData, trainingPaces, loading, loadError]);
 
     return (
         <UserContext.Provider value={value}>
@@ -307,8 +321,9 @@ export function useUserProfile() {
         user: context.user,
         trainingPaces: context.trainingPaces,
         loading: context.loading,
+        loadError: context.loadError,
         refreshData: context.refreshData
-    }), [context.user, context.trainingPaces, context.loading, context.refreshData]);
+    }), [context.user, context.trainingPaces, context.loading, context.loadError, context.refreshData]);
 }
 
 /**
