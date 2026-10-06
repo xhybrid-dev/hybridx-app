@@ -11,6 +11,38 @@ site can't be reached, instead of a blank screen.
 
 Builds run on Codemagic (`codemagic.yaml`).
 
+## iOS first-release checklist
+
+Do these in order; the first block needs only an Apple Developer account.
+
+1. Enrol in the Apple Developer Program (developer.apple.com/programs). An
+   organisation enrolment needs a D-U-N-S number; an individual one doesn't.
+   Approval can take a day or two.
+2. Apple Developer -> Certificates, Identifiers & Profiles -> Identifiers ->
+   `club.hybridx.app` (register it if missing) -> enable **Push Notifications**.
+3. App Store Connect -> My Apps -> **+** -> New App: iOS, name `HYBRIDX.CLUB`,
+   bundle ID `club.hybridx.app`, any SKU (e.g. `hybridx-club-001`).
+4. App Store Connect -> Users and Access -> Integrations -> App Store Connect
+   API -> generate a key (access: App Manager). Download the `.p8` once. In
+   Codemagic -> Team settings -> Integrations -> Developer Portal, connect it
+   under the name `hybridx_app_store_connect`.
+5. TestFlight tab -> Internal Testing -> create the group **Internal Testers**
+   and add yourself.
+6. Push a tag `ios-v1.0.0`. Codemagic builds, signs (it creates the
+   certificate and profile through the API key) and uploads to TestFlight.
+7. Install TestFlight on your iPhone and test (see the list in this doc's
+   "Native behaviour" section).
+8. Push notifications: Apple Developer -> Keys -> new key with APNs enabled
+   (`.p8`) -> upload in Firebase console -> Project settings -> Cloud
+   Messaging; add `GoogleService-Info.plist` (see `docs/NATIVE_PUSH.md`); tag
+   `ios-v1.0.1`.
+9. Fill in the listing from `docs/APP_STORE_LISTING.md`, pick the build, create
+   a reviewer account, **Submit for Review**. Review usually takes 1 to 2 days.
+
+Build numbers and the app version are set automatically: the build number is
+TestFlight's latest + 1 and the version comes from the tag (`ios-v1.0.0` ->
+1.0.0).
+
 ## Native behaviour (what differs from the website)
 
 - **Back button (Android):** closes an open dialog or menu first, then goes back
