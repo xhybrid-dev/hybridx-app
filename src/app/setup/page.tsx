@@ -33,7 +33,12 @@ export default function SetupPage() {
     if (!user && typeof window !== 'undefined') {
       // Give AuthProvider a moment to resolve before redirecting
       const t = setTimeout(() => {
-        if (!user) router.push('/login');
+        // Clear the server cookie first, or middleware bounces /login back here.
+        if (!user) {
+          void fetch('/api/auth/session', { method: 'DELETE', credentials: 'include' })
+            .catch(() => undefined)
+            .finally(() => window.location.replace('/login'));
+        }
       }, 1500);
       return () => clearTimeout(t);
     }

@@ -174,7 +174,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 }
             } else {
                 logger.log('❌ [Layout] No authenticated user, redirecting to login');
-                router.push('/login');
+                // The server's login cookie can outlive the browser-side sign-in: a
+                // home-screen app starts with the cookie copied from Safari/Chrome
+                // but none of Firebase's own storage. Middleware sends /login back
+                // to /dashboard while that cookie exists, so a client-side push to
+                // /login never arrives and the athlete sits on a signed-out
+                // dashboard ("Welcome back, Athlete", no plan, no profile). Clear
+                // the cookie first, then do a full navigation.
+                void fetch('/api/auth/session', { method: 'DELETE', credentials: 'include' })
+                    .catch(() => undefined)
+                    .finally(() => window.location.replace('/login'));
+                return; // keep the loading state up while the browser navigates
             }
             setLoading(false);
         });
