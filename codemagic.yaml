@@ -195,13 +195,24 @@ workflows:
       - name: Sync Capacitor
         script: |
           npx cap sync ios
-      - name: Set build number
+      - name: Set build number and version
         script: |
           cd ios/App
           APP_STORE_APP_ID=$(app-store-connect apps list --bundle-id-identifier "$BUNDLE_ID" --strict-match-identifier --json | jq -r '.[0].id')
           # The very first build has nothing on TestFlight yet, so start from 0.
-          LATEST=$(app-store-connect get-latest-testflight-build-number "$APP_STORE_APP_ID" || echo 0)
-          agvtool new-version -all $((LATEST + 1))
+          LATEST=$(app-store-connect get-latest-testflight-build-number "$APP_STORE_APP_ID" 2>/dev/null || echo 0)
+          case "$LATEST" in ''|*[!0-9]*) LATEST=0 ;; esac
+          BUILD_NUMBER=$((LATEST + 1))
+          # Info.plist reads $(CURRENT_PROJECT_VERSION) and $(MARKETING_VERSION), so set
+          # them in the project directly (agvtool needs a versioning setting this
+          # project doesn't have).
+          perl -pi -e "s/CURRENT_PROJECT_VERSION = [0-9]+;/CURRENT_PROJECT_VERSION = $BUILD_NUMBER;/g" App.xcodeproj/project.pbxproj
+          # Tag ios-v1.2.3 -> version 1.2.3
+          if [ -n "$CM_TAG" ]; then
+            VERSION="${CM_TAG#ios-v}"
+            perl -pi -e "s/MARKETING_VERSION = [0-9.]+;/MARKETING_VERSION = $VERSION;/g" App.xcodeproj/project.pbxproj
+          fi
+          grep -E "CURRENT_PROJECT_VERSION|MARKETING_VERSION" App.xcodeproj/project.pbxproj | sort -u
       - name: Set up code signing settings on Xcode project
         script: |
           xcode-project use-profiles
