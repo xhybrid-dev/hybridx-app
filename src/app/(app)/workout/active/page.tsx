@@ -16,7 +16,7 @@ import { Label } from '@/components/ui/label';
 import { updateWorkoutSession, type WorkoutSession } from '@/services/session-service-client';
 import type { User, Workout, RunningWorkout, Exercise, ExerciseResult, PlannedRun, TimerRecord, WorkoutDay, SkipReason } from '@/models/types';
 import { formatPace } from '@/lib/pace-utils';
-import { formatPlannedRun, getWorkoutForDay } from '@/lib/workout-utils';
+import { formatPlannedRun, getScheduledWorkoutsForDay } from '@/lib/workout-utils';
 import Link from 'next/link';
 import { Separator } from '@/components/ui/separator';
 import { LinkStravaActivityDialog } from '@/components/link-strava-activity-dialog';
@@ -199,11 +199,11 @@ function WorkoutSessionCard({ planned, initialSession, day, isMultiSession, sess
     const today = startOfDay(new Date());
     for (let offset = 1; offset <= 7; offset++) {
       const date = addDays(today, offset);
-      const next = getWorkoutForDay(program, user.startDate, date).sessions[0];
+      const next = getScheduledWorkoutsForDay(program, user.startDate, date, allSessions)[0];
       if (next) return { title: next.title, date };
     }
     return null;
-  }, [program, user?.startDate, user?.planPausedAt]);
+  }, [program, user?.startDate, user?.planPausedAt, allSessions]);
   const [isLinkerOpen, setIsLinkerOpen] = useState(false);
   const [exerciseChecklist, setExerciseChecklist] = useState<Record<string, boolean>>(initialSession.exerciseChecklist || {});
   const [showTimer, setShowTimer] = useState(false);

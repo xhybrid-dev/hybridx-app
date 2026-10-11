@@ -27,8 +27,8 @@ import { getAuthInstance } from '@/lib/firebase';
 import { getUserClient } from '@/services/user-service-client';
 import { getProgramClient } from '@/services/program-service-client';
 import { getWorkoutForDay, formatPlannedRun } from '@/lib/workout-utils';
-import { getUserSessionsInRange, getRecentUserSessions, getOrCreateWorkoutSession, updateWorkoutSession } from '@/services/session-service-client';
-import { saveScheduleChanges, swapWorkouts } from '@/services/session-service';
+import { getUserSessionsInRange, getRecentUserSessions, getOrCreateWorkoutSession, getOrCreateProgramSessionsForDay, updateWorkoutSession } from '@/services/session-service-client';
+import { saveScheduleChanges } from '@/services/session-service';
 import { trackEvent } from '@/lib/analytics';
 import { useUser } from '@/contexts/user-context';
 import { PausePlanButton, PlanCatchUpCard } from '@/components/plan-catch-up-card';
@@ -37,31 +37,47 @@ import { hasRuns, hasExercises } from '@/lib/type-guards';
 import { convertDistance, convertTextWithUnits } from '@/lib/unit-conversion';
 import { formatTextWithBullets } from '@/utils/text-formatter';
 import { addDays, format, isSameDay, parseISO, isValid, isToday, isPast, startOfDay, startOfWeek, endOfWeek } from 'date-fns';
-import { RotateCcw, Loader2, CheckCircle2, XCircle, GripVertical, Link as LinkIcon, Forward, Edit, CheckCircle, CalendarDays, ListChecks, Wrench } from 'lucide-react';
+import { Loader2, CheckCircle2, XCircle, GripVertical, Link as LinkIcon, Forward, Edit, CheckCircle, CalendarDays, ListChecks, Wrench } from 'lucide-react';
 import { canFixTreadmill } from '@/lib/treadmill';
 import { useToast } from '@/hooks/use-toast';
+import { ToastAction } from '@/components/ui/toast';
 import { useDebouncedCallback } from 'use-debounce';
 import { cn } from '@/lib/utils';
 import { logger } from '@/lib/logger';
-import { moveSession } from '@/lib/schedule-move';
+import { moveSession, entryFromSession, entriesToSave, type ScheduleEntry } from '@/lib/schedule-move';
 
 const MonthCalendarWidget = lazy(() => import('@/components/ui/calendar').then(mod => ({ default: mod.Calendar })));
 const LinkStravaActivityDialog = lazy(() => import('@/components/link-strava-activity-dialog').then(mod => ({ default: mod.LinkStravaActivityDialog })));
 const FixTreadmillDialog = lazy(() => import('@/components/fix-treadmill-dialog').then(mod => ({ default: mod.FixTreadmillDialog })));
 
+interface CalendarEntry extends ScheduleEntry {
+  /** The saved doc behind this session, for its done/skipped state. */
+  session?: WorkoutSession;
+}
+
 interface DaySlot {
   date: Date;
   dateKey: string;
-  workouts: WorkoutDay[];
-  sessions: WorkoutSession[];
+  entries: CalendarEntry[];
   isToday: boolean;
   isPast: boolean;
   /**
-   * An earlier day this week with nothing finished on it. Its sessions can
-   * still be dragged forward — yesterday's missed session moved to today —
-   * though nothing can be dropped onto it.
+   * An earlier day this week. Its unfinished sessions can still be dragged
+   * forward — yesterday's missed session moved to today — though nothing can
+   * be dropped onto it.
    */
   canMoveFrom: boolean;
+}
+
+/**
+ * The saved doc for session `index` of a day. A day with no docs yet gets one
+ * per session first: a doc for just this one would make the day count as saved
+ * everywhere and hide its other sessions.
+ */
+async function sessionDocForDay(userId: string, programId: string, date: Date, dayWorkouts: WorkoutDay[], index: number): Promise<WorkoutSession> {
+  const docs = await getOrCreateProgramSessionsForDay(userId, programId, date, dayWorkouts);
+  return docs[index]
+    ?? getOrCreateWorkoutSession(userId, programId, date, dayWorkouts[index], false, undefined, index, dayWorkouts.length);
 }
 
 function isRestDayWorkout(workout: WorkoutDay): boolean {
@@ -118,21 +134,20 @@ function buildDaySlots(program: Program, startDate: Date, sessions: WorkoutSessi
     const persisted = sessionsByDate.get(dateKey);
     // A persisted doc for the date (even a content-less "cleared" one) is fully authoritative —
     // it never partially falls back to the program's original schedule for that date.
-    const workouts = persisted
-      ? persisted.map(s => s.workoutDetails).filter((w): w is WorkoutDay => !!w)
-      : getWorkoutForDay(program, startDate, cursor).sessions;
+    const entries: CalendarEntry[] = persisted
+      ? persisted.flatMap(s => s.workoutDetails ? [{ ...entryFromSession(s, s.workoutDetails), session: s }] : [])
+      : getWorkoutForDay(program, startDate, cursor).sessions.map(workout => ({ workout }));
 
     const isPastDay = cursor < today0;
     slots.push({
       date: new Date(cursor),
       dateKey,
-      workouts,
-      sessions: persisted ?? [],
+      entries,
       isToday: isSameDay(cursor, today0),
       isPast: isPastDay,
-      // A day with anything finished on it is left alone: the save skips such
-      // days, so moving its other session out would duplicate it.
-      canMoveFrom: isPastDay && cursor >= weekStart && !(persisted ?? []).some(s => !!s.finishedAt),
+      // Finished sessions on it are locked individually and the save never
+      // moves a finished doc, so the rest of the day can still go forward.
+      canMoveFrom: isPastDay && cursor >= weekStart,
     });
     cursor = addDays(cursor, 1);
   }
@@ -149,20 +164,21 @@ function WeeklyScheduleView() {
   const [programStartDate, setProgramStartDate] = useState<Date | null>(null);
   const [unitSystem, setUnitSystem] = useState<UnitSystem | undefined>(undefined);
   const [allSlots, setAllSlots] = useState<DaySlot[]>([]);
-  const [originalByKey, setOriginalByKey] = useState<Map<string, WorkoutDay[]>>(new Map());
-  const [changedKeys, setChangedKeys] = useState<Set<string>>(new Set());
   const [visibleFromDate, setVisibleFromDate] = useState<Date>(() => startOfWeek(startOfDay(new Date()), { weekStartsOn: 1 }));
   const [activeDrag, setActiveDrag] = useState<WorkoutDay | null>(null);
   const [detailWorkout, setDetailWorkout] = useState<WorkoutDay | null>(null);
   const [markingDoneKey, setMarkingDoneKey] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  // Read by the toast's Undo, whose closure would otherwise see a stale `saving`.
+  const savingRef = useRef(false);
   const { toast } = useToast();
+  const { refreshData } = useUser();
 
   const sentinelRef = useRef<HTMLDivElement>(null);
   const scrollRootRef = useRef<HTMLElement | null>(null);
   const pendingScrollAdjustRef = useRef<number | null>(null);
 
-  const loadCalendarData = useCallback(async (fbUser: FirebaseUser) => {
+  const loadCalendarData = useCallback(async (fbUser: FirebaseUser, initial = false) => {
     try {
       const user = await getUserClient(fbUser.uid);
       setUnitSystem(user?.unitSystem);
@@ -177,8 +193,6 @@ function WeeklyScheduleView() {
 
       if (!userProgram || !user?.startDate) {
         setAllSlots([]);
-        setOriginalByKey(new Map());
-        setChangedKeys(new Set());
         return;
       }
 
@@ -208,11 +222,10 @@ function WeeklyScheduleView() {
       const slots = buildDaySlots(userProgram, startDate, sessions, rangeStart, rangeEnd);
 
       setAllSlots(slots);
-      setOriginalByKey(new Map(slots.map(s => [s.dateKey, s.workouts])));
-      setChangedKeys(new Set());
       // Open on the whole of this week, so a session missed on Monday is
-      // there to be dragged to today without scrolling back for it.
-      setVisibleFromDate(startOfWeek(today0, { weekStartsOn: 1 }));
+      // there to be dragged to today without scrolling back for it. A reload
+      // after a move keeps whatever earlier weeks the athlete scrolled into.
+      if (initial) setVisibleFromDate(startOfWeek(today0, { weekStartsOn: 1 }));
     } catch (error) {
       console.error('Error fetching calendar data:', error);
     } finally {
@@ -228,7 +241,7 @@ function WeeklyScheduleView() {
         if (fbUser) {
           setFirebaseUser(fbUser);
           setLoading(true);
-          await loadCalendarData(fbUser);
+          await loadCalendarData(fbUser, true);
         } else {
           setLoading(false);
         }
@@ -281,75 +294,89 @@ function WeeklyScheduleView() {
   const handleDragStart = (event: DragStartEvent) => {
     const [dateKey, indexStr] = String(event.active.id).split('::');
     const slot = allSlots.find(d => d.dateKey === dateKey);
-    const workout = slot?.workouts[Number(indexStr)];
-    if (workout) setActiveDrag(workout);
+    const entry = slot?.entries[Number(indexStr)];
+    if (entry) setActiveDrag(entry.workout);
   };
 
-  const handleDragEnd = (event: DragEndEvent) => {
+  // Every move is saved as it's made. A move left waiting on a Save button was
+  // invisible to the dashboard and the workout page, and Start opened whatever
+  // session used to be today's.
+  const persistDays = async (slots: DaySlot[], dateKeys: string[]): Promise<boolean> => {
+    if (!firebaseUser || !program || savingRef.current) return false;
+    savingRef.current = true;
+    setSaving(true);
+    try {
+      await saveScheduleChanges({
+        programId: program.id,
+        days: dateKeys.map(key => {
+          const slot = slots.find(d => d.dateKey === key)!;
+          return { date: slot.date, entries: entriesToSave(slot.entries) };
+        }),
+      });
+      // Today's workout on the dashboard and the workout page comes from the
+      // shared user context, so it catches up before Start is offered again.
+      await Promise.all([refreshData(), loadCalendarData(firebaseUser)]);
+      return true;
+    } catch (error) {
+      logger.error('Failed to save schedule changes:', error);
+      return false;
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
+    }
+  };
+
+  const handleUndo = async (before: DaySlot[], dateKeys: string[]) => {
+    setAllSlots(prev => prev.map(d => dateKeys.includes(d.dateKey) ? before.find(b => b.dateKey === d.dateKey) ?? d : d));
+    if (await persistDays(before, dateKeys)) {
+      toast({ title: 'Move undone' });
+    } else {
+      toast({ title: 'Could not undo the move', description: 'Please try again.', variant: 'destructive' });
+      if (firebaseUser) await loadCalendarData(firebaseUser);
+    }
+  };
+
+  const handleDragEnd = async (event: DragEndEvent) => {
     setActiveDrag(null);
     const { active, over } = event;
-    if (!over) return;
+    if (!over || savingRef.current) return;
     const [sourceDateKey, sourceIndexStr] = String(active.id).split('::');
     const sourceIndex = Number(sourceIndexStr);
     const targetDateKey = String(over.id);
     // Nothing is ever moved into the past — only out of it. See lib/schedule-move.ts.
     const next = moveSession(allSlots, sourceDateKey, sourceIndex, targetDateKey);
     if (!next) return;
-    setAllSlots(next);
-    setChangedKeys(prev => new Set(prev).add(sourceDateKey).add(targetDateKey));
-  };
 
-  const handleResetWeek = (weekKeys: string[]) => {
-    setAllSlots(prev => prev.map(d => weekKeys.includes(d.dateKey) ? { ...d, workouts: originalByKey.get(d.dateKey) ?? [] } : d));
-    setChangedKeys(prev => {
-      const next = new Set(prev);
-      weekKeys.forEach(k => next.delete(k));
-      return next;
+    const before = allSlots;
+    const dateKeys = [sourceDateKey, targetDateKey];
+    const movedTitle = before.find(d => d.dateKey === sourceDateKey)!.entries[sourceIndex].workout.title;
+    const target = next.find(d => d.dateKey === targetDateKey)!;
+    setAllSlots(next);
+    if (!(await persistDays(next, dateKeys))) {
+      setAllSlots(before);
+      toast({ title: 'Could not move the session', description: 'Nothing was changed. Please try again.', variant: 'destructive' });
+      return;
+    }
+    toast({
+      title: `${movedTitle} moved to ${target.isToday ? 'today' : format(target.date, 'EEEE d MMM')}`,
+      action: <ToastAction altText="Undo the move" onClick={() => void handleUndo(before, dateKeys)}>Undo</ToastAction>,
     });
   };
 
-  const handleSave = async () => {
-    if (!firebaseUser || !program || changedKeys.size === 0) return;
-    setSaving(true);
-    try {
-      const days = Array.from(changedKeys).map(key => {
-        const slot = allSlots.find(d => d.dateKey === key)!;
-        return { date: slot.date, workouts: slot.workouts };
-      });
-      await saveScheduleChanges({ programId: program.id, days });
-      toast({ title: 'Schedule updated', description: 'Your training calendar has been saved.' });
-      await loadCalendarData(firebaseUser);
-    } catch (error) {
-      console.error('Failed to save schedule changes:', error);
-      toast({ title: 'Error', description: 'Could not save your changes. Please try again.', variant: 'destructive' });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleMarkDone = async (dateKey: string, index: number, workout: WorkoutDay) => {
-    if (!firebaseUser || !program) return;
+  const handleMarkDone = async (dateKey: string, index: number) => {
+    if (!firebaseUser || !program || savingRef.current) return;
     const slot = allSlots.find(d => d.dateKey === dateKey);
-    if (!slot) return;
-    const markKey = `${dateKey}::${index}`;
-    setMarkingDoneKey(markKey);
+    const entry = slot?.entries[index];
+    if (!slot || !entry) return;
+    setMarkingDoneKey(`${dateKey}::${index}`);
     try {
-      const session = await getOrCreateWorkoutSession(
-        firebaseUser.uid, program.id, slot.date, workout, false, undefined, index, slot.workouts.length
-      );
+      const session = entry.session
+        ?? await sessionDocForDay(firebaseUser.uid, program.id, slot.date, slot.entries.map(e => e.workout), index);
       const completedAt = new Date(slot.date);
       completedAt.setHours(12, 0, 0, 0);
-      await updateWorkoutSession(session.id, { finishedAt: completedAt, workoutTitle: workout.title, skipped: false });
-
-      setAllSlots(prev => prev.map(d => {
-        if (d.dateKey !== dateKey) return d;
-        const already = d.sessions.some(s => (s.sessionIndex ?? 0) === index);
-        const updatedSessions = already
-          ? d.sessions.map(s => (s.sessionIndex ?? 0) === index ? { ...s, finishedAt: completedAt, skipped: false } : s)
-          : [...d.sessions, { ...session, finishedAt: completedAt, skipped: false }];
-        return { ...d, sessions: updatedSessions };
-      }));
-      toast({ title: 'Marked as completed', description: `${workout.title} logged.` });
+      await updateWorkoutSession(session.id, { finishedAt: completedAt, workoutTitle: entry.workout.title, skipped: false });
+      toast({ title: 'Marked as completed', description: `${entry.workout.title} logged.` });
+      await Promise.all([refreshData(), loadCalendarData(firebaseUser)]);
     } catch (error) {
       console.error('Failed to mark workout done:', error);
       toast({ title: 'Error', description: 'Could not mark workout as completed.', variant: 'destructive' });
@@ -410,11 +437,13 @@ function WeeklyScheduleView() {
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="space-y-6 max-w-2xl mx-auto pb-24">
         <div className="flex items-center justify-between gap-4">
-          <p className="text-sm text-muted-foreground">Long-press and drag a workout onto another day to reschedule it — including one you missed earlier this week.</p>
-          <Button onClick={handleSave} disabled={changedKeys.size === 0 || saving} className={cn(changedKeys.size === 0 && 'opacity-50')}>
-            {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-            Save{changedKeys.size > 0 ? ` (${changedKeys.size})` : ''}
-          </Button>
+          <p className="text-sm text-muted-foreground">Long-press and drag a workout onto another day to reschedule it — including one you missed earlier this week. Moves save straight away.</p>
+          {saving && (
+            <span className="flex shrink-0 items-center gap-1.5 text-sm text-muted-foreground" role="status">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Saving
+            </span>
+          )}
         </div>
 
         {allSlots.length === 0 ? (
@@ -433,8 +462,7 @@ function WeeklyScheduleView() {
                 program={program}
                 programStartDate={programStartDate}
                 unitSystem={unitSystem}
-                changedKeys={changedKeys}
-                onResetWeek={handleResetWeek}
+                busy={saving}
                 onOpenDetail={setDetailWorkout}
                 onMarkDone={handleMarkDone}
                 markingDoneKey={markingDoneKey}
@@ -447,6 +475,7 @@ function WeeklyScheduleView() {
                   key={day.dateKey}
                   day={day}
                   unitSystem={unitSystem}
+                  busy={saving}
                   onOpenDetail={setDetailWorkout}
                   onMarkDone={handleMarkDone}
                   markingDoneKey={markingDoneKey}
@@ -461,8 +490,7 @@ function WeeklyScheduleView() {
                 program={program}
                 programStartDate={programStartDate}
                 unitSystem={unitSystem}
-                changedKeys={changedKeys}
-                onResetWeek={handleResetWeek}
+                busy={saving}
                 onOpenDetail={setDetailWorkout}
                 onMarkDone={handleMarkDone}
                 markingDoneKey={markingDoneKey}
@@ -514,8 +542,11 @@ function MonthGridCalendarView() {
   const [notesByIndex, setNotesByIndex] = useState<Record<number, string>>({});
   const [markingDoneIndex, setMarkingDoneIndex] = useState<number | null>(null);
   const [program, setProgram] = useState<Program | null>(null);
+  const [programStartDate, setProgramStartDate] = useState<Date | null>(null);
+  const [isMovingToToday, setIsMovingToToday] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
+  const { refreshData } = useUser();
 
   const selectedEvent = workoutEvents.find(event =>
     selectedDate && isSameDay(event.date, selectedDate)
@@ -545,6 +576,7 @@ function MonthGridCalendarView() {
           : await getProgramClient(user.programId);
       }
       setProgram(userProgram);
+      setProgramStartDate(user?.startDate ? startOfDay(new Date(user.startDate)) : null);
 
       // Same reasoning as the schedule view: a sessions failure must not stop the
       // month grid rendering the assigned program.
@@ -740,24 +772,43 @@ function MonthGridCalendarView() {
       return;
     }
 
+    setIsMovingToToday(true);
     try {
       const today = startOfDay(new Date());
       const sourceDate = startOfDay(selectedDate);
-      const todaysOriginalWorkout = todaysEvent?.workouts[0] || null;
+      // Today as the dashboard resolves it, read fresh rather than from this
+      // month grid, which files a session under the day it was finished.
+      const todaysDocs = await getOrCreateProgramSessionsForDay(
+        firebaseUser.uid, program.id, today,
+        programStartDate ? getWorkoutForDay(program, programStartDate, today).sessions : [],
+      );
+      // The same rules as dragging it there on the schedule: a one-for-one swap,
+      // except that a missed session joins today rather than pushing today's
+      // into the past, and a finished session stays put.
+      const moved = moveSession([
+        { dateKey: 'source', entries: [{ workout: selectedWorkout }], isPast: sourceDate < today },
+        { dateKey: 'today', entries: todaysDocs.map(s => entryFromSession(s, s.workoutDetails!)), isPast: false },
+      ], 'source', 0, 'today');
+      if (!moved) throw new Error('The session could not be moved to today.');
 
-      await swapWorkouts({
+      await saveScheduleChanges({
         programId: program.id,
-        date1: today,
-        workout1: selectedWorkout,
-        date2: sourceDate,
-        workout2: todaysOriginalWorkout,
+        days: [
+          { date: sourceDate, entries: entriesToSave(moved[0].entries) },
+          { date: today, entries: entriesToSave(moved[1].entries) },
+        ],
       });
+      // The workout page reads today from the shared user context. Without
+      // this it opened on whatever session used to be today's.
+      await refreshData();
 
-      toast({ title: 'Workouts Swapped!', description: `"${selectedWorkout.title}" is now scheduled for today.` });
+      toast({ title: 'Moved to today', description: `"${selectedWorkout.title}" is now scheduled for today.` });
       router.push('/workout/active');
     } catch (error) {
       console.error('Failed to swap workouts:', error);
       toast({ title: 'Error', description: 'Could not swap the workouts. Please try again.', variant: 'destructive' });
+    } finally {
+      setIsMovingToToday(false);
     }
   };
 
@@ -824,9 +875,8 @@ function MonthGridCalendarView() {
       const dayStart = startOfDay(selectedDate);
       const programId = program?.id || 'manual';
 
-      const session = await getOrCreateWorkoutSession(
-        firebaseUser.uid, programId, dayStart, workout, false, undefined, index, selectedEvent.workouts.length
-      );
+      const session = selectedEvent.sessions[index]
+        ?? await sessionDocForDay(firebaseUser.uid, programId, dayStart, selectedEvent.workouts, index);
 
       const completedAt = new Date(selectedDate);
       completedAt.setHours(12, 0, 0, 0);
@@ -839,7 +889,7 @@ function MonthGridCalendarView() {
 
       trackEvent(firebaseUser.uid, 'workout_completed', { source: 'calendar', title: workout.title });
       toast({ title: 'Marked as Completed', description: `${workout.title} logged.` });
-      await fetchCalendarData(firebaseUser);
+      await Promise.all([fetchCalendarData(firebaseUser), refreshData()]);
     } catch (error) {
       console.error('Failed to mark workout done:', error);
       toast({ title: 'Error', description: 'Could not mark workout as completed.', variant: 'destructive' });
@@ -859,9 +909,7 @@ function MonthGridCalendarView() {
     try {
       const dayStart = startOfDay(selectedDate);
       const programId = program?.id || 'manual';
-      const session = await getOrCreateWorkoutSession(
-        firebaseUser.uid, programId, dayStart, selectedEvent.workouts[index], false, undefined, index, selectedEvent.workouts.length
-      );
+      const session = await sessionDocForDay(firebaseUser.uid, programId, dayStart, selectedEvent.workouts, index);
       setSessionToLink(session);
       setIsLinkerOpen(true);
     } catch (error) {
@@ -1108,8 +1156,9 @@ function MonthGridCalendarView() {
                               variant="accent"
                               className="w-full"
                               onClick={handleDoToday}
+                              disabled={isMovingToToday}
                             >
-                              <Forward className="mr-2 h-4 w-4" />
+                              {isMovingToToday ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Forward className="mr-2 h-4 w-4" />}
                               Do This Workout Today
                             </Button>
                           )}
@@ -1185,59 +1234,49 @@ function MonthGridCalendarView() {
   );
 }
 
-function WeekSection({ week, program, programStartDate, unitSystem, changedKeys, onResetWeek, onOpenDetail, onMarkDone, markingDoneKey }: {
+function WeekSection({ week, program, programStartDate, unitSystem, busy, onOpenDetail, onMarkDone, markingDoneKey }: {
   week: DaySlot[];
   program: Program;
   programStartDate: Date | null;
   unitSystem?: UnitSystem;
-  changedKeys: Set<string>;
-  onResetWeek: (keys: string[]) => void;
+  busy: boolean;
   onOpenDetail: (workout: WorkoutDay) => void;
-  onMarkDone: (dateKey: string, index: number, workout: WorkoutDay) => void;
+  onMarkDone: (dateKey: string, index: number) => void;
   markingDoneKey: string | null;
 }) {
   const range = `${format(week[0].date, 'd MMM')} - ${format(week[week.length - 1].date, 'd MMM')}`;
   const dayInfo = programStartDate ? getWorkoutForDay(program, programStartDate, week[0].date) : null;
   const weekNumber = dayInfo && dayInfo.day >= 1 ? Math.ceil(dayInfo.day / 7) : undefined;
-  const weekWorkouts = week.flatMap(d => d.workouts).filter(w => !isRestDayWorkout(w));
+  const weekWorkouts = week.flatMap(d => d.entries.map(e => e.workout)).filter(w => !isRestDayWorkout(w));
   const totalRunKm = weekWorkouts.filter(hasRuns).reduce((sum, w) => sum + (w as RunningWorkout).runs.reduce((s, r) => s + (r.distance || 0), 0), 0);
-  const weekKeys = week.map(d => d.dateKey);
-  const hasWeekChanges = weekKeys.some(k => changedKeys.has(k));
 
   return (
     <div className="rounded-lg border overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-3 bg-muted/40">
-        <div>
-          <p className="font-bold flex items-center gap-2">
-            {range}
-            {weekNumber !== undefined && <Badge variant="secondary">Week {weekNumber}</Badge>}
-          </p>
-          <p className="text-sm text-muted-foreground">
-            {weekWorkouts.length} session{weekWorkouts.length === 1 ? '' : 's'}
-            {totalRunKm > 0 ? ` • ${convertDistance(totalRunKm, unitSystem ?? 'metric')} running` : ''}
-          </p>
-        </div>
-        {hasWeekChanges && (
-          <Button variant="ghost" size="sm" onClick={() => onResetWeek(weekKeys)}>
-            <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
-            Reset
-          </Button>
-        )}
+      <div className="px-4 py-3 bg-muted/40">
+        <p className="font-bold flex items-center gap-2">
+          {range}
+          {weekNumber !== undefined && <Badge variant="secondary">Week {weekNumber}</Badge>}
+        </p>
+        <p className="text-sm text-muted-foreground">
+          {weekWorkouts.length} session{weekWorkouts.length === 1 ? '' : 's'}
+          {totalRunKm > 0 ? ` • ${convertDistance(totalRunKm, unitSystem ?? 'metric')} running` : ''}
+        </p>
       </div>
       <div className="divide-y">
         {week.map(day => (
-          <DayRow key={day.dateKey} day={day} unitSystem={unitSystem} onOpenDetail={onOpenDetail} onMarkDone={onMarkDone} markingDoneKey={markingDoneKey} />
+          <DayRow key={day.dateKey} day={day} unitSystem={unitSystem} busy={busy} onOpenDetail={onOpenDetail} onMarkDone={onMarkDone} markingDoneKey={markingDoneKey} />
         ))}
       </div>
     </div>
   );
 }
 
-function DayRow({ day, unitSystem, onOpenDetail, onMarkDone, markingDoneKey }: {
+function DayRow({ day, unitSystem, busy, onOpenDetail, onMarkDone, markingDoneKey }: {
   day: DaySlot;
   unitSystem?: UnitSystem;
+  busy: boolean;
   onOpenDetail: (workout: WorkoutDay) => void;
-  onMarkDone: (dateKey: string, index: number, workout: WorkoutDay) => void;
+  onMarkDone: (dateKey: string, index: number) => void;
   markingDoneKey: string | null;
 }) {
   const { setNodeRef: setDropRef, isOver } = useDroppable({
@@ -1262,22 +1301,23 @@ function DayRow({ day, unitSystem, onOpenDetail, onMarkDone, markingDoneKey }: {
       </div>
 
       <div className="flex-1 space-y-2 min-h-[2.5rem] flex flex-col justify-center">
-        {day.workouts.length === 0 ? (
+        {day.entries.length === 0 ? (
           <p className="text-sm text-muted-foreground">Rest</p>
         ) : (
-          day.workouts.map((workout, idx) => (
+          day.entries.map((entry, idx) => (
             <WorkoutCard
-              key={idx}
+              // A session's doc id follows it between days; fall back to position for unsaved defaults.
+              key={entry.sessionId ?? `planned-${idx}`}
               dateKey={day.dateKey}
               index={idx}
-              workout={workout}
+              entry={entry}
               unitSystem={unitSystem}
               isToday={day.isToday}
               isPast={day.isPast}
               canMoveFrom={day.canMoveFrom}
-              finishedSession={day.sessions.find(s => (s.sessionIndex ?? 0) === idx)}
-              onOpenDetail={() => onOpenDetail(workout)}
-              onMarkDone={() => onMarkDone(day.dateKey, idx, workout)}
+              busy={busy}
+              onOpenDetail={() => onOpenDetail(entry.workout)}
+              onMarkDone={() => onMarkDone(day.dateKey, idx)}
               isMarkingDone={markingDoneKey === `${day.dateKey}::${idx}`}
             />
           ))
@@ -1287,28 +1327,30 @@ function DayRow({ day, unitSystem, onOpenDetail, onMarkDone, markingDoneKey }: {
   );
 }
 
-function WorkoutCard({ dateKey, index, workout, unitSystem, isToday, isPast, canMoveFrom, finishedSession, onOpenDetail, onMarkDone, isMarkingDone }: {
+function WorkoutCard({ dateKey, index, entry, unitSystem, isToday, isPast, canMoveFrom, busy, onOpenDetail, onMarkDone, isMarkingDone }: {
   dateKey: string;
   index: number;
-  workout: WorkoutDay;
+  entry: CalendarEntry;
   unitSystem?: UnitSystem;
   isToday: boolean;
   isPast: boolean;
   canMoveFrom: boolean;
-  finishedSession?: WorkoutSession;
+  /** A move is saving: nothing else can be moved, and Start waits for today to settle. */
+  busy: boolean;
   onOpenDetail: () => void;
   onMarkDone: () => void;
   isMarkingDone: boolean;
 }) {
+  const { workout, session } = entry;
   const isRest = isRestDayWorkout(workout);
-  const isDone = !!finishedSession?.finishedAt && !finishedSession.skipped;
-  const isSkipped = !!finishedSession?.skipped;
-  const isLocked = !!finishedSession?.finishedAt;
-  const isDraggable = (!isPast || canMoveFrom) && !isLocked && !isRest;
+  const isDone = !!session?.finishedAt && !session.skipped;
+  const isSkipped = !!session?.skipped;
+  const isFinished = !!session?.finishedAt;
+  const isDraggable = (!isPast || canMoveFrom) && !entry.locked && !isRest;
 
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `${dateKey}::${index}`,
-    disabled: !isDraggable,
+    disabled: !isDraggable || busy,
   });
 
   return (
@@ -1340,17 +1382,23 @@ function WorkoutCard({ dateKey, index, workout, unitSystem, isToday, isPast, can
             Skipped
           </Badge>
         )}
-        {isToday && !isLocked && !isRest && (
-          <Button variant="secondary" size="sm" asChild>
-            <Link href="/workout/active">Start</Link>
-          </Button>
+        {isToday && !isFinished && !isRest && (
+          busy ? (
+            <Button variant="secondary" size="sm" disabled aria-label="Saving your schedule">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            </Button>
+          ) : (
+            <Button variant="secondary" size="sm" asChild>
+              <Link href="/workout/active">Start</Link>
+            </Button>
+          )
         )}
-        {isPast && !isLocked && !isRest && (
-          <Button variant="outline" size="sm" onClick={onMarkDone} disabled={isMarkingDone}>
+        {isPast && !isFinished && !isRest && (
+          <Button variant="outline" size="sm" onClick={onMarkDone} disabled={isMarkingDone || busy}>
             {isMarkingDone ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
           </Button>
         )}
-        {isDraggable && <GripVertical className="h-4 w-4 text-muted-foreground shrink-0" />}
+        {isDraggable && <GripVertical className={cn('h-4 w-4 text-muted-foreground shrink-0', busy && 'opacity-40')} />}
       </div>
     </div>
   );

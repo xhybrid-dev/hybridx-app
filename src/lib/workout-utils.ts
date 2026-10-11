@@ -1,6 +1,8 @@
 // src/lib/workout-utils.ts
-import type { Program, WorkoutDay, PlannedRun } from '@/models/types';
+import { isSameDay } from 'date-fns';
+import type { Program, WorkoutDay, PlannedRun, WorkoutSession } from '@/models/types';
 import { programDayFor } from '@/lib/program-day';
+import { AD_HOC_PROGRAM_IDS } from '@/lib/schedule-move';
 
 /**
  * A pure utility function to determine the correct workout for a given day based on a program's start date.
@@ -55,3 +57,22 @@ export function getWorkoutForDay(
     return { day: dayOfProgram, workout: workoutForDay, sessions };
 }
 
+/**
+ * What the athlete's schedule holds for a date once rearrangements are counted:
+ * saved session docs for the date win (a session moved there, or a cleared day),
+ * otherwise the program's default. The same rule the dashboard uses for today.
+ */
+export function getScheduledWorkoutsForDay(
+    program: Pick<Program, 'workouts'>,
+    startDate: Date,
+    targetDate: Date,
+    sessions: WorkoutSession[],
+): WorkoutDay[] {
+    const saved = sessions
+        .filter(s => !AD_HOC_PROGRAM_IDS.includes(s.programId) && isSameDay(s.workoutDate, targetDate))
+        .sort((a, b) => (a.sessionIndex ?? 0) - (b.sessionIndex ?? 0));
+    if (saved.length > 0) {
+        return saved.map(s => s.workoutDetails).filter((w): w is NonNullable<typeof w> => !!w);
+    }
+    return getWorkoutForDay(program, startDate, targetDate).sessions;
+}

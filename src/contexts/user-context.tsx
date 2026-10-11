@@ -14,6 +14,7 @@ import { calculateStreakData, DEFAULT_WEEKLY_TARGET, type StreakData } from '@/u
 import { maxTrainingDaysPerWeek } from '@/lib/plan-condense';
 import { OfflineCache } from '@/utils/offline-cache';
 import { logger } from '@/lib/logger';
+import { singleFlightWithFollowUp } from '@/lib/concurrency';
 
 interface UserContextType {
     user: User | null;
@@ -46,18 +47,12 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     const [trainingPaces, setTrainingPaces] = useState<Record<string, number> | null>(null);
     const [loading, setLoading] = useState(true);
     const [loadError, setLoadError] = useState(false);
-    // Prevent concurrent refreshes (e.g. rapid re-mounts or multiple callers)
-    const isRefreshingRef = useRef(false);
+    // The day today's workout was resolved for, so a resumed app notices midnight.
+    const loadedDayRef = useRef<string | null>(null);
 
-    const refreshData = useCallback(async () => {
-        if (isRefreshingRef.current) return;
-        isRefreshingRef.current = true;
-
+    const loadData = useCallback(async () => {
         const auth = await getAuthInstance();
-        if (!auth.currentUser) {
-            isRefreshingRef.current = false;
-            return;
-        }
+        if (!auth.currentUser) return;
 
         setLoading(true);
         setLoadError(false);
@@ -121,6 +116,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
             let currentProgram: Program | null = null;
             const today = new Date();
             today.setHours(0, 0, 0, 0);
+            loadedDayRef.current = today.toDateString();
 
             // The one-off check and the program fetch do not depend on each other, so
             // they run together rather than as two serial round trips. A one-off wins
@@ -215,9 +211,25 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
             setLoadError(true);
         } finally {
             setLoading(false);
-            isRefreshingRef.current = false;
         }
     }, []); // stable — only uses setters (stable) and module-level functions
+
+    // One load at a time. A caller arriving mid-load gets one more load after it,
+    // never the one already running: that load may have read the schedule before
+    // the caller's write landed, which is how a session moved on the calendar used
+    // to show as the old one on the workout page, with nothing to start.
+    const refreshData = useMemo(() => singleFlightWithFollowUp(loadData), [loadData]);
+
+    // An installed app can sit in the background overnight and come back still
+    // showing yesterday's session as today's.
+    useEffect(() => {
+        const onVisible = () => {
+            if (document.visibilityState !== 'visible' || loadedDayRef.current === null) return;
+            if (loadedDayRef.current !== new Date().toDateString()) void refreshData();
+        };
+        document.addEventListener('visibilitychange', onVisible);
+        return () => document.removeEventListener('visibilitychange', onVisible);
+    }, [refreshData]);
 
     useEffect(() => {
         const initialize = async () => {
@@ -236,6 +248,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
                     setTrainingPaces(null);
                     setLoadError(false);
                     setLoading(false);
+                    loadedDayRef.current = null;
                 }
             });
             return unsubscribe;
