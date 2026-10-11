@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { mapWithLimit } from '@/lib/concurrency';
+import { mapWithLimit, singleFlightWithFollowUp } from '@/lib/concurrency';
 
 const tick = () => new Promise((r) => setTimeout(r, 1));
 
@@ -62,5 +62,61 @@ describe('mapWithLimit', () => {
         return n;
       }),
     ).rejects.toThrow('boom');
+  });
+});
+
+describe('singleFlightWithFollowUp', () => {
+  // A controllable run: each call starts a new run and records it.
+  const harness = () => {
+    const runs: { resolve: () => void; reject: (e: Error) => void }[] = [];
+    const refresh = singleFlightWithFollowUp(() => new Promise<void>((resolve, reject) => { runs.push({ resolve, reject }); }));
+    return { runs, refresh };
+  };
+
+  it('a caller arriving mid-run waits for a fresh run, not the one already going', async () => {
+    const { runs, refresh } = harness();
+    const first = refresh();
+    const second = refresh();
+    expect(runs).toHaveLength(1);
+
+    runs[0].resolve();
+    await first;
+    await tick();
+    // The second caller's write may have landed after run 1 read, so run 2 starts.
+    expect(runs).toHaveLength(2);
+
+    let secondDone = false;
+    void second.then(() => { secondDone = true; });
+    await tick();
+    expect(secondDone).toBe(false);
+    runs[1].resolve();
+    await second;
+  });
+
+  it('shares one follow-up between every caller that arrives mid-run', async () => {
+    const { runs, refresh } = harness();
+    const first = refresh();
+    const queued = [refresh(), refresh(), refresh()];
+
+    runs[0].resolve();
+    await first;
+    await tick();
+    expect(runs).toHaveLength(2);
+    runs[1].resolve();
+    await Promise.all(queued);
+    expect(runs).toHaveLength(2);
+  });
+
+  it('still runs the follow-up when the current run fails', async () => {
+    const { runs, refresh } = harness();
+    const first = refresh();
+    const second = refresh();
+
+    runs[0].reject(new Error('offline'));
+    await expect(first).rejects.toThrow('offline');
+    await tick();
+    expect(runs).toHaveLength(2);
+    runs[1].resolve();
+    await expect(second).resolves.toBeUndefined();
   });
 });

@@ -30,6 +30,7 @@ import { ChartContainer, BarChart as RechartsBarChart, Bar, XAxis, ChartTooltip,
 import { Skeleton } from '@/components/ui/skeleton';
 import { getOrCreateWorkoutSession, getUserSessionsInRange, updateWorkoutSession, type WorkoutSession } from '@/services/session-service-client';
 import { saveScheduleChanges } from '@/services/session-service';
+import { AD_HOC_PROGRAM_IDS } from '@/lib/schedule-move';
 import { getWorkoutForDay } from '@/lib/workout-utils';
 import { planPostpone } from '@/lib/postpone';
 import { trackEvent } from '@/lib/analytics';
@@ -369,28 +370,33 @@ export default function DashboardPage() {
               return;
           }
 
+          // Each session carries its doc id, so today's doc itself moves to
+          // tomorrow rather than its content being copied over tomorrow's.
           const week = Array.from({ length: 7 }, (_, offset) => {
               const date = addDays(today, offset);
               const scheduled = persisted
-                  .filter(s => isSameDay(s.workoutDate, date) && !['one-off-ai', 'custom-workout'].includes(s.programId))
+                  .filter(s => isSameDay(s.workoutDate, date) && !AD_HOC_PROGRAM_IDS.includes(s.programId))
                   .sort((a, b) => (a.sessionIndex ?? 0) - (b.sessionIndex ?? 0));
               const workouts = scheduled.length > 0
-                  ? scheduled.map(s => s.workoutDetails).filter((w): w is WorkoutDay => !!w)
-                  : getWorkoutForDay(program, user.startDate!, date).sessions;
+                  ? scheduled.flatMap(s => s.workoutDetails ? [{ workout: s.workoutDetails as WorkoutDay, sessionId: s.id }] : [])
+                  : getWorkoutForDay(program, user.startDate!, date).sessions.map(workout => ({ workout }));
               return { date, workouts };
           });
 
           const plan = planPostpone(week);
           if (!plan) return;
-          await saveScheduleChanges({ programId: program.id, days: plan.changes });
+          await saveScheduleChanges({
+              programId: program.id,
+              days: plan.changes.map(day => ({ date: day.date, entries: day.workouts })),
+          });
 
           const tomorrow = addDays(today, 1);
-          const movedTitle = week[0].workouts[0].title;
+          const movedTitle = week[0].workouts[0].workout.title;
           await updateUser(user.id, {
               trainingCommitment: { date: format(tomorrow, 'yyyy-MM-dd'), workoutTitle: movedTitle },
           });
           void scheduleDailyNotification(
-              { workoutTitle: movedTitle, exercises: week[0].workouts.map(w => w.title).join(', ') },
+              { workoutTitle: movedTitle, exercises: week[0].workouts.map(entry => entry.workout.title).join(', ') },
               user.notificationTime,
           ).catch(err => logger.error('Could not schedule the reminder:', err));
 

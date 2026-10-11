@@ -7,6 +7,8 @@ import { getAdminDb } from '@/lib/firebase-admin';
 import { assertUser } from '@/lib/api-auth';
 import type { WorkoutSession, WorkoutDay, ProgramType } from '@/models/types';
 import { z } from 'zod';
+import { AD_HOC_PROGRAM_IDS } from '@/lib/schedule-move';
+import { planScheduleWrites, type DayToSave, type ExistingSessionDoc } from '@/lib/schedule-save';
 
 /** Firestore caps a write batch at 500 operations; leave headroom. */
 const DELETE_BATCH_SIZE = 450;
@@ -16,9 +18,6 @@ const DELETE_BATCH_SIZE = 450;
  * catalogue is 84 days, so a year is generous while still bounding the read.
  */
 const CLEAR_HORIZON_DAYS = 365;
-
-/** Logged extra activity rather than schedule — never cleared or rearranged. */
-const AD_HOC_PROGRAM_IDS = ['one-off-ai', 'custom-workout'];
 
 // Every function exported from this module is a public HTTP endpoint: it is a
 // `'use server'` file imported by client components, so Next.js registers each
@@ -103,180 +102,125 @@ export async function getOrCreateWorkoutSessionAdmin(programId: string, workoutD
 }
 
 
-const SwapWorkoutsInputSchema = z.object({
-  programId: z.string(),
-  date1: z.date(),
-  workout1: z.any(), // Using any because Zod struggles with recursive types in zod-to-json-schema
-  date2: z.date(),
-  workout2: z.any().nullable(),
-});
-
-type SwapWorkoutsInput = z.infer<typeof SwapWorkoutsInputSchema>;
-
-export async function swapWorkouts(input: SwapWorkoutsInput): Promise<void> {
-    const { uid: userId } = await assertUser('sessions:swap');
-    const adminDb = getAdminDb();
-    const sessionsCollection = adminDb.collection('workoutSessions');
-
-    const { programId, date1, workout1, date2, workout2 } = SwapWorkoutsInputSchema.parse(input);
-  
-    const batch = adminDb.batch();
-  
-    // Update or create session for date1 (today) with workout1 (from source day)
-    const session1Query = await sessionsCollection
-      .where('userId', '==', userId)
-      .where('workoutDate', '==', Timestamp.fromDate(date1))
-      .limit(1)
-      .get();
-      
-    if (session1Query.empty) {
-      const newSession1Ref = sessionsCollection.doc();
-      batch.set(newSession1Ref, createSessionData(userId, programId, date1, workout1));
-    } else {
-      batch.update(session1Query.docs[0].ref, createSessionData(userId, programId, date1, workout1, false));
-    }
-  
-    // Update or create session for date2 (source day) with workout2 (from today)
-    const session2Query = await sessionsCollection
-      .where('userId', '==', userId)
-      .where('workoutDate', '==', Timestamp.fromDate(date2))
-      .limit(1)
-      .get();
-  
-    if (session2Query.empty) {
-      if (workout2) { // Only create a session if there was a workout
-        const newSession2Ref = sessionsCollection.doc();
-        batch.set(newSession2Ref, createSessionData(userId, programId, date2, workout2));
-      }
-    } else {
-      if (workout2) {
-        batch.update(session2Query.docs[0].ref, createSessionData(userId, programId, date2, workout2, false));
-      } else {
-        // If there was no workout for today, we can delete the source day's placeholder session
-        batch.delete(session2Query.docs[0].ref);
-      }
-    }
-  
-    await batch.commit();
-}
-  
-  // Helper to create session data for batch operations
-function createSessionData(userId: string, programId: string, date: Date, workout: WorkoutDay, isNew: boolean = true) {
-    const data: any = {
-      userId,
-      programId,
-      workoutDate: Timestamp.fromDate(date),
-      workoutTitle: workout.title,
-      programType: deriveSessionProgramType(workout),
-      finishedAt: null,
-      notes: '',
-      workoutDetails: workout, // <-- CRITICAL FIX: Ensure full workout object is saved
-      skipped: false,
-    };
-
-    if (isNew) {
-        data.startedAt = Timestamp.now();
-    }
-
-    return data;
-}
-
 const DayChangeSchema = z.object({
   date: z.date(),
-  // Final list of sub-workouts for the day, in order. Empty = the day was cleared entirely.
-  workouts: z.array(z.any()),
+  // The day's sessions, in order. Empty = the day was cleared entirely.
+  entries: z.array(z.object({
+    workout: z.any(), // Using any because Zod struggles with recursive types in zod-to-json-schema
+    // The session doc this came from, when there is one. Only ever matched
+    // against docs read below for this user, so a foreign id is just ignored.
+    sessionId: z.string().optional(),
+  })),
 });
 
 const SaveScheduleChangesInputSchema = z.object({
   programId: z.string(),
-  days: z.array(DayChangeSchema),
+  days: z.array(DayChangeSchema).refine(
+    days => new Set(days.map(day => day.date.getTime())).size === days.length,
+    'Each day may appear only once.',
+  ),
 });
 
 type SaveScheduleChangesInput = z.infer<typeof SaveScheduleChangesInputSchema>;
 
 /**
- * Persists a training-calendar drag-and-drop rearrangement: for each changed date, writes that day's
- * final set of sub-workouts. A date whose workouts array is empty is written as an explicit "cleared"
- * marker doc (sessionCount 0, no workoutDetails) rather than having its session docs deleted outright —
- * deleting them would make the date fall back to the program's original schedule on the next read,
- * silently undoing the drag. Dates that already have a finished session are skipped as a safety net;
- * the calling UI should never include those since only future/incomplete days can be rearranged.
+ * Persists a rearranged schedule (calendar drag-and-drop, "Do this today", "Do it tomorrow"):
+ * each day in `days` ends up holding exactly its `entries`, in order. The rules live in
+ * lib/schedule-save.ts. In short: a session that came from a doc moves as that doc; finished
+ * docs never change day; a day left empty gets a content-less marker so it doesn't fall back
+ * to the program's default; ad-hoc (one-off/custom) docs are never read or written.
+ *
+ * One transaction: a move is one doc leaving a day and arriving on another, so the two halves
+ * must land together, and a doc read here that changes before the commit (a session finished
+ * meanwhile) makes Firestore rerun the read and plan rather than have it written over.
  */
 export async function saveScheduleChanges(input: SaveScheduleChangesInput): Promise<void> {
     const { uid: userId } = await assertUser('sessions:save-schedule');
     const { programId, days } = SaveScheduleChangesInputSchema.parse(input);
     const adminDb = getAdminDb();
     const sessionsCollection = adminDb.collection('workoutSessions');
-    const batch = adminDb.batch();
+    const keyOf = (date: Date) => String(date.getTime());
+    const dateByKey = new Map(days.map(({ date }) => [keyOf(date), date]));
 
-    for (const { date, workouts } of days) {
-        const dateTimestamp = Timestamp.fromDate(date);
-        const existingSnap = await sessionsCollection
-            .where('userId', '==', userId)
-            .where('workoutDate', '==', dateTimestamp)
-            .where('programId', 'not-in', ['one-off-ai', 'custom-workout'])
-            .get();
+    await adminDb.runTransaction(async (tx) => {
+        const snapshots = await Promise.all(days.map(({ date }) => tx.get(
+            sessionsCollection
+                .where('userId', '==', userId)
+                .where('workoutDate', '==', Timestamp.fromDate(date))
+                .where('programId', 'not-in', AD_HOC_PROGRAM_IDS),
+        )));
 
-        if (existingSnap.docs.some(d => !!d.data().finishedAt)) continue;
+        const refs = new Map<string, FirebaseFirestore.DocumentReference>();
+        const existing: ExistingSessionDoc[] = [];
+        snapshots.forEach((snap, dayIndex) => snap.docs.forEach(doc => {
+            const data = doc.data();
+            refs.set(doc.id, doc.ref);
+            existing.push({
+                id: doc.id,
+                dateKey: keyOf(days[dayIndex].date),
+                title: data.workoutDetails ? (data.workoutDetails.title ?? data.workoutTitle ?? '') : null,
+                finished: !!data.finishedAt,
+                sessionIndex: data.sessionIndex ?? 0,
+                sessionCount: data.sessionCount,
+            });
+        }));
 
-        const existingBySessionIndex = new Map<number, FirebaseFirestore.QueryDocumentSnapshot>();
-        existingSnap.docs.forEach(doc => {
-            const idx = doc.data().sessionIndex ?? 0;
-            if (!existingBySessionIndex.has(idx)) existingBySessionIndex.set(idx, doc);
-        });
+        const writes = planScheduleWrites(
+            days.map(({ date, entries }) => ({ dateKey: keyOf(date), entries: entries as DayToSave['entries'] })),
+            existing,
+        );
 
-        if (workouts.length === 0) {
-            const markerDoc = existingBySessionIndex.get(0);
-            existingBySessionIndex.delete(0);
-            const markerData = {
-                userId,
-                programId,
-                workoutDate: dateTimestamp,
-                workoutTitle: 'Rest',
-                programType: 'hyrox' as ProgramType,
-                workoutDetails: null,
-                sessionIndex: 0,
-                sessionCount: 0,
-                finishedAt: null,
-                skipped: false,
-            };
-            if (markerDoc) {
-                batch.update(markerDoc.ref, markerData);
-            } else {
-                batch.set(sessionsCollection.doc(), { ...markerData, startedAt: Timestamp.now(), notes: '' });
-            }
-        } else {
-            for (let i = 0; i < workouts.length; i++) {
-                const workout = workouts[i] as WorkoutDay;
-                const existingDoc = existingBySessionIndex.get(i);
-                existingBySessionIndex.delete(i);
-
-                const data = {
+        for (const write of writes) {
+            if (write.type === 'delete') {
+                tx.delete(refs.get(write.id)!);
+            } else if (write.type === 'keep') {
+                tx.update(refs.get(write.id)!, {
+                    sessionIndex: write.sessionIndex,
+                    sessionCount: write.sessionCount,
+                    // Opened on its old day doesn't mean started on its new one: the
+                    // workout page records the real start the first time it's opened.
+                    ...(write.moved ? {
+                        workoutDate: Timestamp.fromDate(dateByKey.get(write.dateKey)!),
+                        startedAt: Timestamp.now(),
+                        startedInApp: false,
+                    } : {}),
+                });
+            } else if (write.type === 'create') {
+                tx.set(sessionsCollection.doc(), {
                     userId,
                     programId,
-                    workoutDate: dateTimestamp,
-                    workoutTitle: workout.title,
-                    programType: deriveSessionProgramType(workout),
-                    workoutDetails: workout,
-                    sessionIndex: i,
-                    sessionCount: workouts.length,
+                    workoutDate: Timestamp.fromDate(dateByKey.get(write.dateKey)!),
+                    workoutTitle: write.workout.title,
+                    programType: deriveSessionProgramType(write.workout),
+                    workoutDetails: write.workout,
+                    sessionIndex: write.sessionIndex,
+                    sessionCount: write.sessionCount,
+                    finishedAt: null,
+                    skipped: false,
+                    startedAt: Timestamp.now(),
+                    notes: '',
+                });
+            } else {
+                const markerData = {
+                    userId,
+                    programId,
+                    workoutDate: Timestamp.fromDate(dateByKey.get(write.dateKey)!),
+                    workoutTitle: 'Rest',
+                    programType: 'hyrox' as ProgramType,
+                    workoutDetails: null,
+                    sessionIndex: 0,
+                    sessionCount: 0,
                     finishedAt: null,
                     skipped: false,
                 };
-
-                if (existingDoc) {
-                    batch.update(existingDoc.ref, data);
+                if (write.id) {
+                    tx.update(refs.get(write.id)!, markerData);
                 } else {
-                    batch.set(sessionsCollection.doc(), { ...data, startedAt: Timestamp.now(), notes: '' });
+                    tx.set(sessionsCollection.doc(), { ...markerData, startedAt: Timestamp.now(), notes: '' });
                 }
             }
         }
-
-        // Any remaining slots weren't reused above (the day shrank) — remove them.
-        existingBySessionIndex.forEach(doc => batch.delete(doc.ref));
-    }
-
-    await batch.commit();
+    });
 }
 
 const ClearFutureProgramSessionsInputSchema = z.object({

@@ -41,3 +41,34 @@ export async function mapWithLimit<T, R>(
   await Promise.all(Array.from({ length: workers }, work));
   return results;
 }
+
+/**
+ * Wraps `run` so only one call is in flight at a time.
+ *
+ * A call made while one is running does not share it: that run may have read
+ * its data before the caller's own write landed. It gets one more run after
+ * the current one instead, shared with every other caller that arrives in the
+ * meantime. So awaiting the result always means "a run that started after I
+ * asked has finished".
+ */
+export function singleFlightWithFollowUp(run: () => Promise<void>): () => Promise<void> {
+  let inFlight: Promise<void> | null = null;
+  let followUp: Promise<void> | null = null;
+
+  const call = (): Promise<void> => {
+    if (!inFlight) {
+      inFlight = new Promise<void>(resolve => resolve(run())).finally(() => { inFlight = null; });
+      return inFlight;
+    }
+    if (!followUp) {
+      followUp = inFlight
+        .catch(() => undefined)
+        .then(() => {
+          followUp = null;
+          return call();
+        });
+    }
+    return followUp;
+  };
+  return call;
+}

@@ -10,7 +10,7 @@ export interface DayPlan<W> {
 }
 
 export interface PostponePlan<W> {
-  /** Days whose workout lists change, ready for saveScheduleChanges. */
+  /** Days whose session lists change; saveScheduleChanges takes each as that day's entries. */
   changes: DayPlan<W>[];
   /** Where tomorrow's original session ended up, if it had to move. */
   bumpedTo: Date | null;
