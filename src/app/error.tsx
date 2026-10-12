@@ -3,8 +3,9 @@
 import { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { AlertTriangle, RefreshCcw, Home } from 'lucide-react';
+import { AlertTriangle, RefreshCcw, Home, Loader2 } from 'lucide-react';
 import Link from 'next/link';
+import { useStaleBuildRecovery } from '@/hooks/use-stale-build-recovery';
 
 export default function Error({
   error,
@@ -13,10 +14,24 @@ export default function Error({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  // "Loading chunk … failed" after a deploy: reload onto the new build.
+  const { updating, retry } = useStaleBuildRecovery(error, reset);
+
   useEffect(() => {
     // Log the error to an error reporting service
     console.error('Root error boundary caught:', error);
   }, [error]);
+
+  if (updating) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 bg-background" role="status">
+        <p className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Updating to the latest version…
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-background">
@@ -43,7 +58,7 @@ export default function Error({
 
           <div className="flex flex-col sm:flex-row gap-3">
             <Button
-              onClick={reset}
+              onClick={retry}
               className="flex-1"
               variant="default"
             >
