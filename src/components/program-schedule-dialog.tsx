@@ -14,7 +14,6 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   Accordion,
   AccordionContent,
@@ -47,6 +46,7 @@ export function ProgramScheduleDialog({
   isScheduling,
 }: ProgramScheduleDialogProps) {
   const [mode, setMode] = useState<'start' | 'end'>('start');
+  const [calendarOpen, setCalendarOpen] = useState(false);
   const [pickedDate, setPickedDate] = useState<Date | undefined>(new Date());
 
   const cycleLength = program ? getCycleLength(program) : 0;
@@ -122,28 +122,18 @@ export function ProgramScheduleDialog({
           </Tabs>
 
           <div className="flex items-center gap-3">
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn(
-                    'w-[220px] justify-start text-left font-normal',
-                    !pickedDate && 'text-muted-foreground'
-                  )}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {pickedDate ? format(pickedDate, 'PPP') : <span>Pick a date</span>}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0">
-                <Calendar
-                  mode="single"
-                  selected={pickedDate}
-                  onSelect={setPickedDate}
-                  initialFocus
-                />
-              </PopoverContent>
-            </Popover>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setCalendarOpen((o) => !o)}
+              className={cn(
+                'w-[220px] justify-start text-left font-normal',
+                !pickedDate && 'text-muted-foreground'
+              )}
+            >
+              <CalendarIcon className="mr-2 h-4 w-4" />
+              {pickedDate ? format(pickedDate, 'PPP') : <span>Pick a date</span>}
+            </Button>
 
             {pickedDate && cycleLength > 0 && (
               <p className="text-sm text-muted-foreground">
@@ -153,6 +143,20 @@ export function ProgramScheduleDialog({
               </p>
             )}
           </div>
+
+          {calendarOpen && (
+            <div className="flex justify-center rounded-md border">
+              <Calendar
+                mode="single"
+                selected={pickedDate}
+                onSelect={(date) => {
+                  setPickedDate(date);
+                  if (date) setCalendarOpen(false);
+                }}
+                initialFocus
+              />
+            </div>
+          )}
         </div>
 
         <DialogFooter className="flex-col sm:flex-row gap-2">
