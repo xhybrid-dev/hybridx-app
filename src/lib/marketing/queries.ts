@@ -61,9 +61,25 @@ function serialiseCampaign(id: string, data: FirebaseFirestore.DocumentData): Se
   };
 }
 
+/**
+ * Recursively turn Firestore Timestamps/Dates into ISO strings. Subscriber
+ * documents carry fields outside the typed shape (e.g. `attribution.capturedAt`),
+ * and a Timestamp reaching a client component fails the whole server render.
+ */
+function plain(value: unknown): unknown {
+  if (value instanceof Date || (typeof value === 'object' && value !== null && 'toDate' in value)) {
+    return iso(value);
+  }
+  if (Array.isArray(value)) return value.map(plain);
+  if (typeof value === 'object' && value !== null) {
+    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, plain(v)]));
+  }
+  return value;
+}
+
 function serialiseSubscriber(id: string, data: FirebaseFirestore.DocumentData): SerialisableSubscriber {
   return {
-    ...(data as Subscriber),
+    ...(plain(data) as Subscriber),
     id,
     createdAt: iso(data.createdAt),
     updatedAt: iso(data.updatedAt),
