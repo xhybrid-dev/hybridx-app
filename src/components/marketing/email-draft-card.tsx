@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { AlertTriangle, Eye, Loader2, Pencil, Sparkles } from 'lucide-react';
+import { AlertTriangle, Eye, Loader2, Pencil, Sparkles, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -58,6 +58,13 @@ export function EmailDraftCard({ draft, index, audienceDescription, onChange }: 
 
   const errors = draft.issues.filter((i) => i.severity === 'error');
   const warnings = draft.issues.filter((i) => i.severity === 'warning');
+  // Issues that belong to one block are shown on that block, where they can be
+  // fixed, as well as in the summary above.
+  const issuesByBlock = new Map<number, typeof draft.issues>();
+  for (const issue of draft.issues) {
+    if (issue.blockIndex === undefined) continue;
+    issuesByBlock.set(issue.blockIndex, [...(issuesByBlock.get(issue.blockIndex) ?? []), issue]);
+  }
 
   /** Re-check after any edit — a marketer typing a price by hand can be as wrong as the model. */
   const revalidate = async (next: DraftedEmail) => {
@@ -117,7 +124,7 @@ export function EmailDraftCard({ draft, index, audienceDescription, onChange }: 
           </div>
           {errors.length > 0 ? (
             <Badge variant="destructive">
-              {errors.length} fact issue{errors.length === 1 ? '' : 's'}
+              {errors.length} issue{errors.length === 1 ? '' : 's'} to fix
             </Badge>
           ) : (
             <Badge variant="secondary" className="bg-green-500/15 text-green-600 dark:text-green-400">
@@ -236,13 +243,37 @@ export function EmailDraftCard({ draft, index, audienceDescription, onChange }: 
                 const blocks = draft.blocks.map((b, j) => (j === i ? next : b));
                 void revalidate({ ...draft, blocks });
               };
+              const blockIssues = issuesByBlock.get(i) ?? [];
+              const removeBlock = () => {
+                const blocks = draft.blocks.filter((_, j) => j !== i);
+                void revalidate({ ...draft, blocks });
+              };
               return (
-                <div key={i} className="rounded-lg border p-3">
+                <div
+                  key={i}
+                  className={`rounded-lg border p-3 ${blockIssues.length ? 'border-destructive/60 bg-destructive/5' : ''}`}
+                >
                   <div className="flex items-center justify-between gap-2">
                     <Badge variant="outline" className="text-[10px]">
                       {BLOCK_LABELS[block.type]}
                     </Badge>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-xs text-muted-foreground"
+                      onClick={removeBlock}
+                    >
+                      <Trash2 className="mr-1 h-3.5 w-3.5" />
+                      Delete
+                    </Button>
                   </div>
+                  {blockIssues.map((issue, k) => (
+                    <p key={k} className="mt-2 flex items-start gap-2 text-xs text-destructive">
+                      <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                      {issue.message}
+                    </p>
+                  ))}
                   <div className="mt-2">
                     <BlockFieldsEditor
                       block={block}

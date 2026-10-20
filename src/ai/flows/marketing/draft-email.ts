@@ -19,6 +19,7 @@ import {
   toEmailBlocks,
   emailContentSchema,
   blocksToText,
+  missingContent,
 } from '@/lib/marketing/blocks';
 import {
   buildDraftPrompt,
@@ -80,12 +81,27 @@ export async function draftEmail(input: DraftEmailInput): Promise<DraftEmailResu
 
   // Gemini is asked for the flat block shape (see blocks.ts); narrow it back to
   // the strict union before anything renders or validates.
-  const { blocks, rejected } = toEmailBlocks(content.blocks);
+  const { blocks, rejected, salvaged } = toEmailBlocks(content.blocks, { salvage: true });
 
   const { ok, issues } = validateDraft(
     { subject: content.subject, body: blocksToText(blocks) },
     snapshot,
   );
+
+  // A block the model left incomplete is kept in place, blank where it left a
+  // gap, and flagged so the reviewer completes it instead of finding it gone.
+  const salvagedIssues: ValidationIssue[] = salvaged.flatMap((r) => {
+    const missing = missingContent(blocks[r.index]);
+    return [
+      {
+        severity: 'error' as const,
+        kind: 'structure' as const,
+        blockIndex: r.index,
+        found: `${r.type} (block ${r.index + 1})`,
+        message: `The model left this ${r.type} block incomplete (${r.reason}). Fill in ${missing.join(' and ') || 'the missing fields'} below, or delete the block.`,
+      },
+    ];
+  });
 
   // A dropped block makes the email shorter than the model intended, which is
   // not something the reviewer should have to notice for themselves.
@@ -109,7 +125,7 @@ export async function draftEmail(input: DraftEmailInput): Promise<DraftEmailResu
     blocks,
     html: renderBlocks(blocks, { previewText: content.previewText }),
     text: renderBlocksAsText(blocks),
-    issues: [...issues, ...blockIssues, ...linkIssues],
-    valid: ok && rejected.length === 0 && linkIssues.length === 0,
+    issues: [...issues, ...blockIssues, ...salvagedIssues, ...linkIssues],
+    valid: ok && rejected.length === 0 && salvaged.length === 0 && linkIssues.length === 0,
   };
 }

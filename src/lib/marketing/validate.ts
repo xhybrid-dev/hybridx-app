@@ -13,7 +13,7 @@
 // mechanically, and (c) cause real damage when wrong.
 
 import type { KnowledgeSnapshot } from './knowledge';
-import { emailBlockSchema, type EmailBlock } from './blocks';
+import { emailBlockSchema, missingContent, type EmailBlock } from './blocks';
 import { isKnownAppPath } from './app-routes';
 
 export type IssueSeverity = 'error' | 'warning';
@@ -33,6 +33,8 @@ export interface ValidationIssue {
    * Optional so existing producers default to 'fact', which is what they are.
    */
   kind?: 'fact' | 'structure';
+  /** Zero-based index of the block this concerns, when it concerns one. */
+  blockIndex?: number;
   /** What was found, quoted from the draft. */
   found: string;
   message: string;
@@ -90,7 +92,20 @@ export function validateBlockShapes(blocks: EmailBlock[]): ValidationIssue[] {
 
   blocks.forEach((block, index) => {
     const parsed = emailBlockSchema.safeParse(block);
-    if (parsed.success) return;
+    if (parsed.success) {
+      // Present but blank is as unusable as absent — a button with no link.
+      const missing = missingContent(block);
+      if (missing.length) {
+        issues.push({
+          severity: 'error',
+          kind: 'structure',
+          blockIndex: index,
+          found: `${block.type} (block ${index + 1})`,
+          message: `This ${block.type} block needs its ${missing.join(' and ')} filled in before it can be sent.`,
+        });
+      }
+      return;
+    }
 
     const reason = parsed.error.issues
       .map((i) => (i.path.length ? `${i.path.join('.')}: ${i.message}` : i.message))
@@ -98,6 +113,7 @@ export function validateBlockShapes(blocks: EmailBlock[]): ValidationIssue[] {
     issues.push({
       severity: 'error',
       kind: 'structure',
+      blockIndex: index,
       found: `${block.type} (block ${index + 1})`,
       message: `This ${block.type} block is incomplete and would not render correctly: ${reason}.`,
     });

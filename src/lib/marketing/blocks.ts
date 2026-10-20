@@ -263,6 +263,88 @@ export interface NarrowedBlocks {
   blocks: GeneratableBlock[];
   /** Blocks the model produced that do not satisfy their own type's rules. */
   rejected: { type: string; reason: string }[];
+  /**
+   * With `salvage`, blocks kept in `blocks` (at `index`) with blank placeholders
+   * for what the model left out, so the reviewer can complete them in place.
+   */
+  salvaged: { index: number; type: string; reason: string }[];
+}
+
+/**
+ * Fill the required fields a candidate lacks with blanks, so an incomplete block
+ * can be kept and completed by hand. Only blanks are added — nothing is guessed,
+ * so a missing URL stays an empty field the reviewer must fill, never a link the
+ * system made up.
+ */
+function withPlaceholders(cleaned: Record<string, unknown>): Record<string, unknown> {
+  const str = (k: string) => (typeof cleaned[k] === 'string' ? (cleaned[k] as string) : '');
+  switch (cleaned.type) {
+    case 'hero':
+      return { ...cleaned, heading: str('heading') };
+    case 'heading':
+      return { ...cleaned, text: str('text'), level: cleaned.level ?? 2 };
+    case 'paragraph':
+    case 'quote':
+      return { ...cleaned, text: str('text') };
+    case 'bulletList': {
+      const items = Array.isArray(cleaned.items)
+        ? (cleaned.items as unknown[]).filter((i): i is string => typeof i === 'string')
+        : [];
+      return { ...cleaned, items: items.length ? items : [''] };
+    }
+    case 'cta':
+      return { ...cleaned, label: str('label'), url: str('url') };
+    case 'image':
+      return { ...cleaned, url: str('url'), alt: str('alt') };
+    case 'programCard':
+      return { ...cleaned, programName: str('programName'), description: str('description') };
+    case 'statRow': {
+      const stats = Array.isArray(cleaned.stats)
+        ? (cleaned.stats as Array<{ value?: unknown; label?: unknown }>).map((x) => ({
+            value: typeof x?.value === 'string' ? x.value : '',
+            label: typeof x?.label === 'string' ? x.label : '',
+          }))
+        : [];
+      while (stats.length < 2) stats.push({ value: '', label: '' });
+      return { ...cleaned, stats: stats.slice(0, 3) };
+    }
+    default:
+      return cleaned;
+  }
+}
+
+/**
+ * Required content a block must actually have, beyond the key merely existing.
+ * Returns what is blank, or an empty list for a complete block. Used both to
+ * flag salvaged blocks and to keep them flagged until the reviewer fills them.
+ */
+export function missingContent(block: EmailBlock): string[] {
+  const blank = (v: string | undefined) => !v || !v.trim();
+  switch (block.type) {
+    case 'hero':
+      return blank(block.heading) ? ['heading'] : [];
+    case 'heading':
+    case 'paragraph':
+    case 'quote':
+      return blank(block.text) ? ['text'] : [];
+    case 'bulletList':
+      return block.items.some((i) => !blank(i)) ? [] : ['items'];
+    case 'cta':
+      return [...(blank(block.label) ? ['label'] : []), ...(blank(block.url) ? ['url'] : [])];
+    case 'image':
+      return [...(blank(block.url) ? ['url'] : []), ...(blank(block.alt) ? ['alt text'] : [])];
+    case 'programCard':
+      return [
+        ...(blank(block.programName) ? ['programme name'] : []),
+        ...(blank(block.description) ? ['description'] : []),
+      ];
+    case 'statRow':
+      return block.stats.filter((x) => !blank(x.value) && !blank(x.label)).length >= 2
+        ? []
+        : ['stats'];
+    default:
+      return [];
+  }
 }
 
 /**
@@ -278,9 +360,13 @@ export interface NarrowedBlocks {
  * Extra keys are stripped by the per-variant schemas, so the `label` left over
  * from a `cta` cannot ride along on a `paragraph`.
  */
-export function toEmailBlocks(raw: z.infer<typeof aiBlockSchema>[]): NarrowedBlocks {
+export function toEmailBlocks(
+  raw: z.infer<typeof aiBlockSchema>[],
+  options: { salvage?: boolean } = {},
+): NarrowedBlocks {
   const blocks: GeneratableBlock[] = [];
   const rejected: { type: string; reason: string }[] = [];
+  const salvaged: { index: number; type: string; reason: string }[] = [];
 
   for (const candidate of raw) {
     // Drop keys the model left explicitly null/undefined so they cannot look
@@ -335,10 +421,22 @@ export function toEmailBlocks(raw: z.infer<typeof aiBlockSchema>[]): NarrowedBlo
     const reason = parsed.error.issues
       .map((i) => (i.path.length ? `${i.path.join('.')}: ${i.message}` : i.message))
       .join('; ');
+
+    // Draft review keeps the block, blank where the model left a gap, so the
+    // reviewer sees it in its place and completes it rather than losing it.
+    if (options.salvage) {
+      const repaired = generatableBlockSchema.safeParse(withPlaceholders(cleaned));
+      if (repaired.success) {
+        salvaged.push({ index: blocks.length, type: candidate.type, reason });
+        blocks.push(repaired.data);
+        continue;
+      }
+    }
+
     rejected.push({ type: candidate.type, reason });
   }
 
-  return { blocks, rejected };
+  return { blocks, rejected, salvaged };
 }
 
 /** Human-readable label for the block editor. */

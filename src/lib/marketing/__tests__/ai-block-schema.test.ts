@@ -142,3 +142,26 @@ describe('toEmailBlocks', () => {
     expect(blocks[0]).toEqual({ type: 'paragraph', text: 'Still fine' });
   });
 });
+
+describe('toEmailBlocks with salvage', () => {
+  it('keeps an incomplete block in place with a blank for the gap', () => {
+    const { blocks, rejected, salvaged } = toEmailBlocks(
+      [
+        { type: 'paragraph', text: 'Before' },
+        { type: 'cta', label: 'Go' },
+        { type: 'paragraph', text: 'After' },
+      ] as never,
+      { salvage: true },
+    );
+    expect(rejected).toEqual([]);
+    expect(blocks.map((b) => b.type)).toEqual(['paragraph', 'cta', 'paragraph']);
+    expect(blocks[1]).toMatchObject({ type: 'cta', label: 'Go', url: '' });
+    expect(salvaged).toEqual([expect.objectContaining({ index: 1, type: 'cta' })]);
+  });
+
+  it('never invents a value for the gap', () => {
+    const { blocks } = toEmailBlocks([{ type: 'statRow' }] as never, { salvage: true });
+    expect(blocks[0]).toMatchObject({ stats: [{ value: '', label: '' }, { value: '', label: '' }] });
+  });
+});
+
