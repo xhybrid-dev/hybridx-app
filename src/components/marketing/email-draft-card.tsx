@@ -68,7 +68,7 @@ export function EmailDraftCard({ draft, index, audienceDescription, onChange }: 
 
   /** Re-check after any edit — a marketer typing a price by hand can be as wrong as the model. */
   const revalidate = async (next: DraftedEmail) => {
-    const result = await revalidateContent({ subject: next.subject, blocks: next.blocks });
+    const result = await revalidateContent({ subject: next.subject, blocks: next.blocks, brief: next.brief });
     onChange(
       result.success ? { ...next, issues: result.data.issues, valid: result.data.valid } : next,
     );

@@ -86,6 +86,7 @@ export async function draftEmail(input: DraftEmailInput): Promise<DraftEmailResu
   const { ok, issues } = validateDraft(
     { subject: content.subject, body: blocksToText(blocks) },
     snapshot,
+    { briefText: `${input.brief} ${input.journeyGoal ?? ''}` },
   );
 
   // A block the model left incomplete is kept in place, blank where it left a

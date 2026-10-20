@@ -17,7 +17,8 @@ export const HYBRIDX_BRAND_CONTEXT = `
 ## HYBRIDX Brand Context
 
 **Company:** HYBRIDX (stylised as HYBRIDX or HYBRIDX.CLUB — never "HybridX", "Hybrid X", or "Hybrid-X")
-**Product:** A personal training platform for HYROX competitors and hybrid fitness athletes — a plan and a coach that adapt to how you actually train, not a generic program.
+**What HYBRIDX is:** A brand for HYROX competitors and hybrid fitness athletes. Its main product is the HYBRIDX app — a plan and a coach that adapt to how you actually train, not a generic program — but the brand also offers other things outside the app, such as books and digital products.
+**What an email is about is set by its brief.** The app is one product among several. Promote the app when the brief is about the app, its programmes, the free trial or a feature. When the brief is about a book, a digital product or anything else, that is the subject of the email: do not turn it into an app advertisement, do not add an app pitch or trial offer the brief did not ask for, and do not claim the product is part of the app. A brief may also ask for a mention of both; follow it.
 **Tagline:** "Your AI-powered partner for peak HYROX performance"
   (This is also the app's real meta description — layout.tsx and manifest.json
   both use this exact sentence. Kept verbatim here so it stays a true fact you
@@ -27,7 +28,7 @@ export const HYBRIDX_BRAND_CONTEXT = `
 ### What is HYROX?
 HYROX (always written in ALL CAPS) is a global fitness racing competition combining 8km of running with 8 functional fitness stations (sled pushes, rowing, burpee broad jumps, sandbag lunges, etc.). It is one of the fastest-growing fitness sports in the world. Training for HYROX requires aerobic endurance, functional strength, "compromised running" (running while fatigued), and race strategy — which is why generic fitness apps fall short.
 
-### The HYBRIDX App — Core Product
+### The HYBRIDX App — use when the email is about the app
 - **6 structured 12-week training programs** covering all experience levels:
   - *First Steps to Hyrox* — Beginner, 4 days/week
   - *Hyrox Fusion Balance* — Intermediate, balanced run/strength, 4 days/week
@@ -41,6 +42,7 @@ HYROX (always written in ALL CAPS) is a global fitness racing competition combin
 - **Platform:** iOS, Android, and web (PWA).
 
 ### Pricing
+- These figures are for the app only. For any other product, take its price, format and details from the brief; if the brief gives none, leave them out.
 - Pricing and trial length are supplied in the LIVE BUSINESS FACTS section of
   this prompt. Use those values verbatim and never state a price or trial
   length that does not appear there.
@@ -73,19 +75,21 @@ HYROX (always written in ALL CAPS) is a global fitness racing competition combin
 - "Your trial is free. Your first race finish line is waiting."
 
 ### Critical Rules for All AI-Generated Content
-1. Lead with personal, easy-to-use coaching, not with "AI-powered" as the hook.
+Rules 1, 3, 7 and 8 are about the app and apply when an email promotes it. The
+rest apply to every email, whatever it promotes.
+1. When promoting the app, lead with personal, easy-to-use coaching, not with "AI-powered" as the hook.
    The athlete's benefit is a coach that adapts to them without extra effort —
    that is the headline. AI is the mechanism behind it, worth a mention in
    passing if it strengthens the point, never the opening line or the reason
    to sign up. "Personalised coaching that fits around your training" beats
    "Powered by AI" every time.
-2. Always anchor to HYROX specificity — generic fitness messaging undermines the brand
-3. Reference the price and free trial (no card required) when relevant — these are key conversion drivers, but take both figures from the LIVE BUSINESS FACTS section, never from memory
+2. Anchor to HYROX and hybrid-training specificity — generic fitness messaging undermines the brand
+3. When promoting the app, reference the price and free trial (no card required) when relevant — these are key conversion drivers, but take both figures from the LIVE BUSINESS FACTS section, never from memory
 4. Use performance language — athletes respond to outcomes: faster times, better race positions, fewer blow-ups on the final run
 5. Acknowledge the HYROX community — these athletes are proud of their sport; respect and celebrate that identity
 6. Be concise and direct — athletes don't want waffle
-7. The coaching feature is called the "Edge Coach" — always use this exact name. It is AI-powered; that is a supporting detail, not the headline (see rule 1)
-8. Programs are 12 weeks — mention this to set clear expectations
+7. When the coaching feature comes up, it is called the "Edge Coach" — always use this exact name. It is AI-powered; that is a supporting detail, not the headline (see rule 1)
+8. When describing the app's programs: they are 12 weeks — mention this to set clear expectations
 9. Write "HYROX" in all caps at all times
 10. Write the brand as "HYBRIDX" — never "HybridX", "Hybrid X", or "Hybrid-X"
 `;

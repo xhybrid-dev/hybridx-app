@@ -114,6 +114,8 @@ export async function suggestSubjects(input: {
 export async function revalidateContent(input: {
   subject: string;
   blocks: EmailBlock[];
+  /** The email's brief, so a price the marketer supplied is not flagged as invented. */
+  brief?: string;
 }): Promise<StudioResult<{ valid: boolean; issues: ValidationIssue[] }>> {
   try {
     await assertAdmin('marketing:studio:validate');
@@ -121,6 +123,7 @@ export async function revalidateContent(input: {
     const { ok, issues } = validateDraft(
       { subject: input.subject, body: blocksToText(input.blocks) },
       snapshot,
+      { briefText: input.brief },
     );
     // Not previously called here. A drafted email got its links checked in
     // draftEmail, a revised block got them checked in reviseBlock, but a

@@ -185,6 +185,7 @@ export function validateLinks(blocks: EmailBlock[], appUrl: string): ValidationI
 export function validateDraft(
   content: { subject?: string; body: string },
   snapshot: KnowledgeSnapshot,
+  options: { briefText?: string } = {},
 ): ValidationResult {
   const text = toText(`${content.subject ?? ''} ${content.body}`);
   const issues: ValidationIssue[] = [];
@@ -193,6 +194,11 @@ export function validateDraft(
   const allowedPrices = new Set(
     (snapshot.priceLabel.match(PRICE_PATTERN) ?? []).map((p) => p.replace(/\s/g, '')),
   );
+  // A price the marketer wrote into the brief is theirs, e.g. a book at £12.99 —
+  // only prices the model produced from nowhere are errors.
+  for (const p of options.briefText?.match(PRICE_PATTERN) ?? []) {
+    allowedPrices.add(p.replace(/\s/g, ''));
+  }
   for (const match of new Set(text.match(PRICE_PATTERN) ?? [])) {
     if (!allowedPrices.has(match.replace(/\s/g, ''))) {
       issues.push({

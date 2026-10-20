@@ -131,6 +131,11 @@ Rules:
 - Pick exitOnConversion so the journey stops as soon as its purpose is met. A
   winback ends when the subscription becomes active; an activation series ends
   when a workout is logged. Use "none" only for pure newsletters.
+- The request may be about the app or about something else HYBRIDX offers, such
+  as a book or digital product. Plan around what the request names; do not
+  default to the app, its programmes or the free trial when it is about
+  something else. Each email brief should say what is being promoted and carry
+  over any link, price or detail the request gave, so the drafter can use it.
 - Never invent a price, trial length, programme name or statistic.
 
 ## Request

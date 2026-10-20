@@ -33,11 +33,19 @@ export function buildDraftPrompt(input: DraftEmailInput, block: string): string 
     ? `\n## Other emails in this sequence\nDo not repeat these angles or subject lines:\n${input.siblingSubjects.map((s) => `- ${s}`).join('\n')}`
     : '';
 
-  return `You are a direct-response copywriter for HYBRIDX.
+  return `You are a direct-response copywriter for HYBRIDX, which sells the HYBRIDX app and also other products such as books and digital products.
 
 ${HYBRIDX_BRAND_CONTEXT}
 
 ${block}
+
+## What to promote
+The brief below decides what this email is about. It may be the app, a book, a
+digital product, an event or something else. Write about what the brief names.
+Do not steer an email about another product toward the app, do not add the free
+trial or app pricing unless the brief asks for them, and do not describe a
+non-app product as part of the app. Use details of that product (title, price,
+format, what the reader gets) only as the brief gives them; never invent any.
 
 ## Output format
 You produce structured blocks, not HTML. Available block types:
@@ -73,16 +81,21 @@ ${MERGE_TOKEN_HINT}
 
 ## Rules
 - Open with a hero block. Include exactly one primary cta.
+- The cta goes where the brief points. If the brief gives an https URL for the
+  product (a shop, book or product page), use that URL exactly as written. If it
+  names a product but gives no URL, still include the cta with its label and
+  leave the url out, so the marketer can add the link. Never guess a URL.
 - Six to ten blocks. Athletes do not read long email.
 - Subject under 60 characters so inboxes do not truncate it.
 - Preview text complements the subject; it must not repeat it.
-- Link into the app using ONLY these exact paths — anything else 404s for the
-  reader. Never invent a path, and never add a query string or fragment:
+- When linking into the app, use ONLY these exact paths — anything else 404s for
+  the reader. Never invent a path, and never add a query string or fragment:
 ${APP_MARKETING_PATHS.map((path) => `  https://app.hybridx.club${path}`).join('\n')}
   When in doubt, or for anything a specific programme, article or entry does
   not have its own page for, link to /dashboard rather than guessing.
-- Only name a programme that appears verbatim in the facts above.
-- Never state a price, trial length or statistic that is not in the facts.
+- Only name a training programme that appears verbatim in the facts above.
+- Never state a price, trial length or statistic that is not in the facts above
+  or given in the brief. A price for a non-app product comes from the brief only.
 - Write HYROX in capitals and the brand as HYBRIDX.
 - No exclamation marks in the subject line, and no fake "Re:" prefix.
 
