@@ -16,6 +16,7 @@ import { z } from 'genkit';
 import { ai, MODELS } from '@/ai/genkit';
 import { HYBRIDX_BRAND_CONTEXT } from '@/ai/brand-context';
 import { getPromptKnowledge } from '@/lib/marketing/knowledge';
+import { stage } from '@/lib/marketing/stage';
 import { ALL_TRIGGERS, TRIGGER_DESCRIPTIONS } from '@/lib/marketing/journeys';
 
 const plannedStepSchema = z.object({
@@ -83,9 +84,9 @@ const composeJourneyFlow = ai.defineFlow(
     outputSchema: composeJourneyOutputSchema,
   },
   async ({ prompt }) => {
-    const { block } = await getPromptKnowledge();
+    const { block } = await stage('compose', 'load business facts', 30_000, getPromptKnowledge);
 
-    const { output } = await ai.generate({
+    const { output } = await stage('compose', 'model call', 100_000, () => ai.generate({
       // Planning quality matters more here than latency — this runs once per
       // journey, and everything downstream inherits its structure.
       model: MODELS.reasoning,
@@ -133,7 +134,7 @@ Rules:
 
 ## Request
 ${prompt}`,
-    });
+    }));
 
     if (!output) throw new Error('The planner returned no output.');
     return output;

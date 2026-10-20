@@ -31,6 +31,7 @@ import { CAMPAIGNS } from './queue';
 import { renderBlocks, renderBlocksAsText } from './render';
 import { validateDraft, validateLinks, validateBlockShapes, type ValidationIssue } from './validate';
 import { defaultCtaUrl } from './app-routes';
+import { stage } from './stage';
 import { stripUndefined } from '@/lib/firestore-values';
 
 export type StudioResult<T> = { success: true; data: T } | { success: false; error: string };
@@ -48,7 +49,7 @@ export async function composePlan(prompt: string): Promise<StudioResult<ComposeJ
   try {
     // Tighter limit than the CRUD actions: each call is a slow, costly model
     // request.
-    await assertAdmin('marketing:studio:compose');
+    await stage('compose', 'admin check', 20_000, () => assertAdmin('marketing:studio:compose'));
 
     if (!prompt.trim()) return { success: false, error: 'Describe what you want to send.' };
 

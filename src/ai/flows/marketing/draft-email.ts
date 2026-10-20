@@ -28,6 +28,7 @@ import {
 import { getPromptKnowledge } from '@/lib/marketing/knowledge';
 import { validateDraft, validateLinks, type ValidationIssue } from '@/lib/marketing/validate';
 import { defaultCtaUrl } from '@/lib/marketing/app-routes';
+import { stage } from '@/lib/marketing/stage';
 import { renderBlocks, renderBlocksAsText } from '@/lib/marketing/render';
 
 export type { DraftEmailInput };
@@ -50,13 +51,15 @@ const draftEmailFlow = ai.defineFlow(
     outputSchema: aiEmailContentSchema,
   },
   async (input) => {
-    const { block } = await getPromptKnowledge();
+    const { block } = await stage('draft', 'load business facts', 30_000, getPromptKnowledge);
 
-    const { output } = await ai.generate({
-      model: MODELS.reasoning,
-      output: { schema: aiEmailContentSchema },
-      prompt: buildDraftPrompt(input, block),
-    });
+    const { output } = await stage('draft', 'model call', 100_000, () =>
+      ai.generate({
+        model: MODELS.reasoning,
+        output: { schema: aiEmailContentSchema },
+        prompt: buildDraftPrompt(input, block),
+      }),
+    );
 
     if (!output) throw new Error('The drafting flow returned no output.');
     return output;
