@@ -4,6 +4,7 @@ import { ChevronLeft, AlertTriangle, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
+import { healCampaignCounts } from '@/lib/marketing/queue';
 import { getCampaignConversions, getCampaignReport } from '@/lib/marketing/queries';
 import { CampaignStatusBadge } from '@/components/marketing/campaign-status-badge';
 
@@ -25,7 +26,9 @@ export default async function CampaignReportPage({
   ]);
   if (!report) notFound();
 
-  const { campaign, linkClicks, failures } = report;
+  const { linkClicks, failures } = report;
+  const healed = (await healCampaignCounts([report.campaign])).get(report.campaign.id);
+  const campaign = healed ? { ...report.campaign, ...healed } : report.campaign;
   const recipients = campaign.recipientCount ?? 0;
 
   const metrics = [

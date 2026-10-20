@@ -1,11 +1,16 @@
 import { listCampaigns } from '@/lib/marketing/queries';
+import { healCampaignCounts } from '@/lib/marketing/queue';
 import { CampaignsTable } from '@/components/marketing/campaigns-table';
 import { NewCampaignButton } from '@/components/marketing/new-campaign-button';
 
 export const dynamic = 'force-dynamic';
 
 export default async function CampaignsPage() {
-  const campaigns = await listCampaigns();
+  const listed = await listCampaigns();
+  // Sent campaigns that report no recipients are repaired from their sends and
+  // shown corrected, rather than left blank until someone remembers to repair them.
+  const healed = await healCampaignCounts(listed);
+  const campaigns = listed.map((c) => (healed.has(c.id) ? { ...c, ...healed.get(c.id)! } : c));
 
   return (
     <div className="space-y-6">

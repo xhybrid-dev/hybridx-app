@@ -343,6 +343,16 @@ export async function finaliseIfDone(campaignId: string): Promise<boolean> {
     updatedAt: FieldValue.serverTimestamp(),
   });
   logger.log(`[marketing] campaign ${campaignId} complete`);
+
+  // Settle the aggregates from the sends themselves, so a campaign that reached
+  // `sent` by any route cannot be left reporting zero recipients. Best effort:
+  // the campaign is already sent, and this is only the report catching up.
+  await recomputeCampaignCounts(campaignId).catch((err) =>
+    logger.error(
+      `[marketing] could not settle counts for ${campaignId}:`,
+      err instanceof Error ? err.message : String(err),
+    ),
+  );
   return true;
 }
 
@@ -518,6 +528,40 @@ export async function recomputeCampaignCounts(campaignId: string): Promise<{
   });
 
   return counts;
+}
+
+/**
+ * Repair campaigns that were sent but report no recipients.
+ *
+ * Opens and clicks cannot exist without recipients, so a sent or sending
+ * campaign at zero has drifted from its `sends` records. Recomputes those that
+ * have any, and returns the corrected counts by id so a caller can show them
+ * straight away. Capped, so opening a long list cannot fan out into hundreds of
+ * count queries.
+ */
+export async function healCampaignCounts(
+  campaigns: Array<{ id: string; status: string; recipientCount?: number }>,
+  max = 10,
+): Promise<Map<string, Awaited<ReturnType<typeof recomputeCampaignCounts>>>> {
+  const healed = new Map<string, Awaited<ReturnType<typeof recomputeCampaignCounts>>>();
+  const drifted = campaigns
+    .filter((c) => (c.status === 'sent' || c.status === 'sending') && !c.recipientCount)
+    .slice(0, max);
+
+  await Promise.all(
+    drifted.map(async (c) => {
+      try {
+        const counts = await recomputeCampaignCounts(c.id);
+        if (counts.recipientCount > 0) healed.set(c.id, counts);
+      } catch (err) {
+        logger.error(
+          `[marketing] could not heal counts for ${c.id}:`,
+          err instanceof Error ? err.message : String(err),
+        );
+      }
+    }),
+  );
+  return healed;
 }
 
 /** Campaigns the drain should work on: actively sending, or scheduled and now due. */

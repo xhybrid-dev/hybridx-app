@@ -675,12 +675,26 @@ async function executeStep(
 
       // create() rather than set(): if this run already queued this email, the
       // write fails rather than resetting a sent row back to pending.
-      await sendRef.create(row).catch(() => undefined);
+      const created = await sendRef.create(row).then(
+        () => true,
+        () => false,
+      );
 
-      await campaignRef.update({
-        status: 'sending',
-        'sendState.total': FieldValue.increment(1),
-      }).catch(() => undefined);
+      // recipientCount was never set on this path — only enqueueCampaign set it,
+      // so a journey email reported zero recipients (and every open and click as
+      // a rate over zero) even though mail went out. Counted only when this call
+      // created the row, so a retry of the same run cannot double-count.
+      await campaignRef
+        .update({
+          status: 'sending',
+          ...(created
+            ? {
+                'sendState.total': FieldValue.increment(1),
+                recipientCount: FieldValue.increment(1),
+              }
+            : {}),
+        })
+        .catch(() => undefined);
 
       return { kind: 'advance', nextRunAt: now };
     }
