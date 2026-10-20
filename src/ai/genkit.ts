@@ -29,7 +29,7 @@ export const MODELS = {
    * Long-form reasoning and structured output where nobody is watching a
    * spinner — campaign planning, journey composition, email drafting.
    */
-  reasoning: 'googleai/gemini-3.7-flash',
+  reasoning: 'googleai/gemini-3.8-flash',
 } as const;
 
 // Use GEMINI_API_KEY from environment
