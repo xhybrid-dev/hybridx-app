@@ -43,6 +43,29 @@ const EXAMPLES = [
 
 type Stage = 'prompt' | 'plan' | 'drafting' | 'review';
 
+/** Server actions cannot be aborted, but the UI must not wait forever on one
+ *  that the platform dropped (timeout, instance restart) without a response. */
+const ACTION_TIMEOUT_MS = 150_000;
+
+function withTimeout<T>(promise: Promise<T>, what: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(
+      () => reject(new Error(`${what} took too long and was abandoned. Try again.`)),
+      ACTION_TIMEOUT_MS,
+    );
+    promise.then(
+      (v) => {
+        clearTimeout(timer);
+        resolve(v);
+      },
+      (e) => {
+        clearTimeout(timer);
+        reject(e);
+      },
+    );
+  });
+}
+
 export function CampaignStudio({
   knowledge,
   frequencyCapNote,
@@ -62,7 +85,12 @@ export function CampaignStudio({
 
   const handleCompose = async () => {
     setBusy(true);
-    const result = await composePlan(prompt);
+    let result: Awaited<ReturnType<typeof composePlan>>;
+    try {
+      result = await withTimeout(composePlan(prompt), 'Planning');
+    } catch (err) {
+      result = { success: false, error: err instanceof Error ? err.message : 'Planning failed.' };
+    }
     setBusy(false);
 
     if (!result.success) {
@@ -86,13 +114,26 @@ export function CampaignStudio({
     for (const [index, step] of emailSteps.entries()) {
       setProgress(`Drafting email ${index + 1} of ${emailSteps.length}…`);
 
-      const result = await draftPlanEmail({
-        brief: step.brief ?? plan.goal,
-        journeyGoal: plan.goal,
-        audienceDescription: plan.audienceDescription,
-        siblingSubjects: produced.map((d) => d.subject),
-        position: `email ${index + 1} of ${emailSteps.length}`,
-      });
+      // A rejected action (network drop, platform timeout) used to throw out of
+      // this loop and leave the stage on 'drafting' with a spinner forever.
+      let result: Awaited<ReturnType<typeof draftPlanEmail>>;
+      try {
+        result = await withTimeout(
+          draftPlanEmail({
+            brief: step.brief ?? plan.goal,
+            journeyGoal: plan.goal,
+            audienceDescription: plan.audienceDescription,
+            siblingSubjects: produced.map((d) => d.subject),
+            position: `email ${index + 1} of ${emailSteps.length}`,
+          }),
+          'Drafting',
+        );
+      } catch (err) {
+        result = {
+          success: false,
+          error: err instanceof Error ? err.message : 'Drafting failed.',
+        };
+      }
 
       if (!result.success) {
         toast({ title: 'Drafting failed', description: result.error, variant: 'destructive' });
