@@ -13,7 +13,7 @@
 // email can be redrafted later without disturbing the sequence around it.
 
 import { z } from 'genkit';
-import { ai, MODELS } from '@/ai/genkit';
+import { ai, MODELS, STRUCTURED_CONFIG } from '@/ai/genkit';
 import { HYBRIDX_BRAND_CONTEXT } from '@/ai/brand-context';
 import { getPromptKnowledge } from '@/lib/marketing/knowledge';
 import { stage } from '@/lib/marketing/stage';
@@ -90,6 +90,7 @@ const composeJourneyFlow = ai.defineFlow(
       // Planning quality matters more here than latency — this runs once per
       // journey, and everything downstream inherits its structure.
       model: MODELS.reasoning,
+      config: STRUCTURED_CONFIG,
       output: { schema: composeJourneyOutputSchema },
       prompt: `You are a lifecycle marketing strategist for HYBRIDX.
 

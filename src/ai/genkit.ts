@@ -32,6 +32,19 @@ export const MODELS = {
   reasoning: 'googleai/gemini-3.8-flash',
 } as const;
 
+/**
+ * Generation config for the marketing flows (planning, drafting, revising).
+ *
+ * These ask a thinking-capable model for schema-constrained JSON. Left at the
+ * default, the model can spend its whole budget reasoning before emitting any
+ * output — a one-word ping answers in two seconds while the same model on a
+ * structured planning request stalls past 100s. Low thinking keeps the
+ * latency bounded; the schema and fact-checker carry the quality.
+ */
+export const STRUCTURED_CONFIG = {
+  thinkingConfig: { thinkingLevel: 'LOW' },
+} as const;
+
 // Use GEMINI_API_KEY from environment
 // Note: @genkit-ai/googleai is deprecated in favor of @genkit-ai/google-genai
 // (same googleAI() export/API, just an actively maintained package — the old

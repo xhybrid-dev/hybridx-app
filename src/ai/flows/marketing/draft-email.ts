@@ -13,7 +13,7 @@
 // review screen looking finished.
 
 import { z } from 'genkit';
-import { ai, MODELS } from '@/ai/genkit';
+import { ai, MODELS, STRUCTURED_CONFIG } from '@/ai/genkit';
 import {
   aiEmailContentSchema,
   toEmailBlocks,
@@ -56,6 +56,7 @@ const draftEmailFlow = ai.defineFlow(
     const { output } = await stage('draft', 'model call', 100_000, () =>
       ai.generate({
         model: MODELS.reasoning,
+        config: STRUCTURED_CONFIG,
         output: { schema: aiEmailContentSchema },
         prompt: buildDraftPrompt(input, block),
       }),

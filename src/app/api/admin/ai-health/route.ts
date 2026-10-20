@@ -13,7 +13,8 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 
-import { ai, MODELS } from '@/ai/genkit';
+import { z } from 'genkit';
+import { ai, MODELS, STRUCTURED_CONFIG } from '@/ai/genkit';
 import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin';
 import { getUser } from '@/services/user-service';
 import { COACH_CONVERSATIONS_COLLECTION } from '@/services/coach-conversation';
@@ -70,6 +71,23 @@ export async function GET(request: Request) {
     }),
     [`model:${MODELS.fast}`]: await check(ping(MODELS.fast)),
     [`model:${MODELS.reasoning}`]: await check(ping(MODELS.reasoning)),
+    // Same shape of request the campaign studio makes: schema-constrained JSON
+    // from the reasoning model. Distinguishes "model is down" from "structured
+    // output stalls".
+    [`structured:${MODELS.reasoning}`]: await check(async () => {
+      const { output } = await Promise.race([
+        ai.generate({
+          model: MODELS.reasoning,
+          config: STRUCTURED_CONFIG,
+          output: { schema: z.object({ subject: z.string(), steps: z.array(z.string()).max(3) }) },
+          prompt: 'Plan a 3-step welcome email series for a HYROX training app. Subject line plus three step titles.',
+        }),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('structured call did not finish within 40s')), 40_000),
+        ),
+      ]);
+      return `returned: ${JSON.stringify(output).slice(0, 80)}`;
+    }),
     conversationsOrderedQuery: await check(async () => {
       const snapshot = await db
         .collection(COACH_CONVERSATIONS_COLLECTION)
