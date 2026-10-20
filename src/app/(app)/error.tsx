@@ -4,9 +4,10 @@ import { logger } from '@/lib/logger';
 import { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { AlertTriangle, RefreshCcw, Home, ArrowLeft } from 'lucide-react';
+import { AlertTriangle, RefreshCcw, Home, ArrowLeft, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useStaleBuildRecovery } from '@/hooks/use-stale-build-recovery';
 
 export default function AppError({
   error,
@@ -16,6 +17,8 @@ export default function AppError({
   reset: () => void;
 }) {
   const router = useRouter();
+  // "Loading chunk … failed" after a deploy: reload onto the new build.
+  const { updating, retry } = useStaleBuildRecovery(error, reset);
 
   useEffect(() => {
     // Log the error to an error reporting service
@@ -25,6 +28,17 @@ export default function AppError({
   const handleBack = () => {
     router.back();
   };
+
+  if (updating) {
+    return (
+      <div className="flex items-center justify-center min-h-[calc(100vh-4rem)] p-4" role="status">
+        <p className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Updating to the latest version…
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex items-center justify-center min-h-[calc(100vh-4rem)] p-4">
@@ -51,7 +65,7 @@ export default function AppError({
 
           <div className="flex flex-col gap-3">
             <Button
-              onClick={reset}
+              onClick={retry}
               className="w-full"
               variant="default"
             >
