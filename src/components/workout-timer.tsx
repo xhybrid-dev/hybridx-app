@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { useWakeLock } from '@/hooks/use-wake-lock';
 import type { TimerMode, TimerRound, TimerRecord } from '@/models/types';
 
 const generateTimeOptions = (): number[] => {
@@ -268,6 +269,8 @@ export function WorkoutTimer({ onComplete }: WorkoutTimerProps = {}) {
   };
 
   const isCountingDown = countdown > 0;
+  // Keep the phone awake from the 3-2-1 until the timer is paused or finished.
+  useWakeLock(isRunning || isCountingDown);
   const hasData = time > 0 || (timerMode === 'amrap' && amrapRounds > 0);
   const nonEmptyRounds = workoutLog.filter((r) => r.sets.length > 0);
 
