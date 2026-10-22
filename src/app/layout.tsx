@@ -7,6 +7,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { ThemeProvider } from '@/contexts/theme-context';
 import { AuthProvider } from '@/components/AuthProvider';
 import { NativeAppBridge } from '@/components/native-app-bridge';
+import { ZoomLock } from '@/components/zoom-lock';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -27,6 +28,10 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
     width: 'device-width',
     initialScale: 1,
+    // No pinch-zoom. Also stops iOS zooming in on a focused input whose text is
+    // under 16px. iOS Safari ignores both, so <ZoomLock /> covers it there.
+    maximumScale: 1,
+    userScalable: false,
     viewportFit: 'cover', // Important for PWA with safe areas
 };
 
@@ -75,6 +80,7 @@ export default function RootLayout({
       <body className="font-body antialiased">
         <ThemeProvider>
           <NativeAppBridge />
+          <ZoomLock />
           <AuthProvider>
             {children}
             <Toaster />

@@ -127,6 +127,10 @@
   * {
     @apply border-border;
   }
+  /* No double-tap zoom, and no 300ms tap delay waiting to tell a tap from one. */
+  html, body {
+    touch-action: manipulation;
+  }
   body {
     @apply bg-background text-foreground font-body;
   }
