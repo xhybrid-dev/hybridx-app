@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { parseAcquisitionSrc, SRC_MAX_LENGTH, SRC_PARAM, SRC_PATTERN } from '../acquisition-src';
 import { attributionFromUrl } from '../attribution';
-import { countBySrc } from '../marketing/signups-by-src';
+import { countBySrc, countViaEmail } from '../marketing/signups-by-src';
 
 // The site (xhybrid-dev/hybridx-web-x) declares the same rule in
 // src/lib/app-links.ts and pins it in src/lib/__tests__/cross-repo-agreement.test.ts.
@@ -67,6 +67,39 @@ describe('countBySrc', () => {
     ).toEqual({
       'guide-a': { signups: 3, trials: 1, paying: 1 },
       'page-home': { signups: 1, trials: 1, paying: 0 },
+    });
+  });
+});
+
+describe('countViaEmail', () => {
+  const at = (iso: string) => new Date(iso);
+  const accounts = new Map([
+    ['u1', { acquisitionSrc: null, status: 'active', signedUpAt: at('2026-12-10') }],
+    ['u2', { acquisitionSrc: 'page-home', status: 'trial', signedUpAt: at('2026-12-10') }],
+    ['u3', { acquisitionSrc: null, status: 'trial', signedUpAt: at('2026-11-01') }],
+    ['u4', { acquisitionSrc: null, status: 'trial', signedUpAt: at('2026-12-10') }],
+  ]);
+
+  it('credits an account to the page where its address was left first', () => {
+    const counts = countViaEmail(
+      [
+        { src: 'guide-a', srcAt: at('2026-12-01'), userId: 'u1' },
+        // Clicked through with a src of its own: counted there, not here.
+        { src: 'guide-a', srcAt: at('2026-12-01'), userId: 'u2' },
+        // Address left after the account existed: that page did not bring them.
+        { src: 'guide-a', srcAt: at('2026-12-01'), userId: 'u3' },
+        // Not linked to an account yet, or linked to one that is gone.
+        { src: 'guide-a', srcAt: at('2026-12-01'), userId: undefined },
+        { src: 'guide-a', srcAt: at('2026-12-01'), userId: 'gone' },
+        { src: 'page-free-hyrox-plan', srcAt: at('2026-12-02'), userId: 'u4' },
+        // No time recorded: not credited on a guess.
+        { src: 'guide-b', srcAt: null, userId: 'u4' },
+      ],
+      accounts,
+    );
+    expect(counts).toEqual({
+      'guide-a': { signups: 1, trials: 0, paying: 1 },
+      'page-free-hyrox-plan': { signups: 1, trials: 1, paying: 0 },
     });
   });
 });

@@ -92,6 +92,7 @@ export async function POST(request: Request) {
     consentPolicy: body.consentPolicy,
     consentMethod: body.consentMethod ?? (body.source ? `magnet:${body.source}` : 'website'),
     attribution: normaliseUtm(body.utm),
+    src: body.src,
   });
 
   if (!result.ok) {

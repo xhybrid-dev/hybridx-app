@@ -51,3 +51,42 @@ export function countBySrc(rows: Iterable<SignupRow>): Record<string, SrcCounts>
   }
   return out;
 }
+
+/** A subscriber that left an address on hybridx.club, as the report reads it. */
+export interface EmailLead {
+  src: unknown;
+  srcAt: Date | null;
+  userId: unknown;
+}
+
+/** An account, as the report reads it. */
+export interface Account {
+  acquisitionSrc: unknown;
+  status: unknown;
+  /** trialStartDate: the trial starts the moment the account is created. */
+  signedUpAt: Date | null;
+}
+
+/**
+ * Accounts credited to the page where the address was first left: the
+ * subscriber carries a src, is linked to an account (the daily account sync
+ * links them by address), and the address came first.
+ *
+ * Each account counts once. One that clicked through with a src of its own
+ * is already counted under that, so it is left out here; one whose address
+ * was left only after the account existed was not brought by that page.
+ */
+export function countViaEmail(leads: Iterable<EmailLead>, accounts: ReadonlyMap<string, Account>): Record<string, SrcCounts> {
+  const out: Record<string, SrcCounts> = {};
+  const seen = new Set<string>();
+  for (const lead of leads) {
+    const src = parseAcquisitionSrc(lead.src);
+    if (!src || typeof lead.userId !== 'string' || seen.has(lead.userId)) continue;
+    const account = accounts.get(lead.userId);
+    if (!account || parseAcquisitionSrc(account.acquisitionSrc)) continue;
+    if (!lead.srcAt || !account.signedUpAt || lead.srcAt.getTime() > account.signedUpAt.getTime()) continue;
+    seen.add(lead.userId);
+    addTo((out[src] ??= emptyCounts()), account.status);
+  }
+  return out;
+}

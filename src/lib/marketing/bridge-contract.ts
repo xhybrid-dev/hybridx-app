@@ -19,9 +19,10 @@
 // an outage.
 
 import { z } from 'zod';
+import { parseAcquisitionSrc } from '@/lib/acquisition-src';
 
 /** Bumped when a field's meaning changes. Reported by the contract endpoint. */
-export const BRIDGE_CONTRACT_VERSION = '1.2.0';
+export const BRIDGE_CONTRACT_VERSION = '1.3.0';
 
 /**
  * A tag a funnel may attach. Constrained rather than trusted: this arrives from
@@ -84,6 +85,16 @@ export const leadPayloadSchema = z.object({
   consentPolicy: z.enum(['implied', 'explicit', 'confirmed', 'none']).optional(),
 
   utm: utmSchema,
+
+  /**
+   * Where on hybridx.club the address was left (1.3.0): guide-<slug> for an
+   * article, page-<path> for another page. Kept on the subscriber, first touch,
+   * so an account opened later can be credited to the article that started it.
+   *
+   * Filtered, not rejected, like tags: a src that is not one of ours costs the
+   * src, never the lead.
+   */
+  src: z.unknown().optional().transform((v) => parseAcquisitionSrc(v)),
 
   /**
    * Tags are *filtered*, not rejected.
@@ -202,6 +213,14 @@ export function describeContract() {
         type: 'object<string,string>',
         required: false,
         note: 'Accepts utm_source or source, utm_medium or medium, and so on.',
+      },
+      src: {
+        type: 'string',
+        required: false,
+        note:
+          'Where on hybridx.club the address was left: guide-<slug> or page-<path> ' +
+          '(lowercase [a-z0-9] and single hyphens, at most 90). Kept first touch on ' +
+          'the subscriber. Anything else is dropped, not rejected. Since 1.3.0.',
       },
       tags: {
         type: 'string[]',

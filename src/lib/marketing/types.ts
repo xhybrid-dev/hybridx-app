@@ -72,6 +72,15 @@ export interface Subscriber {
    * without a separate index. Absent on records predating the registry.
    */
   route?: string;
+  /**
+   * Where on hybridx.club this address was first left: guide-<slug> for an
+   * article, page-<path> for another page (src/lib/acquisition-src.ts).
+   * Sent by the site from contract 1.3.0. Filled in once and never replaced,
+   * so it stays first touch. srcAt is when, so a sign-up is credited to it
+   * only if the account came after.
+   */
+  src?: string;
+  srcAt?: Timestamp | FieldValue;
   consent: SubscriberConsent;
   /** Set when this address belongs to a HybridX athlete, enabling rich segmentation. */
   userId?: string;

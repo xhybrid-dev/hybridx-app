@@ -84,6 +84,8 @@ export interface UpsertInput {
   /** Intake route id — see lib/marketing/sources.ts. Set on create only. */
   route?: string;
   userId?: string;
+  /** hybridx.club page the address was left on. Filled once, never replaced. */
+  src?: string;
   consent?: Partial<SubscriberConsent> & { marketing: boolean };
 }
 
@@ -135,6 +137,7 @@ export async function upsertSubscriber(input: UpsertInput): Promise<UpsertResult
         status: 'active',
         source: input.source,
         ...(input.route ? { route: input.route } : {}),
+        ...(input.src ? { src: input.src, srcAt: now } : {}),
         consent: {
           marketing: input.consent?.marketing ?? false,
           at: now,
@@ -172,6 +175,12 @@ export async function upsertSubscriber(input: UpsertInput): Promise<UpsertResult
     if (input.firstName && !existing.firstName) update.firstName = input.firstName;
     if (input.lastName && !existing.lastName) update.lastName = input.lastName;
     if (input.userId && !existing.userId) update.userId = input.userId;
+    // First touch, but filled in when blank rather than set on create only: a
+    // confirmation can arrive before the pending lead that carried the src.
+    if (input.src && !existing.src) {
+      update.src = input.src;
+      update.srcAt = now;
+    }
 
     // Fills in a tombstone written by an unsubscribe that arrived before we
     // knew the address. The id already proves these are the same person, so
