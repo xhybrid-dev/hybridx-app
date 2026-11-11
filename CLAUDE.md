@@ -35,3 +35,30 @@ step whenever they change:
   firebase apphosting:secrets:grantaccess SECRET_NAME --project hyroxedgeai --backend studio
   ```
   `grantaccess` also accepts a comma-separated list of secret names in one call.
+
+## The marketing site hand-off (hybridx.club, site plan step 11)
+
+- **`src` says which hybridx.club page sent a sign-up.** The site adds
+  `?src=guide-<slug>` (an article) or `?src=page-<path>` to every link in.
+  - `src/lib/attribution.ts` keeps the first one with the UTM tags.
+  - Sign-up writes it to the user as `acquisitionSrc`.
+  - The rule is `src/lib/acquisition-src.ts`, pinned to the site's copy by
+    `src/lib/__tests__/acquisition-src.test.ts`.
+- **Leads carry `src` too** (bridge contract 1.3.0), kept first touch on the
+  subscriber with `srcAt`.
+- **`GET /api/marketing/signups-by-src`** (bridge secret) reports sign-ups,
+  trials and paying users per `src` to the site's performance page.
+  - Counts only: no address or id crosses.
+  - The email path depends on the daily account sync linking subscribers to
+    users.
+- **`/signup` reads a seed from the link** (`src/lib/signup-seed.ts`): `tool`,
+  `event`, `experience`, `days`, `goal`, `edition`, `division`, `race`.
+  - Each value is checked against the form's own answers and changeable.
+  - Never act on a seed without the athlete seeing it.
+- **ATHX in sign-up:** the ATHX 2027 plans are offered by edition and division
+  (`src/lib/athx-programs.ts`) and found by exact name after the account
+  exists.
+  - Rename a program in `src/data/athx-2027` and `signup-seed.test.ts` fails
+    until the names agree.
+  - Their ids come from the admin import, so none are hard-coded.
+- **`next dev` adds a block to this file.** Don't commit it.
