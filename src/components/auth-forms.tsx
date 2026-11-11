@@ -559,7 +559,7 @@ export function SignupForm() {
     : seededPlan
       ? {
           label: `Start ${seededPlan.name}`,
-          note: `Matched to your answers${seed.tool ? ` in ${SEED_TOOL_LABELS[seed.tool]}` : ''}${
+          note: `Matched to your answers${seed.tool ? ` from ${SEED_TOOL_LABELS[seed.tool]}` : ''}${
             formData.raceDate ? `, finishing on race day` : ''
           }. Or go through the questions to change them.`,
         }

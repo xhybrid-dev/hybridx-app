@@ -5,6 +5,7 @@
 //
 //   /signup?tool=week-planner&days=4&goal=hybrid&experience=beginner
 //   /signup?tool=athx&event=athx&edition=women&division=pro&race=2027-01-23
+//   /signup?tool=free-plan&event=hyrox&race=2027-06-06
 //
 // Plain parameters, not a signed seed. Everything here is an answer the
 // athlete gives on the form anyway, shown to them and changeable before
@@ -19,7 +20,7 @@
 import { addDays, addYears, format, isValid, parseISO, startOfDay } from 'date-fns';
 import { ATHX_DIVISIONS, ATHX_EDITIONS, type AthxDivision, type AthxEdition } from './athx-programs';
 
-export const SEED_TOOLS = ['week-planner', 'strength-engine-test', 'athx'] as const;
+export const SEED_TOOLS = ['week-planner', 'strength-engine-test', 'athx', 'free-plan'] as const;
 export type SeedTool = (typeof SEED_TOOLS)[number];
 
 /** How the form names where the answers came from. */
@@ -27,6 +28,7 @@ export const SEED_TOOL_LABELS: Record<SeedTool, string> = {
   'week-planner': 'the week planner',
   'strength-engine-test': 'the strength and engine test',
   athx: 'the ATHX page',
+  'free-plan': 'your free plan',
 };
 
 export const SEED_EVENTS = ['hyrox', 'athx'] as const;

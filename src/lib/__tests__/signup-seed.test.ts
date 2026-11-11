@@ -18,7 +18,7 @@ const today = new Date('2026-11-11T09:00:00Z');
 // and pins the same literal values in src/lib/__tests__/cross-repo-agreement.test.ts.
 describe('the sign-up seed agrees with hybridx.club', () => {
   it('knows the tools and events the site sends', () => {
-    expect([...SEED_TOOLS]).toEqual(['week-planner', 'strength-engine-test', 'athx']);
+    expect([...SEED_TOOLS]).toEqual(['week-planner', 'strength-engine-test', 'athx', 'free-plan']);
     expect([...SEED_EVENTS]).toEqual(['hyrox', 'athx']);
     expect([...ATHX_EDITIONS]).toEqual(['men', 'women']);
     expect([...ATHX_DIVISIONS]).toEqual(['lite', 'athx', 'pro']);
@@ -31,6 +31,14 @@ describe('the sign-up seed agrees with hybridx.club', () => {
       frequency: '4',
       experience: 'beginner',
       goal: 'hybrid',
+    });
+  });
+
+  it('reads a free plan link: the race date the reader just gave', () => {
+    expect(parseSignupSeed('?tool=free-plan&event=hyrox&race=2027-06-06', today)).toEqual({
+      tool: 'free-plan',
+      event: 'hyrox',
+      raceDate: '2027-06-06',
     });
   });
 
