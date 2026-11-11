@@ -3,6 +3,7 @@
 import { logger } from '@/lib/logger';
 import { trackEvent } from '@/lib/analytics';
 import { getAttribution } from '@/lib/attribution';
+import { parseAcquisitionSrc } from '@/lib/acquisition-src';
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -416,6 +417,7 @@ export function SignupForm() {
         acquisitionContent: attribution?.utmContent,
         acquisitionLandingPage: attribution?.landingPage,
         acquisitionReferrer: attribution?.referrer,
+        acquisitionSrc: parseAcquisitionSrc(attribution?.src),
       });
 
       const programMessage = finalData.selectedProgramId

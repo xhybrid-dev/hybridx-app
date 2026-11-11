@@ -148,6 +148,13 @@ export interface User {
   acquisitionContent?: string;
   acquisitionLandingPage?: string;
   acquisitionReferrer?: string;
+  /**
+   * Where on hybridx.club the athlete clicked through from, first touch:
+   * guide-<slug> for an article, page-<path> for any other page. See
+   * src/lib/acquisition-src.ts. Reported back to the site per src by
+   * GET /api/marketing/signups-by-src.
+   */
+  acquisitionSrc?: string;
   // Marketing email consent. Distinct from transactional mail (verification,
   // onboarding nudges, receipts), which is sent regardless because it is
   // necessary to the service the athlete signed up for. Only campaigns and
