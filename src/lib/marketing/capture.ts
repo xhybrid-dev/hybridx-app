@@ -82,6 +82,8 @@ export interface CaptureInput {
   consentPolicy?: ConsentPolicy;
   userId?: string;
   attribution?: CaptureAttribution;
+  /** Where on hybridx.club the address was left (src/lib/acquisition-src.ts). */
+  src?: string;
   /** Truncated IP, for consent evidence. */
   ip?: string;
   /**
@@ -161,6 +163,7 @@ export async function captureLead(input: CaptureInput): Promise<CaptureResult> {
       source: route.source,
       route: route.id,
       userId: input.userId,
+      src: input.src,
       consent: {
         marketing: consent,
         method: input.consentMethod ?? route.id,

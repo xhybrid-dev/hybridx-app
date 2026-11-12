@@ -72,6 +72,18 @@ export async function getPersonalProgram(userId: string, programId: string): Pro
     return null;
 }
 
+/**
+ * A public program by its exact name, for programs sign-up offers before their
+ * id can be known (the ATHX 2027 plans, imported through admin; see
+ * src/lib/athx-programs.ts). Needs a signed-in athlete, like every program
+ * read. Null when there is none, so the caller can carry on without a plan.
+ */
+export async function getProgramByNameClient(name: string): Promise<Program | null> {
+    const snapshot = await getDocs(query(programsCollectionClient, where('name', '==', name), limit(1)));
+    const found = snapshot.docs[0];
+    return found ? ({ id: found.id, ...found.data() } as Program) : null;
+}
+
 /** All public programs, bounded — see {@link ALL_PROGRAMS_LIMIT}. */
 export async function getAllPrograms(): Promise<Program[]> {
     const snapshot = await getDocs(query(programsCollectionClient, limit(ALL_PROGRAMS_LIMIT)));

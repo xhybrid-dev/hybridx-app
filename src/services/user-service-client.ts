@@ -92,6 +92,7 @@ export async function createUser(userId: string, data: Omit<User, 'id' | 'person
         acquisitionContent: data.acquisitionContent ?? null,
         acquisitionLandingPage: data.acquisitionLandingPage ?? null,
         acquisitionReferrer: data.acquisitionReferrer ?? null,
+        acquisitionSrc: data.acquisitionSrc ?? null,
     };
     await setDoc(userRef, userDataToSet);
 
@@ -120,6 +121,7 @@ export async function createUser(userId: string, data: Omit<User, 'id' | 'person
         acquisitionContent: data.acquisitionContent,
         acquisitionLandingPage: data.acquisitionLandingPage,
         acquisitionReferrer: data.acquisitionReferrer,
+        acquisitionSrc: data.acquisitionSrc,
     };
     return createdUser;
 }

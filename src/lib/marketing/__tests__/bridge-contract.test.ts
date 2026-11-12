@@ -180,3 +180,22 @@ describe('describeContract — what a future funnel reads instead of guessing', 
     expect(describeContract().auth).toContain('LEAD_BRIDGE_SECRET');
   });
 });
+
+describe('src (1.3.0)', () => {
+  it('carries where on hybridx.club the address was left', () => {
+    const parsed = leadPayloadSchema.parse({ email: 'a@b.com', src: 'guide-sled-push-technique' });
+    expect(parsed.src).toBe('guide-sled-push-technique');
+  });
+
+  it('drops a src that is not one of ours, and keeps the lead', () => {
+    for (const src of ['Guide X', 'guide_x', 42, null, 'x'.repeat(91)]) {
+      const parsed = leadPayloadSchema.safeParse({ email: 'a@b.com', src });
+      expect(parsed.success).toBe(true);
+      expect(parsed.success && parsed.data.src).toBeUndefined();
+    }
+  });
+
+  it('is documented on the contract endpoint', () => {
+    expect(describeContract().fields).toHaveProperty('src');
+  });
+});
