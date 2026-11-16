@@ -23,6 +23,7 @@ import { composePlan, draftPlanEmail, saveJourney } from '@/lib/marketing/studio
 import { TRIGGER_DESCRIPTIONS, type TriggerType } from '@/lib/marketing/journeys';
 import type { SegmentDefinition } from '@/lib/marketing/segments';
 import type { EmailBlock } from '@/lib/marketing/blocks';
+import { blocksToMarkup } from '@/lib/marketing/email-markup';
 import type { ValidationIssue } from '@/lib/marketing/validate';
 import { EmailDraftCard, type DraftedEmail } from './email-draft-card';
 
@@ -124,6 +125,9 @@ export function CampaignStudio({
             journeyGoal: plan.goal,
             audienceDescription: plan.audienceDescription,
             siblingSubjects: produced.map((d) => d.subject),
+            // Full text, not only subjects, so email 3 can see what emails 1
+            // and 2 already argued and take a different angle.
+            siblingEmails: produced.map((d) => ({ subject: d.subject, body: blocksToMarkup(d.blocks) })),
             position: `email ${index + 1} of ${emailSteps.length}`,
           }),
           'Drafting',
@@ -145,6 +149,7 @@ export function CampaignStudio({
       produced.push({
         workingTitle: step.workingTitle ?? `Email ${index + 1}`,
         brief: step.brief ?? '',
+        angle: result.data.angle,
         subject: result.data.subject,
         previewText: result.data.previewText,
         blocks: result.data.blocks as EmailBlock[],

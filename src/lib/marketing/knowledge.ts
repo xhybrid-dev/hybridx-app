@@ -292,6 +292,52 @@ ${weakLines}
 `;
 }
 
+/**
+ * The facts a copywriter needs, and nothing else.
+ *
+ * formatKnowledgeForPrompt serves the planner, which needs segment sizes and
+ * funnels to aim a campaign. The drafter does not: handed a tag census and a
+ * funnel list, it has a page of numbers it may not use and a temptation to
+ * quote them. This keeps the copy-relevant facts and the subject-line history.
+ */
+export function formatKnowledgeForDraft(snapshot: KnowledgeSnapshot): string {
+  const programLines = snapshot.programs.length
+    ? snapshot.programs
+        .map((p) => `- "${p.name}"${p.weeks ? ` (${p.weeks} weeks)` : ''}: ${p.description}`)
+        .join('\n')
+    : '- (No programmes available. Do not name or card any programme.)';
+
+  const best = snapshot.bestCampaigns.length
+    ? snapshot.bestCampaigns
+        .map((c) => `- "${c.subject}" (${(c.openRate * 100).toFixed(0)}% opened, ${(c.clickRate * 100).toFixed(1)}% clicked)`)
+        .join('\n')
+    : '- (No history yet.)';
+  const worst = snapshot.worstCampaigns.length
+    ? snapshot.worstCampaigns.map((c) => `- "${c.subject}" (${(c.openRate * 100).toFixed(0)}% opened)`).join('\n')
+    : '- (No history yet.)';
+
+  return `## LIVE BUSINESS FACTS
+Read from the live system. These are the only facts you may state about the
+app. Anything not here or in the brief — a price, a number, a programme, a
+claim — stays out of the email.
+
+- App price: ${snapshot.priceLabel}
+- Free trial: ${snapshot.trialDays} days, no payment card required, cancel any time
+
+Programmes (use these names exactly as written, including their spelling):
+${programLines}
+
+App features you may describe:
+${snapshot.features.map((f) => `- ${f}`).join('\n')}
+
+Subject lines that earned the most opens with this list:
+${best}
+
+Subject lines that did worst — avoid their patterns:
+${worst}
+`;
+}
+
 /** Convenience: snapshot plus formatted block, for the flows. */
 export async function getPromptKnowledge(): Promise<{ snapshot: KnowledgeSnapshot; block: string }> {
   const snapshot = await getKnowledgeSnapshot();
