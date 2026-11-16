@@ -4,6 +4,7 @@ import {
   BookOpen,
   Contact,
   DoorOpen,
+  FlaskConical,
   Filter,
   Mail,
   Send,
@@ -48,6 +49,7 @@ export const ADMIN_NAV: AdminNavSection[] = [
     items: [
       { href: '/admin/marketing', label: 'Overview', icon: BarChart2 },
       { href: '/admin/marketing/studio', label: 'Studio', icon: Sparkles },
+      { href: '/admin/marketing/eval', label: 'Drafting eval', icon: FlaskConical },
       { href: '/admin/marketing/journeys', label: 'Journeys', icon: Workflow },
       { href: '/admin/marketing/campaigns', label: 'Campaigns', icon: Send },
       { href: '/admin/marketing/subscribers', label: 'Subscribers', icon: Contact },
