@@ -23,6 +23,8 @@ import {
 export interface DraftedEmail {
   workingTitle: string;
   brief: string;
+  /** What the drafter said this email is for — who, and the one action. */
+  angle?: string;
   subject: string;
   previewText: string;
   blocks: EmailBlock[];
@@ -121,6 +123,11 @@ export function EmailDraftCard({ draft, index, audienceDescription, onChange }: 
               {index + 1}. {draft.workingTitle}
             </CardTitle>
             <CardDescription className="mt-1">{draft.brief}</CardDescription>
+            {draft.angle && (
+              <p className="mt-1 text-xs text-muted-foreground">
+                <span className="font-medium">Angle:</span> {draft.angle}
+              </p>
+            )}
           </div>
           {errors.length > 0 ? (
             <Badge variant="destructive">

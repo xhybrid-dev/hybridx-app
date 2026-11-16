@@ -23,6 +23,7 @@ import { CAMPAIGNS } from '@/lib/marketing/queue';
 import { renderBlocks, renderBlocksAsText } from '@/lib/marketing/render';
 import { stripUndefined } from '@/lib/firestore-values';
 import type { EmailBlock } from '@/lib/marketing/blocks';
+import { blocksToMarkup } from '@/lib/marketing/email-markup';
 
 export const maxDuration = 300;
 export const dynamic = 'force-dynamic';
@@ -48,6 +49,9 @@ async function draftProposal(proposal: CampaignProposal): Promise<ProposalResult
     const emailSteps = plan.steps.filter((s) => s.kind === 'email');
     const steps: Array<Record<string, unknown>> = [];
     const written: string[] = [];
+    // The full text of each email already drafted, so the next one builds on
+    // it instead of repeating its argument.
+    const writtenEmails: { subject: string; body: string }[] = [];
     let emailIndex = 0;
 
     for (const [index, step] of plan.steps.entries()) {
@@ -70,9 +74,11 @@ async function draftProposal(proposal: CampaignProposal): Promise<ProposalResult
         journeyGoal: plan.goal,
         audienceDescription: plan.audienceDescription,
         siblingSubjects: written,
+        siblingEmails: writtenEmails,
         position: `email ${emailIndex + 1} of ${emailSteps.length}`,
       });
       written.push(draft.subject);
+      writtenEmails.push({ subject: draft.subject, body: blocksToMarkup(draft.blocks) });
       emailIndex++;
 
       const campaignRef = db.collection(CAMPAIGNS).doc();

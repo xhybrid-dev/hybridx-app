@@ -35,6 +35,13 @@ export interface ValidationIssue {
   kind?: 'fact' | 'structure';
   /** Zero-based index of the block this concerns, when it concerns one. */
   blockIndex?: number;
+  /**
+   * 'human' when only the reviewer can resolve it — a link the brief never
+   * gave, an image only they have. The drafting flow sends every other error
+   * back to the model to fix before a person sees the draft; these it leaves
+   * alone, because asking the model would only get the gap guessed at.
+   */
+  owner?: 'human';
   /** What was found, quoted from the draft. */
   found: string;
   message: string;
@@ -75,11 +82,59 @@ function normaliseName(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 }
 
+/** Share of a candidate's words found in the closest real programme name. */
+function closestProgram(
+  candidate: string,
+  names: readonly string[],
+): { name: string; overlap: number } | null {
+  const words = new Set(candidate.split(' ').filter((w) => w.length > 2));
+  if (!words.size) return null;
+  let best: { name: string; overlap: number } | null = null;
+  for (const name of names) {
+    const real = new Set(normaliseName(name).split(' ').filter((w) => w.length > 2));
+    const shared = [...words].filter((w) => real.has(w)).length;
+    const overlap = shared / Math.max(words.size, real.size);
+    if (!best || overlap > best.overlap) best = { name, overlap };
+  }
+  return best;
+}
+
+/**
+ * Check every programme card names a real programme, exactly.
+ *
+ * A programme card's name is not quoted in the flattened text validateDraft
+ * reads, so before this a card naming a programme that does not exist passed
+ * every check. The drafting parser catches it in model output; this catches
+ * it after a hand edit.
+ */
+export function validateProgramCards(
+  blocks: EmailBlock[],
+  snapshot: Pick<KnowledgeSnapshot, 'programs'>,
+): ValidationIssue[] {
+  const real = new Set(snapshot.programs.map((p) => normaliseName(p.name)));
+  const issues: ValidationIssue[] = [];
+  blocks.forEach((block, index) => {
+    if (block.type !== 'programCard' || !block.programName.trim()) return;
+    if (real.has(normaliseName(block.programName))) return;
+    const nearest = closestProgram(normaliseName(block.programName), snapshot.programs.map((p) => p.name));
+    issues.push({
+      severity: 'error',
+      kind: 'fact',
+      blockIndex: index,
+      found: block.programName,
+      message:
+        `"${block.programName}" is not one of the current programmes.` +
+        (nearest && nearest.overlap >= 0.5 ? ` Did you mean "${nearest.name}"?` : ''),
+    });
+  });
+  return issues;
+}
+
 /**
  * Check that every block is still a shape the app can render.
  *
  * Every block reaching here was, at some point, a real `EmailBlock` — it did
- * not need this check when the only way to produce one was `toEmailBlocks`,
+ * not need this check when the only way to produce one was the AI parser,
  * which already narrows AI output through this same schema and drops
  * anything that fails it. What changed is that a block can now be hand-edited
  * in the campaign editor: clear a bulletList's textarea down to nothing, or a
@@ -231,13 +286,23 @@ export function validateDraft(
   }
 
   // --- Programme names ---------------------------------------------------
-  // Only flags names presented as programmes, since prose legitimately contains
-  // words that also appear in programme titles.
-  const realPrograms = new Set(snapshot.programs.map((p) => normaliseName(p.name)));
+  // Only flags quoted names that are presented as programmes: ones that say
+  // "programme" or "HYROX", or that share most of their words with a real
+  // programme (a near-miss like "Hyrox Fusion Plan"). Quoted prose such as
+  // "race prep" or "the plan" used to be flagged as an invented programme
+  // purely for containing a word like "prep", which put a false error on
+  // ordinary copy.
+  const realNames = snapshot.programs.map((p) => p.name);
+  const realPrograms = new Set(realNames.map(normaliseName));
   const quoted = text.matchAll(/["“']([A-Z][^"”']{4,60})["”']/g);
   for (const match of quoted) {
     const candidate = match[1];
-    if (!/program|plan|cycle|prep|performance|steps|fusion|elite/i.test(candidate)) continue;
+    const norm = normaliseName(candidate);
+    if (realPrograms.has(norm)) continue;
+    const nearest = closestProgram(norm, realNames);
+    const looksLikeProgramme =
+      /\bprogram(?:me)?s?\b|\bhyrox\b/i.test(candidate) || (nearest?.overlap ?? 0) >= 0.5;
+    if (!looksLikeProgramme) continue;
     if (realPrograms.size === 0) {
       issues.push({
         severity: 'warning',
@@ -246,13 +311,13 @@ export function validateDraft(
       });
       continue;
     }
-    if (!realPrograms.has(normaliseName(candidate))) {
-      issues.push({
-        severity: 'error',
-        found: candidate,
-        message: `"${candidate}" is not one of the current programmes.`,
-      });
-    }
+    issues.push({
+      severity: 'error',
+      found: candidate,
+      message:
+        `"${candidate}" is not one of the current programmes.` +
+        (nearest && nearest.overlap >= 0.5 ? ` Did you mean "${nearest.name}"?` : ''),
+    });
   }
 
   // --- Invented statistics ----------------------------------------------
@@ -302,7 +367,13 @@ export function validateDraft(
     });
   }
 
-  if (/\bHyrox\b/.test(text)) {
+  // Real programme names are spelled "Hyrox" in the catalogue and must be
+  // quoted exactly, so they are not a casing mistake.
+  const withoutProgrammeNames = snapshot.programs.reduce(
+    (acc, p) => (p.name ? acc.split(p.name).join(' ') : acc),
+    text,
+  );
+  if (/\bHyrox\b/.test(withoutProgrammeNames)) {
     issues.push({
       severity: 'warning',
       found: 'Hyrox',

@@ -29,13 +29,7 @@ export const HYBRIDX_BRAND_CONTEXT = `
 HYROX (always written in ALL CAPS) is a global fitness racing competition combining 8km of running with 8 functional fitness stations (sled pushes, rowing, burpee broad jumps, sandbag lunges, etc.). It is one of the fastest-growing fitness sports in the world. Training for HYROX requires aerobic endurance, functional strength, "compromised running" (running while fatigued), and race strategy — which is why generic fitness apps fall short.
 
 ### The HYBRIDX App — use when the email is about the app
-- **6 structured 12-week training programs** covering all experience levels:
-  - *First Steps to Hyrox* — Beginner, 4 days/week
-  - *Hyrox Fusion Balance* — Intermediate, balanced run/strength, 4 days/week
-  - *Hyrox Run Performance* — Intermediate–Advanced, run-heavy, 5 days/week
-  - *Hyrox Doubles & Relay Prep* — For partner and team events, 4 days/week
-  - *Olympic Lifting & Power Cycle* — Strength specialisation, 4 days/week
-  - *Ultra Elite Performance* — Advanced competitive prep, 6 days/week
+- **Structured 12-week training programmes** covering every experience level, from first race to elite. The current programme names and descriptions are in the LIVE BUSINESS FACTS section; use only those, spelled exactly as listed there.
 - **Personal coaching ("Edge Coach"):** Adjusts to how you're actually training, answers technique & race strategy questions, sends a daily summary, and builds a custom workout on demand — a coach that is always paying attention, not a fixed plan you have to work around.
 - **Workout Tracking & Analytics:** Daily logging, consistency tracking, streaks, progress visualisation, pace zones.
 - **Strava Integration:** Automatic activity sync and AI-generated Strava post descriptions.

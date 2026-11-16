@@ -29,7 +29,13 @@ import {
 } from './journeys';
 import { CAMPAIGNS } from './queue';
 import { renderBlocks, renderBlocksAsText } from './render';
-import { validateDraft, validateLinks, validateBlockShapes, type ValidationIssue } from './validate';
+import {
+  validateDraft,
+  validateLinks,
+  validateBlockShapes,
+  validateProgramCards,
+  type ValidationIssue,
+} from './validate';
 import { defaultCtaUrl } from './app-routes';
 import { stage } from './stage';
 import { stripUndefined } from '@/lib/firestore-values';
@@ -66,6 +72,7 @@ export async function draftPlanEmail(input: {
   journeyGoal?: string;
   audienceDescription?: string;
   siblingSubjects?: string[];
+  siblingEmails?: { subject: string; body: string }[];
   position?: string;
 }): Promise<StudioResult<DraftEmailResult>> {
   try {
@@ -137,11 +144,14 @@ export async function revalidateContent(input: {
     // can be emptied into an invalid shape the same way a bad link could
     // already be typed by hand — checked here for the same reason.
     const shapeIssues = validateBlockShapes(input.blocks);
+    // A programme card's name is not quoted text, so validateDraft never saw
+    // it; a hand-typed card naming a programme that does not exist passed.
+    const programIssues = validateProgramCards(input.blocks, snapshot);
     return {
       success: true,
       data: {
-        valid: ok && linkIssues.length === 0 && shapeIssues.length === 0,
-        issues: [...issues, ...linkIssues, ...shapeIssues],
+        valid: ok && linkIssues.length === 0 && shapeIssues.length === 0 && programIssues.length === 0,
+        issues: [...issues, ...linkIssues, ...shapeIssues, ...programIssues],
       },
     };
   } catch (err) {

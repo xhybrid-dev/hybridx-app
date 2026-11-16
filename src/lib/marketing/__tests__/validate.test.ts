@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { validateDraft } from '../validate';
+import { validateDraft, validateProgramCards } from '../validate';
 import type { KnowledgeSnapshot } from '../knowledge';
 
 const snapshot: KnowledgeSnapshot = {
@@ -178,5 +178,41 @@ describe('overall result', () => {
     const empty = { ...snapshot, programs: [] };
     const result = validateDraft({ body: 'Join the "Elite Performance Program" now.' }, empty);
     expect(result.issues.some((i) => i.severity === 'warning')).toBe(true);
+  });
+});
+
+describe('programme-name false positives', () => {
+  it('does not flag quoted prose that merely contains "plan" or "prep"', () => {
+    // Used to be an error: any quoted phrase with plan|prep|performance was
+    // treated as an invented programme.
+    expect(errors('Your "Race week prep" starts Monday and the "Plan for Saturday" is light.')).toHaveLength(0);
+  });
+
+  it('suggests the real programme for a near-miss name', () => {
+    const found = errors('Try "Hyrox Fusion Plan" this block.');
+    expect(found).toHaveLength(1);
+    expect(found[0].message).toContain('Did you mean "Hyrox Fusion Balance"?');
+  });
+
+  it('does not warn about "Hyrox" inside a real programme name', () => {
+    const result = validateDraft({ body: 'Start "First Steps to Hyrox" today.' }, snapshot);
+    expect(result.issues.some((i) => i.found === 'Hyrox')).toBe(false);
+  });
+});
+
+describe('validateProgramCards', () => {
+  it('accepts a real programme in a card', () => {
+    expect(
+      validateProgramCards([{ type: 'programCard', programName: 'first steps to hyrox', description: 'x' }], snapshot),
+    ).toEqual([]);
+  });
+
+  it('rejects a card naming a programme that does not exist', () => {
+    const issues = validateProgramCards(
+      [{ type: 'paragraph', text: 'x' }, { type: 'programCard', programName: 'Engine Builder', description: 'x' }],
+      snapshot,
+    );
+    expect(issues).toHaveLength(1);
+    expect(issues[0]).toMatchObject({ severity: 'error', blockIndex: 1, kind: 'fact' });
   });
 });

@@ -1,6 +1,7 @@
 // src/lib/marketing/draft-prompt.ts
 //
-// The drafting prompt, and the input shape it is built from.
+// The drafting prompt, the repair prompt, and the input shape they are built
+// from.
 //
 // This lives here rather than in the flow because draft-email.ts is a
 // 'use server' module, where every export must be an async function. A pure
@@ -8,14 +9,20 @@
 // satisfy the rule would publish it as a network-callable Server Action — a
 // wider surface than a prompt builder has any business having.
 //
-// Keeping it in lib also means the diagnostic probe sends the byte-identical
-// prompt: a probe that reconstructs an approximation of it could only prove
-// things about the approximation.
+// How the prompt is built
+// -----------------------
+// The model writes the email as a short Markdown-like document (see
+// email-markup.ts), not as JSON blocks. The prompt therefore spends its words
+// on what makes an email good — one job, one reader, one action — and on one
+// worked example of the format, rather than on a field-by-field schema
+// explanation and a page of prohibitions. The fact-checker and the repair pass
+// carry the hard rules; the prompt carries the craft.
 
 import { z } from 'zod';
 import { HYBRIDX_BRAND_CONTEXT } from '@/ai/brand-context';
 import { MERGE_TOKEN_HINT } from '@/lib/marketing/blocks';
-import { APP_MARKETING_PATHS } from '@/lib/marketing/app-routes';
+import { ADD_LINK, type Destination } from '@/lib/marketing/email-markup';
+import type { ValidationIssue } from '@/lib/marketing/validate';
 
 export const draftEmailInputSchema = z.object({
   brief: z.string().describe('What this email must achieve.'),
@@ -23,84 +30,211 @@ export const draftEmailInputSchema = z.object({
   audienceDescription: z.string().optional(),
   /** Subjects of the other emails in the sequence, so this one does not repeat them. */
   siblingSubjects: z.array(z.string()).optional(),
+  /**
+   * The earlier emails in the sequence, in full (subject plus body in the
+   * email format). Subjects alone let the model avoid a repeated subject line
+   * but not a repeated argument — three emails in a row opened on the same
+   * point because none of them could see what the last one said.
+   */
+  siblingEmails: z
+    .array(z.object({ subject: z.string(), body: z.string() }))
+    .optional(),
   position: z.string().optional().describe('e.g. "email 2 of 3, sent 3 days in".'),
 });
 
 export type DraftEmailInput = z.infer<typeof draftEmailInputSchema>;
 
-export function buildDraftPrompt(input: DraftEmailInput, block: string): string {
-  const siblings = input.siblingSubjects?.length
-    ? `\n## Other emails in this sequence\nDo not repeat these angles or subject lines:\n${input.siblingSubjects.map((s) => `- ${s}`).join('\n')}`
-    : '';
+export interface DraftPromptContext {
+  /** formatKnowledgeForDraft output. */
+  facts: string;
+  destinations: Destination[];
+}
 
-  return `You are a direct-response copywriter for HYBRIDX, which sells the HYBRIDX app and also other products such as books and digital products.
+/** The model's raw answer, before parsing. */
+export interface DraftModelOutput {
+  angle: string;
+  subject: string;
+  previewText: string;
+  body: string;
+}
+
+function destinationList(destinations: Destination[]): string {
+  const brief = destinations.filter((d) => d.source === 'brief');
+  const app = destinations.filter((d) => d.source === 'app');
+  const lines: string[] = [];
+  if (brief.length) {
+    lines.push('From the brief (use these for whatever the brief is promoting):');
+    lines.push(...brief.map((d) => `- ${d.key} → ${d.url}`));
+  }
+  lines.push('Pages in the HYBRIDX app:');
+  lines.push(...app.map((d) => `- ${d.key} → ${d.url}`));
+  lines.push(
+    `- ${ADD_LINK} → the brief names something to link to but gives no URL; the reviewer will add it`,
+  );
+  return lines.join('\n');
+}
+
+const FORMAT_GUIDE = `## How to write the body
+Write the body as a short plain-text document using only these conventions:
+
+# Headline
+One supporting line, directly under the headline with no blank line between.
+
+Body paragraphs are plain text. Separate paragraphs with a blank line.
+
+## Section heading
+(### for a smaller sub-heading)
+
+- bullet point
+- bullet point
+
+> A quote from someone real, only if the brief supplies one
+> — Their name
+
+---
+(a divider)
+
+[button: Two to four words -> destination]
+[program: Exact Programme Name | One sentence on why it suits this reader]
+[stats: value = label | value = label]
+
+Rules for the format:
+- The first line is the "# Headline". Use "#" only once.
+- No bold, italics, HTML, emoji bullets or inline links. Body text cannot hold
+  links; the button carries the link.
+- [button: …] must end with "-> " and one destination key from the list below,
+  exactly as written. Never type out a URL.
+- [program: …] only with a programme name copied exactly from the facts.
+- [stats: …] only with figures that appear in the facts or the brief, two or
+  three of them. If you have none, leave stats out — most emails should.`;
+
+const EXAMPLE = `## Example (for shape and tone only — never reuse its words or facts)
+This is the structure of a good activation email. Your email will be about
+something else; copy how it works, not what it says.
+
+angle: The reader signed up but has not trained yet; get them to do one short first session today.
+subject: Your first session takes 35 minutes
+previewText: No plan to read first. Open the app and press start.
+body:
+# Your first session takes 35 minutes
+No setup, no plan to study first.
+
+Hi [First Name],
+
+Most people who sign up and never train are not short on motivation. They are waiting for the right moment to start a twelve-week plan. There isn't one, so start smaller.
+
+Today's session is already in your plan. It is short, it is scaled to you, and it tells your coach what to adjust for next week.
+
+## What happens after it
+- Your plan adjusts to how the session actually went
+- Your coach notices what was hard and eases or pushes from there
+- You stop wondering whether you are doing the right thing
+
+[button: Start today's session -> dashboard]
+
+See you on the start line,
+The HYBRIDX team`;
+
+const CRAFT = `## What makes a HYBRIDX email good
+- One job. The email exists to get one reader to take one action. Every
+  paragraph earns its place by moving them toward the button.
+- Start with the reader, not the brand. Open on their situation, their race,
+  their week — then show how this helps.
+- Be specific to HYROX and hybrid training: stations, compromised running,
+  race day, the final 1km. Specific detail is what makes it believable.
+- Short paragraphs: one to three sentences. Most emails are 120 to 250 words
+  of body text. Use a section heading only when the email genuinely has two or
+  more parts; a short email needs none.
+- Bullets for three to five parallel points, not for a whole argument.
+- The button repeats the promise in the reader's terms ("Start today's
+  session", not "Click here" or "Learn more").
+- Sign off as a person or "The HYBRIDX team". Merge tokens are welcome where
+  they read naturally; ${MERGE_TOKEN_HINT}
+- Subject: under 60 characters, specific, honest about what is inside. No
+  exclamation marks, no fake "Re:", no ALL CAPS words except HYROX and HYBRIDX.
+- Preview text: one short sentence that adds to the subject, never repeats it.`;
+
+/** The full drafting prompt. */
+export function buildDraftPrompt(input: DraftEmailInput, context: DraftPromptContext): string {
+  const earlier = input.siblingEmails?.length
+    ? `## Earlier emails in this sequence
+The reader has already received these. Do not repeat their argument, opening,
+examples or subject line — build on them, and take a different angle.
+
+${input.siblingEmails
+  .map((e, i) => `### Earlier email ${i + 1}\nsubject: ${e.subject}\n${e.body}`)
+  .join('\n\n')}
+`
+    : input.siblingSubjects?.length
+      ? `## Earlier emails in this sequence\nDo not repeat these angles or subject lines:\n${input.siblingSubjects.map((s) => `- ${s}`).join('\n')}\n`
+      : '';
+
+  return `You are the senior lifecycle copywriter for HYBRIDX. You write emails
+athletes actually read: short, specific, and built around one action.
 
 ${HYBRIDX_BRAND_CONTEXT}
 
-${block}
+${context.facts}
 
 ## What to promote
-The brief below decides what this email is about. It may be the app, a book, a
+The brief decides what this email is about. It may be the app, a book, a
 digital product, an event or something else. Write about what the brief names.
-Do not steer an email about another product toward the app, do not add the free
-trial or app pricing unless the brief asks for them, and do not describe a
-non-app product as part of the app. Use details of that product (title, price,
-format, what the reader gets) only as the brief gives them; never invent any.
+Do not steer an email about another product toward the app, do not add the
+free trial or app pricing unless the brief asks for them, and do not describe
+a non-app product as part of the app. Use a product's title, price, format and
+contents only as the brief gives them.
 
-## Output format
-You produce structured blocks, not HTML. Available block types:
-- hero: opening headline with optional subheading
-- heading: section heading
-- paragraph: one paragraph of body copy
-- bulletList: two to eight short points
-- cta: a button — label and absolute https URL
-- image: absolute https URL plus required alt text
-- divider: a horizontal rule
-- programCard: highlights one training programme by exact name
-- statRow: two or three figures with labels
-- quote: a testimonial
+${CRAFT}
 
-## Required fields per block type
-Every field is optional in the schema because one shape covers all block types,
-so it is on you to send the right ones. Set "type", then only that type's fields:
-- hero: heading (+ optional subheading, imageUrl)
-- heading: text (+ optional level, 2 or 3) — NOT "heading". A block of type
-  "heading" puts its words in "text"; the field called "heading" belongs only
-  to the hero block.
-- paragraph: text
-- bulletList: items
-- cta: label AND url — a cta without a url is discarded
-- image: url AND alt — alt is not optional in practice
-- divider: nothing else
-- programCard: programName AND description
-- statRow: stats, each with value and label
-- quote: text (+ optional attribution)
-Leave every other field out rather than sending it empty.
+${FORMAT_GUIDE}
 
-${MERGE_TOKEN_HINT}
+## Destinations for the button
+${destinationList(context.destinations)}
 
-## Rules
-- Open with a hero block. Include exactly one primary cta.
-- The cta goes where the brief points. If the brief gives an https URL for the
-  product (a shop, book or product page), use that URL exactly as written. If it
-  names a product but gives no URL, still include the cta with its label and
-  leave the url out, so the marketer can add the link. Never guess a URL.
-- Six to ten blocks. Athletes do not read long email.
-- Subject under 60 characters so inboxes do not truncate it.
-- Preview text complements the subject; it must not repeat it.
-- When linking into the app, use ONLY these exact paths — anything else 404s for
-  the reader. Never invent a path, and never add a query string or fragment:
-${APP_MARKETING_PATHS.map((path) => `  https://app.hybridx.club${path}`).join('\n')}
-  When in doubt, or for anything a specific programme, article or entry does
-  not have its own page for, link to /dashboard rather than guessing.
-- Only name a training programme that appears verbatim in the facts above.
-- Never state a price, trial length or statistic that is not in the facts above
-  or given in the brief. A price for a non-app product comes from the brief only.
-- Write HYROX in capitals and the brand as HYBRIDX.
-- No exclamation marks in the subject line, and no fake "Re:" prefix.
+${EXAMPLE}
 
-${input.journeyGoal ? `## Sequence goal\n${input.journeyGoal}\n` : ''}${input.audienceDescription ? `## Audience\n${input.audienceDescription}\n` : ''}${input.position ? `## Position\n${input.position}\n` : ''}${siblings}
+## Your answer
+Return four fields:
+- angle: one sentence — who this reader is right now and the single action this email gets them to take.
+- subject
+- previewText
+- body: the email in the format above.
 
+${input.journeyGoal ? `## Sequence goal\n${input.journeyGoal}\n\n` : ''}${input.audienceDescription ? `## Audience\n${input.audienceDescription}\n\n` : ''}${input.position ? `## Position\nThis is ${input.position}.\n\n` : ''}${earlier}
 ## This email's brief
 ${input.brief}`;
+}
+
+/**
+ * Ask the model to fix its own draft.
+ *
+ * Every problem the parser or fact-checker can name precisely — a programme
+ * that does not exist, a price that is wrong, a button pointing nowhere — is
+ * one the model can fix given the exact message. Doing that before a person
+ * sees the draft is the difference between a reviewer reading copy and a
+ * reviewer doing repairs.
+ */
+export function buildRepairPrompt(
+  originalPrompt: string,
+  previous: DraftModelOutput,
+  problems: ValidationIssue[],
+): string {
+  return `${originalPrompt}
+
+## Your previous draft
+angle: ${previous.angle}
+subject: ${previous.subject}
+previewText: ${previous.previewText}
+body:
+${previous.body}
+
+## Problems found in that draft
+${problems.map((p) => `- ${p.found}: ${p.message}`).join('\n')}
+
+## Fix it
+Return the whole email again, with every problem above fixed. Keep everything
+that was not a problem: same angle, same structure, same wording wherever it
+was fine. Do not shorten the email to make a problem go away — fix the line
+that has it. If a fact you wanted is not in the facts or the brief, remove the
+claim rather than replacing it with another one.`;
 }
