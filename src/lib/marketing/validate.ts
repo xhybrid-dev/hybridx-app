@@ -30,9 +30,12 @@ export interface ValidationIssue {
    * claim that could not be verified against live HYBRIDX data" sends the
    * reader looking for a pricing error that does not exist.
    *
+   * 'style' is advice from style-lint.ts — clichés, long paragraphs — and is
+   * only ever a warning.
+   *
    * Optional so existing producers default to 'fact', which is what they are.
    */
-  kind?: 'fact' | 'structure';
+  kind?: 'fact' | 'structure' | 'style';
   /** Zero-based index of the block this concerns, when it concerns one. */
   blockIndex?: number;
   /**

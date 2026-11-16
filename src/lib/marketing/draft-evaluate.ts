@@ -11,6 +11,7 @@ import { blocksToText, type GeneratableBlock } from './blocks';
 import { normaliseBrand, parseEmailMarkup, type Destination } from './email-markup';
 import type { KnowledgeSnapshot } from './knowledge';
 import { validateDraft, validateLinks, type ValidationIssue } from './validate';
+import { lintStyle } from './style-lint';
 import type { DraftModelOutput } from './draft-prompt';
 
 export interface EvaluatedDraft {
@@ -58,11 +59,19 @@ export function evaluateDraft(
     extra.push({ severity: 'error', found: '(empty)', message: 'The preview text is empty.' });
   }
 
+  // Advice for the reviewer, never blocking and never a reason to repair.
+  const style: ValidationIssue[] = lintStyle({ subject, previewText, blocks: parsed.blocks }).map((f) => ({
+    severity: 'warning',
+    kind: 'style',
+    found: f.found,
+    message: f.message,
+  }));
+
   return {
     subject,
     previewText,
     blocks: parsed.blocks,
-    issues: [...parsed.issues, ...facts.issues, ...links, ...extra],
+    issues: [...parsed.issues, ...facts.issues, ...links, ...extra, ...style],
   };
 }
 

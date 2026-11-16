@@ -10,6 +10,8 @@
 import { blocksToText, type EmailBlock } from '../blocks';
 import type { ValidationIssue } from '../validate';
 import type { EvalCase } from './cases';
+import { parseEmailMarkup } from '../email-markup';
+import { STYLE_RULES, styleScore, type StyleRule } from '../style-lint';
 
 export interface EvalCheck {
   id: string;
@@ -193,5 +195,41 @@ export function summariseRun(results: EvalCaseResult[]): EvalRunSummary {
     avgAttempts: round(mean(drafted.map((r) => r.attempts ?? 1))),
     avgSeconds: round(mean(results.map((r) => r.ms / 1000)), 1),
     judge,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Style
+// ---------------------------------------------------------------------------
+//
+// Computed from the saved email text rather than stored with the run, so a
+// rule added later scores every earlier run too — the baseline included —
+// without drafting anything again.
+
+/** Re-read a saved result's email and score it against the style rules. */
+export function styleOfResult(r: EvalCaseResult): ReturnType<typeof styleScore> | null {
+  if (!r.markup) return null;
+  const { blocks } = parseEmailMarkup(r.markup, { destinations: [], fragment: true });
+  return styleScore({ subject: r.subject ?? '', previewText: r.previewText ?? '', blocks });
+}
+
+export interface StyleSummary {
+  passed: number;
+  total: number;
+  /** Emails failing each rule, worst first. */
+  failures: Array<{ rule: StyleRule; label: string; emails: number }>;
+}
+
+export function summariseStyle(results: EvalCaseResult[]): StyleSummary | null {
+  const scored = results.map(styleOfResult).filter((s): s is NonNullable<typeof s> => !!s);
+  if (!scored.length) return null;
+  const counts = new Map<StyleRule, number>();
+  for (const s of scored) for (const rule of s.failed) counts.set(rule, (counts.get(rule) ?? 0) + 1);
+  return {
+    passed: scored.reduce((n, s) => n + s.passed, 0),
+    total: scored.reduce((n, s) => n + s.total, 0),
+    failures: [...counts.entries()]
+      .map(([rule, emails]) => ({ rule, label: STYLE_RULES[rule], emails }))
+      .sort((a, b) => b.emails - a.emails),
   };
 }
