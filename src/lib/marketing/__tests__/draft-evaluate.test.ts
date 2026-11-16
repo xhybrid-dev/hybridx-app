@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { evaluateDraft, repairableIssues, blockingIssues } from '../draft-evaluate';
-import { buildDestinations } from '../email-markup';
+import { buildDestinations, parseEmailMarkup } from '../email-markup';
+import { lintStyle } from '../style-lint';
 import { buildDraftPrompt, buildRepairPrompt } from '../draft-prompt';
 import type { KnowledgeSnapshot } from '../knowledge';
 
@@ -123,5 +124,17 @@ describe('the drafting prompt', () => {
     expect(prompt).toContain('ORIGINAL');
     expect(prompt).toContain('# Old body');
     expect(prompt).toContain('- £9.99: Wrong price.');
+  });
+});
+
+describe('the worked example in the prompt', () => {
+  it('passes the style rules it teaches', () => {
+    // The model copies the example's shape. An example that broke the style
+    // rules would teach the model to break them.
+    const prompt = buildDraftPrompt({ brief: 'x' }, { facts: '', destinations: [] });
+    const example = prompt.slice(prompt.indexOf('body:\n# ') + 'body:\n'.length, prompt.indexOf('## Your answer')).trim();
+    const blocks = parseEmailMarkup(example, { destinations: buildDestinations('', APP) }).blocks;
+    expect(blocks.length).toBeGreaterThan(4);
+    expect(lintStyle({ subject: 'Your first session takes 35 minutes', previewText: 'p', blocks })).toEqual([]);
   });
 });
