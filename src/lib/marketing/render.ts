@@ -233,7 +233,7 @@ ${body}
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
           <td style="border-top:1px solid ${THEME.border};padding-top:20px;">
             ${footerNote}
-            <p style="margin:0;font-family:${FONT};font-size:12px;line-height:1.5;color:${THEME.muted};">HYBRIDX &middot; AI-powered HYROX training</p>
+            <p style="margin:0;font-family:${FONT};font-size:12px;line-height:1.5;color:${THEME.muted};">HYBRIDX</p>
           </td></tr></table>
       </td></tr>
     </table>
