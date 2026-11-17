@@ -23,6 +23,7 @@ import { HYBRIDX_BRAND_CONTEXT } from '@/ai/brand-context';
 import { MERGE_TOKEN_HINT } from '@/lib/marketing/blocks';
 import { ADD_LINK, type Destination } from '@/lib/marketing/email-markup';
 import type { ValidationIssue } from '@/lib/marketing/validate';
+import { CLICHES, GENERIC_BUTTONS } from '@/lib/marketing/style-lint';
 
 export const draftEmailInputSchema = z.object({
   brief: z.string().describe('What this email must achieve.'),
@@ -135,24 +136,48 @@ Today's session is already in your plan. It is short, it is scaled to you, and i
 See you on the start line,
 The HYBRIDX team`;
 
+// The style rules here are the ones style-lint.ts scores, read from the same
+// lists, so the prompt cannot ask for one thing while the eval measures
+// another. Added after the first eval baseline: every email passed every
+// mechanical check, and the lowest editor scores were voice (3.9) and
+// opening on the reader (4.05), worst on first-contact and winback emails.
 const CRAFT = `## What makes a HYBRIDX email good
 - One job. The email exists to get one reader to take one action. Every
   paragraph earns its place by moving them toward the button.
-- Start with the reader, not the brand. Open on their situation, their race,
-  their week — then show how this helps.
+- Open on the reader. After any greeting, the first sentence is about them —
+  their race, their week, what they came for — usually starting with "You" or
+  their situation. Never open with "We", "Our", "At HYBRIDX", "Introducing"
+  or "We're excited". Throughout, write about the reader more than about us:
+  more "you" than "we".
 - Be specific to HYROX and hybrid training: stations, compromised running,
-  race day, the final 1km. Specific detail is what makes it believable.
-- Short paragraphs: one to three sentences. Most emails are 120 to 250 words
-  of body text. Use a section heading only when the email genuinely has two or
-  more parts; a short email needs none.
+  race day, the final 1km. One concrete detail beats three adjectives.
+- Short and readable on a phone: paragraphs of one to three sentences;
+  sentences under 20 words on average, none over 35. Most emails are 120 to
+  250 words of body text. Use a section heading only when the email genuinely
+  has two or more parts; a short email needs none.
 - Bullets for three to five parallel points, not for a whole argument.
-- The button repeats the promise in the reader's terms ("Start today's
-  session", not "Click here" or "Learn more").
+- The button names the action in the reader's terms, two to five words
+  ("Start today's session", "Plan back from race day"). Never ${GENERIC_BUTTONS.map((b) => `"${b}"`).join(', ')}.
+- Plain, confident words. Never use these: ${CLICHES.map((c) => `"${c}"`).join(', ')}.
+  At most one exclamation mark in the whole email, and none in the subject.
+- AI is how the app works, never the hook: keep it out of the subject,
+  headline and opening.
 - Sign off as a person or "The HYBRIDX team". Merge tokens are welcome where
   they read naturally; ${MERGE_TOKEN_HINT}
 - Subject: under 60 characters, specific, honest about what is inside. No
   exclamation marks, no fake "Re:", no ALL CAPS words except HYROX and HYBRIDX.
-- Preview text: one short sentence that adds to the subject, never repeats it.`;
+- Preview text: one short sentence that adds to the subject, never repeats it.
+
+## Situations that need care
+- A first email (welcome, a download, a sign-up): spend at most a few words on
+  thanks. Skip "welcome to the family" openings. Go straight to what they came
+  for and the one first step, and make that step feel small.
+- Winning someone back: no guilt and no pleading. Acknowledge in a sentence
+  that life and training get in the way, then give one concrete, specific
+  reason to return — something that fits where they are now.
+- Selling a programme or the subscription: lead with the result the reader
+  wants (their race, their time, their first finish), then show the programme
+  or feature as the way there.`;
 
 /** The full drafting prompt. */
 export function buildDraftPrompt(input: DraftEmailInput, context: DraftPromptContext): string {
