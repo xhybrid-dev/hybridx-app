@@ -34,7 +34,7 @@ line numbers that have moved).
 
 | Area | State |
 |---|---|
-| Capacitor iOS project (`ios/App`), bundle ID `club.hybridx.app`, iOS 14+ | Done |
+| Capacitor iOS project (`ios/App`), bundle ID `club.hybridx.app`, iOS 15+ | Done |
 | Plugins: App, Browser, Filesystem, Local Notifications, Preferences, Push Notifications, Share, Status Bar | Done |
 | App icons (all sizes) and splash screen | Done |
 | `PrivacyInfo.xcprivacy` (Apple's privacy manifest), `ITSAppUsesNonExemptEncryption=false`, microphone usage text | Done |

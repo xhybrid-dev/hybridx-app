@@ -78,6 +78,6 @@ Tracking: **No** (no cross-app advertising or data brokers).
 ## Screenshots needed
 - iPhone **6.9"** (1320x2868) and **6.5"** (1284x2778 or 1242x2688): 3 to 10
   each. Today, Plan, Coach, Progress, a workout in progress.
-- iPad **13"** (2064x2752): required because the app supports iPad.
+- No iPad screenshots: the app is iPhone-only (it still runs on iPads in compatibility mode).
 - Capture in the TestFlight build (Cmd+S in Simulator, or screenshots on a
   device and resize).
