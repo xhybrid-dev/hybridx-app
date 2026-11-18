@@ -14,6 +14,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendEmailVerification, AuthErrorCodes, setPersistence, browserLocalPersistence } from 'firebase/auth';
 import { getAuthInstance } from '@/lib/firebase';
+import { PrivacyPolicyLink } from '@/components/privacy-policy-link';
 import { authedFetch } from '@/lib/client-auth';
 import { createUser } from '@/services/user-service-client';
 import { getTopPrograms } from '@/services/program-recommendation';
@@ -598,6 +599,9 @@ function Step1({ onNext, defaultValues }: any) {
           <FormField control={form.control} name="password" render={({ field }) => (
             <FormItem><FormLabel>Password</FormLabel><FormControl><Input type="password" placeholder="Min. 8 characters" autoComplete="new-password" {...field} /></FormControl><FormMessage /></FormItem>
           )} />
+          <p className="text-xs text-muted-foreground">
+            By creating an account you agree to how we use your data, described in our <PrivacyPolicyLink />.
+          </p>
         </CardContent>
         <CardFooter>
           <Button type="submit" className="ml-auto">Next <ArrowRight className="ml-2 h-4 w-4" /></Button>

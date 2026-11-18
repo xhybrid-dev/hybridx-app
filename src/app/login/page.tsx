@@ -8,6 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { LoginForm } from '@/components/auth-forms';
 import { Logo } from '@/components/icons';
+import { PrivacyPolicyLink } from '@/components/privacy-policy-link';
 import { getAuthInstance } from '@/lib/firebase';
 import { logger } from '@/lib/logger';
 
@@ -107,7 +108,12 @@ export default function LoginPage() {
             <p className="text-sm">Signing you back in…</p>
           </div>
         ) : (
-          <LoginForm />
+          <>
+            <LoginForm />
+            <p className="mt-4 text-center text-xs text-muted-foreground">
+              <PrivacyPolicyLink />
+            </p>
+          </>
         )}
       </main>
     </div>

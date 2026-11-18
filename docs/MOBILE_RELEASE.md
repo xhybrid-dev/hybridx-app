@@ -104,7 +104,7 @@ One-time setup:
 - Create an "Internal Testers" group in TestFlight (the workflow uploads to it).
 - App Store listing: screenshots (6.9" iPhone and 13" iPad, since the app
   supports iPad), description, keywords, support URL, privacy policy URL
-  (`https://app.hybridx.club/privacy-policy`), App Privacy answers, age
+  (`https://hybridx.club/privacy-policy`), App Privacy answers, age
   rating, and a reviewer demo account.
 
 ## Store policy watch-outs

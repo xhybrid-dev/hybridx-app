@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { PrivacyPolicyLink } from '@/components/privacy-policy-link';
 import { useToast } from '@/hooks/use-toast';
 import { authedFetch } from '@/lib/client-auth';
 import { getAuthInstance } from '@/lib/firebase';
@@ -112,6 +113,10 @@ export function AccountSettingsCard({ email }: { email: string }) {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        <p className="w-full text-xs text-muted-foreground">
+          <PrivacyPolicyLink />
+        </p>
       </CardContent>
     </Card>
   );
