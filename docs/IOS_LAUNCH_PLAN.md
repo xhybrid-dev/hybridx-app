@@ -201,7 +201,7 @@ editor) for dressing up screenshots.
 - [ ] Delete the stale `IOS_APP_STORE_SETUP.md` (this plan replaces it) and
       fix `docs/MOBILE_RELEASE.md` where it mentions iPad screenshots.
 - [ ] Make sure the privacy policy URL is the same everywhere:
-      `https://app.hybridx.club/privacy-policy` (the old guide says `/privacy`).
+      `https://hybridx.club/privacy-policy` (the old guide says `/privacy`).
 - [ ] Confirm the production push entitlement (see Phase 6). The checked-in
       `App.entitlements` says `aps-environment = development`; App Store
       signing normally rewrites that to `production` from the provisioning

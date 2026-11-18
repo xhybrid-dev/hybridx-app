@@ -9,7 +9,7 @@ Draft copy for App Store Connect. Edit freely; the limits are Apple's.
 - **Age rating:** answer the questionnaire honestly. It should come out 4+; the
   AI coach generates text, so answer "No" to user-generated content unless you
   add chat between members.
-- **Privacy policy URL:** https://app.hybridx.club/privacy-policy
+- **Privacy policy URL:** https://hybridx.club/privacy-policy
 - **Support URL:** https://app.hybridx.club (use a page with a contact email)
 - **Copyright:** `2026 Hybrid X Training`
 
