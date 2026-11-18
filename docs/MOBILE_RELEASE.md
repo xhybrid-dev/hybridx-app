@@ -102,8 +102,7 @@ One-time setup:
   Notifications** (the entitlement is in `ios/App/App/App.entitlements`).
 - Push: see `docs/NATIVE_PUSH.md` (APNs key → Firebase, `GoogleService-Info.plist`).
 - Create an "Internal Testers" group in TestFlight (the workflow uploads to it).
-- App Store listing: screenshots (6.9" iPhone and 13" iPad, since the app
-  supports iPad), description, keywords, support URL, privacy policy URL
+- App Store listing: screenshots (6.9" iPhone; the app is iPhone-only, so no iPad set), description, keywords, support URL, privacy policy URL
   (`https://hybridx.club/privacy-policy`), App Privacy answers, age
   rating, and a reviewer demo account.
 
