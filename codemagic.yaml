@@ -235,7 +235,9 @@ workflows:
           failure: true
       app_store_connect:
         auth: integration
-        submit_to_testflight: true
+        # false: only external testers need Apple's beta review (and the test
+        # information it demands). The build still goes to the internal group below.
+        submit_to_testflight: false
         beta_groups:
           - Internal Testers
         submit_to_app_store: false
