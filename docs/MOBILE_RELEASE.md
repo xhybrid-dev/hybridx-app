@@ -28,8 +28,12 @@ Do these in order; the first block needs only an Apple Developer account.
    under the name `hybridx_app_store_connect`.
 5. TestFlight tab -> Internal Testing -> create the group **Internal Testers**
    and add yourself.
-6. Push a tag `ios-v1.0.0`. Codemagic builds, signs (it creates the
-   certificate and profile through the API key) and uploads to TestFlight.
+6. First, in Codemagic generate a **Distribution** certificate, create an App
+   Store profile for `club.hybridx.app` on Apple's site (with Push Notifications
+   already ticked on the App ID) and fetch it into Codemagic: the workflow only
+   uses signing files already stored there. Then push a tag `ios-v1.0.0` (or
+   start a build on `main`). Codemagic builds, signs and uploads to TestFlight.
+   Full steps: `docs/IOS_LAUNCH_PLAN.md`.
 7. Install TestFlight on your iPhone and test (see the list in this doc's
    "Native behaviour" section).
 8. Push notifications: Apple Developer -> Keys -> new key with APNs enabled
