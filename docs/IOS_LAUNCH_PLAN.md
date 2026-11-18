@@ -129,8 +129,12 @@ editor) for dressing up screenshots.
 1. **Register the bundle ID.** developer.apple.com → Certificates, Identifiers
    & Profiles → Identifiers → **+** → App IDs → App. Description `HYBRIDX.CLUB`,
    Explicit Bundle ID **`club.hybridx.app`**. Tick the **Push Notifications**
-   capability. (If Codemagic creates it for you later, still check the
-   capability is on.)
+   capability (don't click Configure next to it). **Do this before you create
+   the provisioning profile in Phase 2.** A profile copies the App ID's
+   capabilities when it is made, so a profile created first has no push and the
+   build fails with "Provisioning profile doesn't include the Push Notifications
+   capability". If you already made one, tick the box now, then regenerate the
+   profile (Phase 2, step 4).
 2. **Create the app in App Store Connect.** appstoreconnect.apple.com → Apps →
    **+** → New App. Platform iOS, name `HYBRIDX.CLUB`, primary language English,
    bundle ID `club.hybridx.app`, SKU anything unique (e.g. `hybridx-club-001`),
@@ -138,12 +142,20 @@ editor) for dressing up screenshots.
    need a variant; the name shown to users can differ from the home-screen name.
 3. **Create an App Store Connect API key.** App Store Connect → Users and
    Access → Integrations → App Store Connect API → **+**, name it `codemagic`,
-   access **App Manager**. **Download the `.p8` file immediately; Apple only lets
+   access **App Manager** or **Admin** (Developer access is not enough).
+   **Download the `.p8` file immediately; Apple only lets
    you download it once.** Note the Key ID and the Issuer ID shown on that page.
    Keep the `.p8` safe (password manager), never commit it.
 4. **Create the TestFlight group.** App Store Connect → your app → TestFlight →
-   Internal Testing → **+** → name it exactly **`Internal Testers`** → add
-   yourself. (Internal testers must be App Store Connect users; you already are.)
+   Internal Testing → **+** → name it exactly **`Internal Testers`**, tick
+   **Enable automatic distribution**, and add yourself. (Internal testers must be
+   App Store Connect users; you already are.) The build fails at its last step
+   with "Cannot find Beta group" if this group doesn't exist.
+5. **Fill in TestFlight Test Information.** App Store Connect → your app →
+   TestFlight → **Test Information**: a feedback email, plus a first name, last
+   name, phone number and email for beta review contact. Internal testing doesn't
+   strictly need it once `submit_to_testflight` is `false` (see Phase 4), but
+   you'll need it for any external testers later.
 
 ### Phase 2: Codemagic setup
 1. codemagic.io → sign in with GitHub → **Add application** → pick
@@ -151,10 +163,37 @@ editor) for dressing up screenshots.
    (not the visual workflow editor).
 2. Team settings → **Integrations** → **Developer Portal** (App Store Connect) →
    connect using the Issuer ID, Key ID and `.p8`. **Name it exactly
-   `hybridx_app_store_connect`**; `codemagic.yaml` refers to that name.
-3. Check that `codemagic.yaml` is on `main`, because a tag build uses the file
-   from the tagged commit.
-4. Android secrets (`hybridx_keystore`, `google_play`) are irrelevant to the iOS
+   `hybridx_app_store_connect`** (case-sensitive, underscores). `codemagic.yaml`
+   refers to that name, and the build fails with "App Store Connect integration
+   ... does not exist" if it differs. Add it in the **same team** that owns the
+   `hybridx-app` project; integrations in a personal account aren't visible to a
+   team's apps.
+3. **Code signing (this is not automatic).** The workflow only uses signing
+   files already stored in Codemagic; it does not create them. Do these in order:
+   1. **Distribution certificate.** Team settings → Code signing identities →
+      iOS certificates → **Generate certificate** → select the API key → set
+      the type to **Distribution** (the default is Development, and an App Store
+      profile can't use a Development certificate: Apple's profile page then says
+      "No Certificates are available") → give it a name such as
+      `hybridx_distribution`. Codemagic makes the CSR for you, so you never need
+      a Mac or OpenSSL. Don't create an "Apple Push Notification service SSL"
+      certificate on Apple's site; push uses a key (Phase 6), not a certificate.
+   2. **App Store profile on Apple's site.** developer.apple.com → Profiles →
+      **+** → **App Store Connect** (under Distribution; not Development or Ad
+      Hoc) → App ID `club.hybridx.app` → tick the **Distribution** certificate
+      from the step above → name it `HYBRIDX App Store` → Generate. The App ID
+      must already have Push Notifications ticked (Phase 1, step 1). Check the
+      profile's detail page lists Push Notifications.
+   3. **Fetch it into Codemagic.** Code signing identities → iOS provisioning
+      profiles → **Fetch profiles** → select the API key → tick the profile →
+      Fetch. (An empty list means Apple has no App Store profile yet, or the
+      profile is Invalid, or the filter is on the wrong type.)
+   4. **If you change the App ID's capabilities later**, the profile goes
+      Invalid: edit and save it on Apple's site, delete the old copy in
+      Codemagic, and fetch it again.
+4. Check that `codemagic.yaml` is on `main`. A branch build uses `main`'s file;
+   a tag build uses the file from the tagged commit.
+5. Android secrets (`hybridx_keystore`, `google_play`) are irrelevant to the iOS
    workflow. Ignore them.
 
 ### Phase 3: Small pre-flight fixes (I can do these)
@@ -171,29 +210,47 @@ editor) for dressing up screenshots.
       **Support URL**); `docs/APP_STORE_LISTING.md` already notes this.
 
 ### Phase 4: First build (the moment of truth)
+**First test build: from the `main` branch.** In Codemagic click **Start new
+build** → workflow **iOS Capacitor Build (Release)** → **Branch: `main`** →
+Start. With no tag the version stays at the project's `1.0`; the build number is
+set from TestFlight automatically.
+
+**Proper releases: use an `ios-v` tag.** Don't use `v0.0.x` tags; those are the
+Android release tags, and the iOS workflow would turn `v0.0.3` into an invalid
+version. Create the tag on GitHub (Releases → Draft a new release → new tag
+`ios-v1.0.0`, target `main`) or:
 ```bash
 git checkout main && git pull
 git tag ios-v1.0.0
 git push origin ios-v1.0.0
 ```
-Watch it in the Codemagic dashboard. What it does: `npm ci` → `cap sync ios`
-(installs CocoaPods) → sets build number from TestFlight → fetches/creates the
-signing certificate and profile via your API key → builds the `.ipa` → uploads to
-TestFlight. Emails go to `training@hybridx.club`.
+An `ios-v*` tag starts only the iOS workflow (it doesn't match Android's `v*`).
+
+What the build does: `npm ci` → `cap sync ios` (installs CocoaPods) → sets build
+number from TestFlight → applies the signing files you stored in Codemagic
+(Phase 2, step 3) → builds the `.ipa` → uploads to App Store Connect, waits for
+Apple to process it, and adds it to the `Internal Testers` group. Emails go to
+`training@hybridx.club`. `submit_to_testflight` is `false` in `codemagic.yaml`
+because only external testers need Apple's beta review.
 
 **Expect the first run to fail once or twice.** Typical causes and fixes:
 
 | Symptom | Cause | Fix |
 |---|---|---|
 | "No app found for bundle ID" at the version step | Phase 1 step 2 skipped, or the bundle ID differs | Create the app record; match `club.hybridx.app` exactly |
-| Signing/profile error mentioning push | Push capability not ticked on the App ID | Phase 1 step 1, then re-run |
-| "Integration hybridx_app_store_connect not found" | Integration named differently or at the wrong level | Rename it, or edit the name in the YAML |
+| "No matching profiles found for bundle identifier ... and distribution type app_store" | No App Store profile stored in Codemagic | Phase 2, step 3 (certificate, profile, fetch) |
+| "Provisioning profile ... doesn't include the Push Notifications capability" / "aps-environment entitlement" | Profile made before Push was ticked on the App ID | Tick Push on the App ID, regenerate the profile, delete the old copy in Codemagic, fetch again |
+| "App Store Connect integration ... does not exist" | Integration named differently, or added in another team | Rename it to `hybridx_app_store_connect` in the right team |
+| "Cannot find Beta group with the name 'Internal Testers'" | Group not created | Phase 1, step 4 (the build itself is already uploaded) |
+| "Complete test information is required ... external testing" | `submit_to_testflight: true` | Set to `false` (done in the repo) or fill in Test Information |
 | Pod install / Swift compile error | Dependency drift | Paste the log to me and I'll fix it |
 | Build succeeds, nothing in TestFlight for ~20 min | Apple is processing | Wait; you get an email |
 | "Missing Compliance" in TestFlight | Export-compliance key missing | Already set (`ITSAppUsesNonExemptEncryption=false`) |
 
-To retry after a fix: tags are immutable in spirit, so use `ios-v1.0.1`, or
-use Codemagic's **Start new build** button on the fixed branch.
+To retry after a fix, use **Start new build** again (branch `main`). A tag build
+needs a new tag name, e.g. `ios-v1.0.1`. The build log is truncated in places;
+the real error is in the downloadable `xcodebuild_*.log` under **Artifacts**
+(search for `error:`).
 
 ### Phase 5: Test on your iPhone
 1. Install **TestFlight** from the App Store, signed in with the same Apple ID.
@@ -330,7 +387,7 @@ In your app's page:
 |---|---|---|
 | Day 1 | Apple enrolment (+ D-U-N-S if organisation), decide D1 to D3 | You |
 | Day 1 to 3 (wait) | Apple approves | Apple |
-| Day 3 | Phases 1 and 2: App ID, app record, API key, Codemagic | You |
+| Day 3 | Phases 1 and 2: App ID (with Push ticked), app record, API key, Codemagic and its code signing | You |
 | Day 3 | Phase 3 code tweaks | Me |
 | Day 3 to 4 | Phase 4: first build and fixes | You + me |
 | Day 4 to 5 | Phase 5: test on iPhone; Phase 6: push setup, `ios-v1.0.1` | You |
@@ -359,8 +416,10 @@ account in parallel.
   must go up on every upload. Codemagic sets both automatically from the tag and
   TestFlight.
 - **TestFlight builds expire after 90 days**; the App Store version doesn't.
-- **Certificates and profiles** are managed for you by Codemagic through the API
-  key; you will not need to touch Keychain or a CSR on a Mac.
+- **Certificates and profiles** are stored in Codemagic (Phase 2, step 3). You
+  generate the certificate there, so you never need a Mac, Keychain or a CSR.
+  A distribution certificate lasts a year; renew it (generate a new one,
+  regenerate the profile, fetch it) before it expires.
 - **Your `.p8` keys** (App Store Connect API, APNs) are shown once. Losing one
   isn't fatal; you can revoke and make a new one, but store them properly.
 - **Apple's first-time review is the slowest.** Don't schedule a launch event
