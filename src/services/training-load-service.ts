@@ -13,7 +13,8 @@ const CATEGORY_LABELS: Record<ActivityCategory, string> = {
   run: 'Running',
   ride: 'Cycling',
   swim: 'Swimming',
-  strength: 'Strength / HYROX',
+  // No event brand here: it shows in store screenshots and on the Training Load card.
+  strength: 'Strength & stations',
   walk: 'Walking / Hiking',
   rowing: 'Rowing',
   other: 'Other',

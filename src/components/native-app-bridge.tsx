@@ -34,13 +34,20 @@ export function NativeAppBridge() {
     };
   }, []);
 
-  // Status bar icons follow the app's theme, not the phone's: dark icons on the
-  // light theme, light icons on the dark theme. They used to be fixed dark, so
-  // the clock and battery disappeared against the dark header.
+  // The status bar follows the app's theme, not the phone's: dark icons on a
+  // white bar for the light theme, light icons on a near-black bar for the dark
+  // one. The bar sits above the web view (overlaysWebView: false), so its
+  // background is native and has to be set here too; it used to stay white
+  // from capacitor.config.ts, leaving light icons invisible on a white band
+  // above the dark header. Colours match the header (--card in globals.css).
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
-    StatusBar.setStyle({ style: resolvedTheme === 'dark' ? Style.Dark : Style.Light }).catch(error =>
+    const dark = resolvedTheme === 'dark';
+    StatusBar.setStyle({ style: dark ? Style.Dark : Style.Light }).catch(error =>
       logger.error('Status bar style failed', error),
+    );
+    StatusBar.setBackgroundColor({ color: dark ? '#0A0A0A' : '#FFFFFF' }).catch(error =>
+      logger.error('Status bar colour failed', error),
     );
   }, [resolvedTheme]);
 

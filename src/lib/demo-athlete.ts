@@ -86,7 +86,8 @@ function emom(day: number, week: number): WorkoutDay {
     programType: 'hyrox',
     title: `Week ${week}: EMOM Engine`,
     exercises: [
-      strength('Dumbbell Thrusters', '3 × 8 reps'),
+      // Cardio first, so the calendar labels the day Conditioning, not Strength.
+      cardio('Dumbbell Thrusters', '3 × 8 reps'),
       cardio(`EMOM ${minutes}`, 'Alternating minutes: 12 wall balls, 10 burpees'),
       cardio('Sandbag Lunges', '3 × 20 m'),
     ],
