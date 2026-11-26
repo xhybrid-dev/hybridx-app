@@ -5,6 +5,7 @@ import axios from 'axios';
 import type { StravaTokens } from '@/models/types';
 import { getAdminAuth } from '@/lib/firebase-admin';
 import { cookies } from 'next/headers';
+import { demoStravaActivities, isDemoStravaToken } from '@/lib/demo-strava';
 
 async function getValidAccessToken(userId: string): Promise<string> {
     const user = await getUser(userId);
@@ -62,6 +63,13 @@ export async function GET(
     console.log(`🔐 Authenticated user: ${userId} for activity ${activityId}`);
 
     const accessToken = await getValidAccessToken(userId);
+
+    if (isDemoStravaToken(accessToken)) {
+      const demo = demoStravaActivities(120).find(activity => String(activity.id) === String(activityId));
+      return demo
+        ? NextResponse.json(demo)
+        : NextResponse.json({ error: 'Activity not found' }, { status: 404 });
+    }
 
     console.log(`🚀 Fetching detailed activity ${activityId} from Strava...`);
     const activityResponse = await axios.get(`https://www.strava.com/api/v3/activities/${activityId}`, {

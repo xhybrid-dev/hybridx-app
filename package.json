@@ -13,6 +13,7 @@
     "db:seed": "tsx scripts/upload-programs.ts",
     "check:activity": "tsx scripts/check-activity.ts",
     "seed:journeys": "tsx scripts/seed-journeys.ts",
+    "seed:demo": "tsx scripts/seed-demo-athlete.ts",
     "test": "vitest",
     "test:run": "vitest run",
     "deploy:firestore": "firebase deploy --only firestore:rules,firestore:indexes --project hyroxedgeai",

@@ -7,6 +7,7 @@ import { cookies } from 'next/headers';
 import { getValidStravaToken } from '@/lib/strava-token';
 import { mapStravaError, describeStravaError } from '@/lib/strava-api';
 import { checkRateLimit } from '@/lib/rate-limit';
+import { demoStravaActivities, isDemoStravaToken } from '@/lib/demo-strava';
 
 export async function GET(req: NextRequest) {
   let userId: string | undefined;
@@ -35,6 +36,12 @@ export async function GET(req: NextRequest) {
     const accessToken = await getValidStravaToken(userId);
 
     const page = Math.max(1, parseInt(req.nextUrl.searchParams.get('page') ?? '1', 10));
+
+    if (isDemoStravaToken(accessToken)) {
+      const activities = demoStravaActivities(120).slice((page - 1) * 30, page * 30);
+      return NextResponse.json({ activities, hasMore: activities.length === 30 });
+    }
+
     const activitiesResponse = await axios.get('https://www.strava.com/api/v3/athlete/activities', {
       headers: { Authorization: `Bearer ${accessToken}` },
       params: { per_page: 30, page },

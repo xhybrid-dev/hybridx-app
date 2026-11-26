@@ -8,6 +8,7 @@
 
 import axios from 'axios';
 import type { StravaActivity } from '@/services/strava-service';
+import { demoStravaActivities, isDemoStravaToken } from '@/lib/demo-strava';
 
 const ACTIVITIES_URL = 'https://www.strava.com/api/v3/athlete/activities';
 
@@ -58,6 +59,11 @@ export async function fetchRecentActivities(
   accessToken: string,
   { days = 120, perPage = 100, maxPages = 3 }: { days?: number; perPage?: number; maxPages?: number } = {},
 ): Promise<FetchActivitiesResult> {
+  // Demo accounts carry a sentinel token and get built-in history instead.
+  if (isDemoStravaToken(accessToken)) {
+    return { activities: demoStravaActivities(days), pagesFetched: 1, partial: false, rateLimit: {} };
+  }
+
   const after = Math.floor((Date.now() - days * 24 * 60 * 60 * 1000) / 1000);
 
   const activities: StravaActivity[] = [];
