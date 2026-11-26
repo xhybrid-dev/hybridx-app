@@ -338,7 +338,9 @@ const JOURNEYS: SeedJourney[] = [
   //
   // So the campaign is exactly the email that was promised, modelled the way
   // this system models a broadcast: a `manual` trigger with a single send. It
-  // waits, as a paused draft, until the books are actually on sale.
+  // waits, as a paused draft, until somebody sends it. The books are on sale on
+  // Amazon (26 November 2026), so the email links straight to each edition and
+  // says nothing that depends on the date it goes out.
   {
     id: 'athx-2027-launch-announcement',
     name: 'ATHX 2027 launch announcement',
@@ -357,7 +359,7 @@ const JOURNEYS: SeedJourney[] = [
         kind: 'email',
         email: {
           subject: 'The ATHX 2027 plans are out',
-          previewText: 'Twelve weeks, 84 daily pages, Men’s and Women’s editions.',
+          previewText: 'Twelve weeks, 84 daily pages, Men’s and Women’s editions, on Amazon now.',
           blocks: [
             {
               type: 'hero',
@@ -370,7 +372,7 @@ const JOURNEYS: SeedJourney[] = [
             },
             {
               type: 'paragraph',
-              text: 'Both editions are out. Half of each book explains the event: the three zones, how the rank scoring adds up, and where the placings are actually won. Half is the plan, with every day carrying the session, what to eat around it, what to drink, how to recover from it, and one thing worth knowing.',
+              text: 'Both editions are out, and on sale on Amazon now. Half of each book explains the event: the three zones, how the rank scoring adds up, and where the placings are actually won. Half is the plan, with every day carrying the session, what to eat around it, what to drink, how to recover from it, and one thing worth knowing.',
             },
             {
               type: 'bulletList',
@@ -382,9 +384,14 @@ const JOURNEYS: SeedJourney[] = [
             },
             {
               type: 'paragraph',
-              text: 'ATHX London is 23 and 24 January 2027, so a twelve-week build starts in early November. If London is the target, this is the week to start.',
+              text: `The 2027 UK and Ireland dates are on the ATHX page, which works out how long you have for the next one: ${SITE_URL}/athx-2027`,
             },
-            { type: 'cta', label: 'See both editions', url: `${SITE_URL}/books` },
+            { type: 'cta', label: 'Get the Men’s Edition', url: 'https://link.amazon/B0g5sdBgd' },
+            { type: 'cta', label: 'Get the Women’s Edition', url: 'https://link.amazon/B09UkaF2U' },
+            {
+              type: 'paragraph',
+              text: 'Affiliate disclosure: the Amazon links in this email are affiliate links. As an Amazon Associate, HybridX earns from qualifying purchases, at no extra cost to you.',
+            },
             {
               type: 'paragraph',
               text: 'If you still have the pacing calculator open somewhere, the Endurance Zone chapter is the long version of what it shows you.',
