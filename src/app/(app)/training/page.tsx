@@ -149,7 +149,13 @@ function CategoryIcon({ category, className }: { category: ActivityCategory; cla
 
 // ── Chart types ───────────────────────────────────────────────────────────────
 
-interface ChartPoint extends PMCDataPoint {
+// Projected days carry no actual values (null), so the solid lines end at today
+// instead of dropping to zero across the projection window.
+interface ChartPoint extends Omit<PMCDataPoint, 'load' | 'atl' | 'ctl' | 'tsb'> {
+  load: number | null;
+  atl: number | null;
+  ctl: number | null;
+  tsb: number | null;
   ctlProj: number | null;
   atlProj: number | null;
   tsbProj: number | null;
@@ -403,7 +409,7 @@ export default function TrainingPage() {
     const projTsb = projCtl - projAtl;
     projectionPoints.push({
       date: d.toISOString().slice(0, 10),
-      load: 0, ctl: 0, atl: 0, tsb: 0,
+      load: null, ctl: null, atl: null, tsb: null,
       ctlProj: Math.round(projCtl * 10) / 10,
       atlProj: Math.round(projAtl * 10) / 10,
       tsbProj: Math.round(projTsb * 10) / 10,
