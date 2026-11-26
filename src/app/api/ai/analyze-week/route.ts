@@ -10,6 +10,7 @@ import { toCalendarDay } from '@/lib/program-day';
 import axios from 'axios';
 import type { StravaTokens } from '@/models/types';
 import { computeTrainingSummary, formatTrainingSummaryForAI } from '@/services/training-load-service';
+import { demoStravaActivities, isDemoStravaToken } from '@/lib/demo-strava';
 
 export async function POST(request: Request) {
     try {
@@ -100,40 +101,44 @@ export async function POST(request: Request) {
                 const now = new Date();
                 const stravaTokens = user.strava as StravaTokens;
 
-                if (
-                    stravaTokens.expiresAt instanceof Date &&
-                    stravaTokens.expiresAt.getTime() < now.getTime() + 300000
-                ) {
-                    const refreshResponse = await axios.post('https://www.strava.com/oauth/token', {
-                        client_id: process.env.NEXT_PUBLIC_STRAVA_CLIENT_ID,
-                        client_secret: process.env.STRAVA_CLIENT_SECRET,
-                        grant_type: 'refresh_token',
-                        refresh_token: stravaTokens.refreshToken,
-                    });
-                    const newTokens: StravaTokens = {
-                        ...stravaTokens,
-                        accessToken: refreshResponse.data.access_token,
-                        refreshToken: refreshResponse.data.refresh_token,
-                        expiresAt: new Date(refreshResponse.data.expires_at * 1000),
-                    };
-                    await updateUserAdmin(userId, { strava: newTokens });
-                    accessToken = newTokens.accessToken;
-                }
+                if (isDemoStravaToken(accessToken)) {
+                    stravaTrainingContext = formatTrainingSummaryForAI(computeTrainingSummary(demoStravaActivities(60)));
+                } else {
+                    if (
+                        stravaTokens.expiresAt instanceof Date &&
+                        stravaTokens.expiresAt.getTime() < now.getTime() + 300000
+                    ) {
+                        const refreshResponse = await axios.post('https://www.strava.com/oauth/token', {
+                            client_id: process.env.NEXT_PUBLIC_STRAVA_CLIENT_ID,
+                            client_secret: process.env.STRAVA_CLIENT_SECRET,
+                            grant_type: 'refresh_token',
+                            refresh_token: stravaTokens.refreshToken,
+                        });
+                        const newTokens: StravaTokens = {
+                            ...stravaTokens,
+                            accessToken: refreshResponse.data.access_token,
+                            refreshToken: refreshResponse.data.refresh_token,
+                            expiresAt: new Date(refreshResponse.data.expires_at * 1000),
+                        };
+                        await updateUserAdmin(userId, { strava: newTokens });
+                        accessToken = newTokens.accessToken;
+                    }
 
-                const [p1, p2] = await Promise.all([
-                    axios.get('https://www.strava.com/api/v3/athlete/activities', {
-                        headers: { Authorization: `Bearer ${accessToken}` },
-                        params: { per_page: 50, page: 1 },
-                    }),
-                    axios.get('https://www.strava.com/api/v3/athlete/activities', {
-                        headers: { Authorization: `Bearer ${accessToken}` },
-                        params: { per_page: 50, page: 2 },
-                    }),
-                ]);
-                const stravaActivities = [...p1.data, ...p2.data];
-                const trainingSummary = computeTrainingSummary(stravaActivities);
-                stravaTrainingContext = formatTrainingSummaryForAI(trainingSummary);
-                console.log('[Analyze Week] Strava training context fetched successfully');
+                    const [p1, p2] = await Promise.all([
+                        axios.get('https://www.strava.com/api/v3/athlete/activities', {
+                            headers: { Authorization: `Bearer ${accessToken}` },
+                            params: { per_page: 50, page: 1 },
+                        }),
+                        axios.get('https://www.strava.com/api/v3/athlete/activities', {
+                            headers: { Authorization: `Bearer ${accessToken}` },
+                            params: { per_page: 50, page: 2 },
+                        }),
+                    ]);
+                    const stravaActivities = [...p1.data, ...p2.data];
+                    const trainingSummary = computeTrainingSummary(stravaActivities);
+                    stravaTrainingContext = formatTrainingSummaryForAI(trainingSummary);
+                    console.log('[Analyze Week] Strava training context fetched successfully');
+                }
             } catch (stravaErr: any) {
                 // Non-fatal — proceed without Strava context
                 console.warn('[Analyze Week] Could not fetch Strava training context:', stravaErr.message);

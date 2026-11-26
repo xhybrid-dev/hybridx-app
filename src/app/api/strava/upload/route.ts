@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuth } from 'firebase-admin/auth';
 import { cookies } from 'next/headers';
 import { getValidStravaToken } from '@/lib/strava-token';
+import { isDemoStravaToken } from '@/lib/demo-strava';
 import { mapStravaError, describeStravaError } from '@/lib/strava-api';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { getAdminDb } from '@/lib/firebase-admin';
@@ -72,6 +73,9 @@ export async function POST(req: NextRequest) {
     }
 
     const accessToken = await getValidStravaToken(userId);
+    if (isDemoStravaToken(accessToken)) {
+      return NextResponse.json({ error: 'Strava upload is not available on the demo account.' }, { status: 400 });
+    }
 
     // Fetch workout session from your database
     const adminDb = getAdminDb();

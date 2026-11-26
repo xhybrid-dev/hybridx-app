@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import axios from 'axios';
 import { fetchRecentActivities, mapStravaError } from '../strava-api';
+import { DEMO_STRAVA_ACCESS_TOKEN } from '../demo-strava';
 
 vi.mock('axios');
 
@@ -28,6 +29,13 @@ beforeEach(() => {
 });
 
 describe('fetchRecentActivities', () => {
+  it('serves built-in history for the demo token and never calls Strava', async () => {
+    const result = await fetchRecentActivities(DEMO_STRAVA_ACCESS_TOKEN, { days: 60 });
+    expect(mockedGet).not.toHaveBeenCalled();
+    expect(result.activities.length).toBeGreaterThan(40);
+    expect(result.partial).toBe(false);
+  });
+
   it('stops after one request when the first page comes back short', async () => {
     mockedGet.mockResolvedValueOnce(page(40) as any);
 

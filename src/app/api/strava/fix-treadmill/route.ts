@@ -30,6 +30,7 @@ import { getAuth } from 'firebase-admin/auth';
 import { cookies } from 'next/headers';
 import axios from 'axios';
 import { getValidStravaToken } from '@/lib/strava-token';
+import { isDemoStravaToken } from '@/lib/demo-strava';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { getAdminDb } from '@/lib/firebase-admin';
 import { logger } from '@/lib/logger';
@@ -170,6 +171,9 @@ export async function POST(req: NextRequest) {
         { error: 'Strava connection expired. Please reconnect your account.' },
         { status: 401 },
       );
+    }
+    if (isDemoStravaToken(accessToken)) {
+      return NextResponse.json({ error: 'The treadmill fixer is not available on the demo account.' }, { status: 400 });
     }
 
     // Load and verify the workout session

@@ -85,8 +85,19 @@ site root `https://hybridx.club` is fine if it shows a contact email.
 
 ## 3. Screenshots
 
-Take them from the TestFlight build on your iPhone, using a demo account with a
-full plan (not your personal data). Size: **6.9" iPhone, 1320 x 2868**. Apple
+Take them from the TestFlight build on your iPhone, signed in as the **demo
+athlete** (not your personal account). `scripts/seed-demo-athlete.ts` creates
+"Alex Carter" (`demo@hybridx.club`): a 16-week plan in week 7, every past session
+completed, PRs and paces, a coach conversation and notes, and built-in training
+history so Training Load reads "Optimal Training Zone" without a real Strava
+login:
+```bash
+gcloud auth application-default login      # once
+npm run seed:demo -- --dry-run              # check
+npm run seed:demo -- --password '<choose one>'
+```
+Re-run it any time to reset the account to the same state relative to today
+(handy after you've tapped around it). Size: **6.9" iPhone, 1320 x 2868**. Apple
 scales them down for smaller phones, so this one set is enough. The app is
 iPhone-only, so there are no iPad screenshots.
 
@@ -162,10 +173,14 @@ Answer the questionnaire honestly. Expected answers for this app:
 
 ## 6. App Review Information
 
-**Sign-in required:** yes. **YOU:** create the reviewer account on the website
-(full access, with a program assigned and a plan so the dashboard isn't empty;
-the trial or membership must not expire during review, so set it to an active
-membership or admin-granted access). Enter its email and password in the
+**Sign-in required:** yes. **YOU:** create the reviewer account with the same
+script, without the built-in Strava history so it never claims a Strava
+connection it doesn't have:
+```bash
+npm run seed:demo -- --email appreview@hybridx.club --first App --last Reviewer --no-strava --password '<choose one>'
+```
+It gets an active membership (no trial, nothing expires during review) and a
+full plan. Enter its email and password in the
 sign-in fields. Never use a personal account.
 
 **Contact:** your name, a phone number Apple can call, and
