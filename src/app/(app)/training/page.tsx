@@ -424,7 +424,14 @@ export default function TrainingPage() {
 
   const weeklyChartData = weeklyBreakdown.map(w => ({ weekLabel: w.weekLabel, totalMinutes: w.totalMinutes, byCategory: w.byCategory }));
 
-  const tickInterval = timeRange <= 30 ? 4 : timeRange <= 60 ? 6 : 10;
+  // Five evenly spaced date labels whatever the range (30/60/90 days plus the
+  // 14-day projection). A fixed day interval gave 11+ labels on the longer
+  // ranges, which ran into each other on a phone ("Oct 12Oct 19").
+  const AXIS_LABELS = 5;
+  const tickStep = Math.max(1, Math.ceil(chartData.length / AXIS_LABELS));
+  const axisTicks = chartData
+    .filter((_, i) => i % tickStep === Math.floor(tickStep / 2))
+    .map(point => point.date);
 
   const formatDate = (dateStr: string) => {
     try { return format(parseISO(dateStr), 'MMM d'); } catch { return dateStr; }
@@ -535,7 +542,7 @@ export default function TrainingPage() {
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" opacity={0.4} />
-                <XAxis dataKey="date" tickFormatter={formatDate} tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} tickLine={false} axisLine={false} interval={tickInterval} />
+                <XAxis dataKey="date" tickFormatter={formatDate} tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} tickLine={false} axisLine={false} ticks={axisTicks} interval={0} />
                 <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} tickLine={false} axisLine={false} />
                 <Tooltip content={<PMCTooltip />} cursor={{ stroke: 'hsl(var(--border))', strokeWidth: 1 }} />
                 <ReferenceLine y={0} stroke="hsl(var(--border))" strokeWidth={1} />

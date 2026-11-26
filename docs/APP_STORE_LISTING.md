@@ -14,7 +14,7 @@ a decision or an asset from you.
 | Subtitle (30) | `Hybrid & HYROX training plans` (29) |
 | Primary category | Health & Fitness |
 | Secondary category | Sports |
-| Content rights | "Does not contain, show, or access third-party content" is **not** quite true: Strava and Garmin data is the athlete's own and imported at their request. Answer **No** to "contains third-party content", unless App Store Connect's wording says otherwise. |
+| Content rights | Answer **Yes**, it accesses third-party content (the athlete's own Strava and Garmin activities, through their official APIs), and **Yes**, you have the rights to use it. |
 | Age rating | See section 5 |
 | Copyright | `2026 Hybrid X Training` |
 
@@ -101,14 +101,16 @@ Re-run it any time to reset the account to the same state relative to today
 scales them down for smaller phones, so this one set is enough. The app is
 iPhone-only, so there are no iPad screenshots.
 
-| # | Screen | Suggested caption |
+Final set, in upload order (the first two show in search results):
+
+| # | Screen (signed in as Alex, Yellow theme) | Caption |
 |---|---|---|
-| 1 | Today's workout on the dashboard | "Your session for today, ready to go" |
-| 2 | The plan / calendar view | "A plan that finishes on race day" |
-| 3 | Workout in progress with the timer | "Log every set, run and station" |
-| 4 | Coach chat or voice note | "Tell your coach, your plan adapts" |
-| 5 | Progress: streak, PRs, training load | "See your consistency build" |
-| 6 | Strava / Garmin connection (optional) | "Bring in your watch data" |
+| 1 | Today: "Today's Workout" card with the Start button | Your session for today, ready to go |
+| 2 | EMOM timer running (Start workout) | Timers for every workout format |
+| 3 | Plan → Month, today selected | A plan that runs to race day |
+| 4 | Coach: the work-trip / hotel-gym exchange | Tell your coach. Your plan adapts. |
+| 5 | Training Load report (View Full Report) | Know when to push and when to rest |
+| 6 | Today in dark mode (optional) | Light or dark, your choice |
 
 Rules to keep review smooth: no prices, no "free trial" or "subscribe" text, no
 other platforms' logos or devices, no status bar clutter (Simulator or a clean
